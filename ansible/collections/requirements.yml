@@ -1,0 +1,6 @@
+---
+# Collections required by the AAP controller project (auto-installed into the
+# execution environment at job runtime) and by the EDA decision environment.
+collections:
+  - name: servicenow.itsm   # incident updates (playbook) + records event source (EDA)
+  - name: ansible.eda       # EDA sources / filters

@@ -1,0 +1,60 @@
+# AAP 2.7 — single-node "growth" deployment (everything on the VM, managed DB).
+# Secret-free template: install.sh renders it by replacing the __PLACEHOLDERS__
+# (generated password + registry creds extracted from the podman auth file).
+
+[automationgateway]
+__FQDN__
+
+[automationcontroller]
+__FQDN__
+
+[automationhub]
+__FQDN__
+
+[automationeda]
+__FQDN__
+
+[database]
+__FQDN__
+
+[automationmetrics]
+__FQDN__
+
+[all:vars]
+ansible_connection=local
+
+postgresql_admin_username=postgres
+postgresql_admin_password=__APP_PW__
+
+registry_username=__REG_USER__
+registry_password=__REG_PW__
+
+redis_mode=standalone
+
+# Gateway
+gateway_admin_password=__APP_PW__
+gateway_pg_host=__FQDN__
+gateway_pg_password=__APP_PW__
+
+# Controller
+controller_admin_password=__APP_PW__
+controller_pg_host=__FQDN__
+controller_pg_password=__APP_PW__
+controller_percent_memory_capacity=0.5
+
+# Automation Hub
+hub_admin_password=__APP_PW__
+hub_pg_host=__FQDN__
+hub_pg_password=__APP_PW__
+hub_seed_collections=false
+
+# EDA Controller
+eda_admin_password=__APP_PW__
+eda_pg_host=__FQDN__
+eda_pg_password=__APP_PW__
+
+# Automation Metrics
+automationmetrics_pg_host=__FQDN__
+automationmetrics_pg_password=__APP_PW__
+automationmetrics_controller_read_pg_host=__FQDN__
+automationmetrics_controller_read_pg_password=__APP_PW__

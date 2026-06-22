@@ -1,0 +1,30 @@
+---
+# EDA - detects "ping server" incidents in ServiceNow and triggers remediation.
+# DRAFT: validate against `ansible-doc -t source servicenow.itsm.records` on AAP
+#        once the decision environment (with servicenow.itsm) is in place.
+# Variables provided by the Rulebook Activation: SN_HOST / SN_USERNAME / SN_PASSWORD.
+- name: Auto-remediate "ping server" incident (ServiceNow -> EDA -> AAP)
+  hosts: all
+  sources:
+    - servicenow.itsm.records:
+        instance:
+          host: "https://{{ SN_HOST }}"
+          username: "{{ SN_USERNAME }}"
+          password: "{{ SN_PASSWORD }}"
+        table: incident
+        # Trigger filter (see servicenow/setup.py): dedicated group + New state.
+        query: "assignment_group.name=Auto-Remediation^state=1"
+        interval: 10
+  rules:
+    - name: New incident in Auto-Remediation -> trigger remediation
+      condition: event.number is defined
+      action:
+        run_job_template:
+          name: "Remediate Ping Server"
+          organization: "Default"
+          job_args:
+            extra_vars:
+              incident_number: "{{ event.number }}"
+              # TODO: confirm the field returned for the target (cmdb_ci as display value
+              # = 'app-node-1'). Adjust depending on the source's display_value setting.
+              target_host: "{{ event.cmdb_ci }}"

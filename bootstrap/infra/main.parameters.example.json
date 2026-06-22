@@ -1,0 +1,14 @@
+{
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": { "value": "westeurope" },
+    "resourceGroupName": { "value": "rg-snow-aap-poc" },
+    "vmName": { "value": "aap-poc" },
+    "vmSize": { "value": "Standard_D4s_v5" },
+    "adminUsername": { "value": "azureuser" },
+    "sshPublicKey": { "value": "ssh-ed25519 AAAA... your key here" },
+    "dnsLabel": { "value": "aap-poc-CHANGE-ME" },
+    "osDiskSizeGb": { "value": 128 },
+    "osDiskSku": { "value": "Premium_LRS" }
+  }
+}

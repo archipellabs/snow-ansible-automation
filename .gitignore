@@ -1,0 +1,34 @@
+# Secrets / keys — NEVER commit
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+*-poc
+*-poc.pub
+.env
+.env.*
+!.env.example
+*.secret
+
+# Personal notes / working plans (local only)
+notes.md
+NEXT_STEPS.md
+
+# AAP install (Red Hat binaries + rendered inventory with secrets)
+bootstrap/aap/*.tar.gz
+bootstrap/aap/*.tar
+bootstrap/aap/inventory
+
+# Infra params with environment-specific values (copy from main.parameters.example.json)
+bootstrap/infra/main.parameters.json
+
+# Target key material (generated; authorized_keys is the public half used at build time)
+bootstrap/targets/keys/
+bootstrap/targets/authorized_keys
+
+# Python
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store

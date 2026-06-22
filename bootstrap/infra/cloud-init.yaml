@@ -1,0 +1,16 @@
+#cloud-config
+# Base system for podman — runs at first VM boot (via customData).
+# RHEL 9 PAYG image -> dnf uses the Azure RHUI repos (no subscription-manager needed).
+
+package_update: true
+packages:
+  - podman
+  - git
+  - ansible-core
+  - python3-pip
+
+runcmd:
+  # Rootless podman for azureuser: containers persist without an active login session.
+  - [ bash, -lc, "loginctl enable-linger azureuser" ]
+  # Podman socket (local API, handy for tooling).
+  - [ bash, -lc, "systemctl enable --now podman.socket" ]
