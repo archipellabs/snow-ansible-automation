@@ -36,7 +36,7 @@
       servicenow.itsm.incident:
         number: "{{ incident_number }}"
         state: resolved
-        close_code: "Solved (Permanently)"
+        close_code: "Solution provided"
         close_notes: >-
           Service {{ service_name }} restarted automatically (AAP) on {{ target_host }}.
           HTTP re-check OK.

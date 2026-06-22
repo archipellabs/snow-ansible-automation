@@ -164,11 +164,12 @@ ports 2201/2202. Break the service with `podman exec app-node-1 systemctl stop h
 
 ## Key findings (lessons learned)
 
-1. **EE → target networking** — rootless netavark containers cannot reach the host IP, its
-   published ports, or containers on a different network. **But AAP runs `--network=host`**, so
-   its execution environments share the host network namespace and reach the targets at
-   **`127.0.0.1:2201` / `2202`**. The controller inventory uses `ansible_host=127.0.0.1` +
-   `ansible_port=2201/2202`.
+1. **EE → target networking** — the controller spawns execution environments with **pasta**
+   networking, where `host.containers.internal` resolves to the host *and* can reach its
+   rootless-published ports. So the targets (SSH published on the host at 2201/2202) are reached
+   from the EE via **`host.containers.internal:2201/2202`** — the inventory sets
+   `ansible_host=host.containers.internal` + `ansible_port` (not `127.0.0.1`, which is the EE's
+   own loopback).
 2. **Disk** — the RHEL LVM Azure image partitions only ~62 GB and ships tiny LVs (`/home` = 1 GB);
    the AAP images need ~25 GB → `install.sh` grows the partition + LVs.
 3. **ServiceNow password** — not settable via the Table API; set it once in the UI and clear
