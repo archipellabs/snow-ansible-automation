@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 620" width="1600" height="620" role="img" aria-label="Auto-remediation flow">
+  <defs>
+    <style>
+      text { font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+      .h1 { font-size: 28px; font-weight: 700; fill: #1f2328; }
+      .h2 { font-size: 15px; fill: #57606a; }
+      .st { font-size: 17px; font-weight: 700; fill: #1f2328; }
+      .ss { font-size: 13px; fill: #57606a; }
+      .badge { font-size: 18px; font-weight: 700; fill: #ffffff; }
+      .card { fill: #ffffff; stroke: #d0d7de; stroke-width: 1.4; }
+      .loop { font-size: 14px; font-weight: 600; fill: #1c7c54; }
+    </style>
+    <filter id="sh" x="-10%" y="-10%" width="120%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.12"/>
+    </filter>
+    <marker id="a-dark" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="13" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3a3f45"/></marker>
+    <marker id="a-green" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="13" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1c7c54"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="620" fill="#ffffff"/>
+  <text class="h1" x="40" y="50">How the auto-remediation loop works</text>
+  <text class="h2" x="40" y="78">A service failure becomes a ServiceNow incident that Event-Driven Ansible detects and resolves — with no human in the loop.</text>
+
+  <!-- Step cards: x positions 30,290,550,810,1070,1330 ; width 235 ; y 150 ; height 200 -->
+  <!-- 1 target -->
+  <g filter="url(#sh)">
+    <rect class="card" x="30" y="150" width="235" height="200" rx="12"/>
+    <rect x="30" y="150" width="235" height="46" rx="12" fill="#2a7d7d"/>
+    <rect x="30" y="178" width="235" height="18" fill="#2a7d7d"/>
+    <circle cx="58" cy="173" r="16" fill="#1f5e5e"/>
+    <text class="badge" x="58" y="179" text-anchor="middle">1</text>
+    <text class="st" x="86" y="179" fill="#ffffff">Service fails</text>
+    <text class="ss" x="50" y="232">httpd stops on</text>
+    <text class="ss" x="50" y="254">app-node-1</text>
+    <text class="ss" x="50" y="286">(target container,</text>
+    <text class="ss" x="50" y="308">mapped to a CMDB CI)</text>
+  </g>
+  <!-- 2 incident -->
+  <g filter="url(#sh)">
+    <rect class="card" x="290" y="150" width="235" height="200" rx="12"/>
+    <rect x="290" y="150" width="235" height="46" rx="12" fill="#1c7c54"/>
+    <rect x="290" y="178" width="235" height="18" fill="#1c7c54"/>
+    <circle cx="318" cy="173" r="16" fill="#155f40"/>
+    <text class="badge" x="318" y="179" text-anchor="middle">2</text>
+    <text class="st" x="346" y="179" fill="#ffffff">Incident opened</text>
+    <text class="ss" x="310" y="232">ServiceNow incident</text>
+    <text class="ss" x="310" y="254">group: Auto-Remediation</text>
+    <text class="ss" x="310" y="276">state: New</text>
+    <text class="ss" x="310" y="308">(created by monitoring</text>
+    <text class="ss" x="310" y="330">or the e2e test)</text>
+  </g>
+  <!-- 3 EDA detect -->
+  <g filter="url(#sh)">
+    <rect class="card" x="550" y="150" width="235" height="200" rx="12"/>
+    <rect x="550" y="150" width="235" height="46" rx="12" fill="#6b3fa0"/>
+    <rect x="550" y="178" width="235" height="18" fill="#6b3fa0"/>
+    <circle cx="578" cy="173" r="16" fill="#522e7c"/>
+    <text class="badge" x="578" y="179" text-anchor="middle">3</text>
+    <text class="st" x="606" y="179" fill="#ffffff">EDA detects</text>
+    <text class="ss" x="570" y="232">Decision Env polls</text>
+    <text class="ss" x="570" y="254">servicenow.itsm.records</text>
+    <text class="ss" x="570" y="276">every 10s · OAuth</text>
+    <text class="ss" x="570" y="308">matches the filter</text>
+    <text class="ss" x="570" y="330">(user TZ = GMT)</text>
+  </g>
+  <!-- 4 job launched -->
+  <g filter="url(#sh)">
+    <rect class="card" x="810" y="150" width="235" height="200" rx="12"/>
+    <rect x="810" y="150" width="235" height="46" rx="12" fill="#c0392b"/>
+    <rect x="810" y="178" width="235" height="18" fill="#c0392b"/>
+    <circle cx="838" cy="173" r="16" fill="#962c21"/>
+    <text class="badge" x="838" y="179" text-anchor="middle">4</text>
+    <text class="st" x="866" y="179" fill="#ffffff">Job launched</text>
+    <text class="ss" x="830" y="232">rulebook fires</text>
+    <text class="ss" x="830" y="254">run_job_template</text>
+    <text class="ss" x="830" y="276">via :443 /api/controller/</text>
+    <text class="ss" x="830" y="308">Controller runs</text>
+    <text class="ss" x="830" y="330">Remediate Ping Server</text>
+  </g>
+  <!-- 5 remediate -->
+  <g filter="url(#sh)">
+    <rect class="card" x="1070" y="150" width="235" height="200" rx="12"/>
+    <rect x="1070" y="150" width="235" height="46" rx="12" fill="#e08e0b"/>
+    <rect x="1070" y="178" width="235" height="18" fill="#e08e0b"/>
+    <circle cx="1098" cy="173" r="16" fill="#b5720a"/>
+    <text class="badge" x="1098" y="179" text-anchor="middle">5</text>
+    <text class="st" x="1126" y="179" fill="#ffffff">Remediation</text>
+    <text class="ss" x="1090" y="232">Execution Env: SSH</text>
+    <text class="ss" x="1090" y="254">systemctl restart httpd</text>
+    <text class="ss" x="1090" y="276">then re-check the service</text>
+    <text class="ss" x="1090" y="308">on app-node-1</text>
+  </g>
+  <!-- 6 resolve -->
+  <g filter="url(#sh)">
+    <rect class="card" x="1330" y="150" width="235" height="200" rx="12"/>
+    <rect x="1330" y="150" width="235" height="46" rx="12" fill="#1c7c54"/>
+    <rect x="1330" y="178" width="235" height="18" fill="#1c7c54"/>
+    <circle cx="1358" cy="173" r="16" fill="#155f40"/>
+    <text class="badge" x="1358" y="179" text-anchor="middle">6</text>
+    <text class="st" x="1386" y="179" fill="#ffffff">Incident closed</text>
+    <text class="ss" x="1350" y="232">playbook updates</text>
+    <text class="ss" x="1350" y="254">ServiceNow via API</text>
+    <text class="ss" x="1350" y="276">Resolved if back up,</text>
+    <text class="ss" x="1350" y="308">else Escalated</text>
+  </g>
+
+  <!-- arrows between steps -->
+  <line x1="265" y1="250" x2="290" y2="250" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <line x1="525" y1="250" x2="550" y2="250" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <line x1="785" y1="250" x2="810" y2="250" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <line x1="1045" y1="250" x2="1070" y2="250" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <line x1="1305" y1="250" x2="1330" y2="250" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+
+  <!-- return loop: 6 -> 2 (incident resolved) -->
+  <path d="M1447,350 L1447,470 L407,470 L407,350" fill="none" stroke="#1c7c54" stroke-width="2.4" stroke-dasharray="8 5" marker-end="url(#a-green)"/>
+  <rect x="760" y="460" width="334" height="22" rx="5" fill="#ffffff"/>
+  <text class="loop" x="772" y="476">closed loop — incident state updated in ServiceNow</text>
+</svg>

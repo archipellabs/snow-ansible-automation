@@ -169,21 +169,26 @@ def main():
         time.sleep(3)
     print(f"   project status: {status}")
 
-    # Job template.
-    jt = get_or_create(
-        "job_templates", {"name": "Remediate Ping Server"},
-        {"name": "Remediate Ping Server", "job_type": "run", "inventory": inv["id"],
-         "project": proj["id"], "playbook": "ansible/playbooks/remediate_ping.yml",
-         "execution_environment": ee, "ask_variables_on_launch": True},
-        "Job Template Remediate Ping Server",
-    )
-
-    # Attach the machine + ServiceNow credentials.
-    have = {c["id"] for c in api("GET", f"job_templates/{jt['id']}/credentials/").get("results", [])}
-    for cid in (cred["id"], sn_cred["id"]):
-        if cid not in have:
-            api("POST", f"job_templates/{jt['id']}/credentials/", {"id": cid})
-            print(f"   attached credential id={cid}")
+    # Job templates: one per pattern.
+    #   pull  -> "Remediate Ping Server" (incident auto-remediation), launched by the EDA
+    #            servicenow.itsm.records rulebook.
+    #   push  -> "Execute Change Request" (change execution), launched by the EDA webhook
+    #            rulebook that an Event Stream feeds from ServiceNow.
+    # Both share the inventory/project/EE and the machine + ServiceNow credentials.
+    for jt_name, pb in (("Remediate Ping Server", "ansible/playbooks/remediate_ping.yml"),
+                        ("Execute Change Request", "ansible/playbooks/execute_change.yml")):
+        jt = get_or_create(
+            "job_templates", {"name": jt_name},
+            {"name": jt_name, "job_type": "run", "inventory": inv["id"],
+             "project": proj["id"], "playbook": pb,
+             "execution_environment": ee, "ask_variables_on_launch": True},
+            f"Job Template {jt_name}",
+        )
+        have = {c["id"] for c in api("GET", f"job_templates/{jt['id']}/credentials/").get("results", [])}
+        for cid in (cred["id"], sn_cred["id"]):
+            if cid not in have:
+                api("POST", f"job_templates/{jt['id']}/credentials/", {"id": cid})
+                print(f"   attached credential id={cid} to '{jt_name}'")
 
     print("\n>> Controller configured. Validate: python3 tests/healthcheck.py")
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build the custom EDA decision environment (de-supported + servicenow.itsm) and push
+# Build the custom EDA decision environment (de-minimal + servicenow.itsm) and push
 # it to the private Automation Hub. Run ON the VM (after sync of ansible/eda/ + ~/aap/.env).
 #
 # EDA activation workers pull the DE by image_url from a registry credential -- a local
@@ -36,7 +36,7 @@ REMOTE="${FQDN}/snow-eda-de:latest"
 python3 -m pip install --user --quiet ansible-builder 2>/dev/null || pip3 install --user --quiet ansible-builder
 export PATH="$HOME/.local/bin:$PATH"
 
-# Base image (registry.redhat.io) login — needed to pull the de-supported base layer.
+# Base image (registry.redhat.io) login — needed to pull the de-minimal base layer.
 if [ -n "$REG_USER" ] && [ -n "$REG_PW" ]; then
   printf '%s' "$REG_PW" | podman login registry.redhat.io --username "$REG_USER" --password-stdin >/dev/null
 fi

@@ -1,0 +1,67 @@
+---
+# PUSH pattern: execute an approved ServiceNow Change Request.
+# Launched by the "Execute Change Request" job template (triggered by EDA via the Event
+# Stream). Receives as extra_vars:
+#   change_number : the ServiceNow change request number (for messages)
+#   change_sysid  : the change request sys_id (used to update the record)
+#   target_host   : the target host (must exist in the controller inventory)
+# ServiceNow credentials are injected by the controller credential via
+#   SN_HOST / SN_USERNAME / SN_PASSWORD (read by the servicenow.itsm collection).
+#
+# The "change" here is a content deploy + service restart. The result is written back as a
+# work note via the generic servicenow.itsm.api module (PATCH): ServiceNow's change state
+# model rejects arbitrary state transitions, so the PoC annotates the change rather than
+# driving its lifecycle.
+- name: Execute ServiceNow Change Request
+  hosts: "{{ target_host }}"
+  gather_facts: false
+  vars:
+    service_name: httpd
+    doc_root: /var/www/html
+  tasks:
+    - name: Apply the change - deploy versioned content
+      become: true
+      ansible.builtin.copy:
+        dest: "{{ doc_root }}/index.html"
+        content: "Deployed by AAP for change {{ change_number }} on {{ target_host }}\n"
+        mode: "0644"
+
+    - name: Apply the change - (re)start the service
+      become: true
+      ansible.builtin.systemd:
+        name: "{{ service_name }}"
+        state: restarted
+        enabled: true
+
+    - name: Verify the service responds
+      ansible.builtin.uri:
+        url: http://localhost/
+        status_code: 200
+      register: check
+      ignore_errors: true
+
+    - name: Record the successful execution on the change request
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.api:
+        resource: change_request
+        action: patch
+        sys_id: "{{ change_sysid }}"
+        data:
+          work_notes: >-
+            Change {{ change_number }} executed by AAP on {{ target_host }}:
+            deployed content + restarted {{ service_name }} (HTTP {{ check.status | default('?') }}).
+      when: check is succeeded and (check.status | default(0)) == 200
+
+    - name: Flag the change request if execution failed
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.api:
+        resource: change_request
+        action: patch
+        sys_id: "{{ change_sysid }}"
+        data:
+          work_notes: >-
+            Change {{ change_number }} execution FAILED on {{ target_host }}
+            (service {{ service_name }} not responding).
+      when: not (check is succeeded and (check.status | default(0)) == 200)

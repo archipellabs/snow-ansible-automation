@@ -1,18 +1,21 @@
 ---
-# Custom EDA decision environment: de-supported + servicenow.itsm (for the
+# Custom EDA decision environment: de-minimal + servicenow.itsm (for the
 # servicenow.itsm.records event source used by the rulebook). Built with ansible-builder.
+#
+# Red Hat's recommended base for a custom DE is de-minimal (it already ships ansible.eda);
+# we only add servicenow.itsm, which is in no stock decision environment. The collection has
+# no compiled Python deps, so no devel headers are needed. Despite the file name (the name
+# ansible-builder requires), this produces a DECISION environment, not an execution one.
 version: 3
 
 images:
   base_image:
-    name: registry.redhat.io/ansible-automation-platform-27/de-supported-rhel9:latest
+    name: registry.redhat.io/ansible-automation-platform-27/de-minimal-rhel9:latest
 
 options:
   package_manager_path: /usr/bin/microdnf
 
 dependencies:
-  system:
-    - python3.12-devel [platform:rpm]
   galaxy:
     collections:
       - name: servicenow.itsm

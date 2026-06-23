@@ -1,0 +1,26 @@
+---
+# PUSH pattern: ServiceNow pushes approved Change Requests to AAP.
+# A ServiceNow Business Rule POSTs to an AAP Event Stream (managed endpoint on the gateway,
+# :443, token auth); the event stream forwards the request to the ansible.eda.webhook source
+# below. The activation maps the stream onto this source via source_mappings, so no host
+# port is published and nothing extra is opened in the NSG (compare the pull rulebook,
+# snow_ping_remediation.yml, where EDA polls ServiceNow instead).
+- name: Execute approved ServiceNow Change Requests (push via Event Stream)
+  hosts: all
+  sources:
+    - name: servicenow_webhook
+      ansible.eda.webhook:
+        host: 0.0.0.0
+        port: 5000
+  rules:
+    - name: Approved change -> run the execution job
+      condition: event.payload.change_number is defined
+      action:
+        run_job_template:
+          name: "Execute Change Request"
+          organization: "Default"
+          job_args:
+            extra_vars:
+              change_number: "{{ event.payload.change_number }}"
+              change_sysid: "{{ event.payload.change_sysid }}"
+              target_host: "{{ event.payload.target_host }}"

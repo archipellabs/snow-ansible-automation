@@ -13,12 +13,17 @@ A web service goes down → an incident is opened in ServiceNow (assignment grou
 
 ## Architecture
 
-```
-ServiceNow PDI (cloud)  <->  AAP 2.7  (gateway + controller + EDA + hub, one RHEL 9 VM on Azure)  ->  target containers (sshd + httpd)
-```
+![Architecture — components and how they connect](docs/architecture.svg)
 
 Everything except ServiceNow runs as **rootless podman** containers on a single Azure RHEL 9 VM.
 ServiceNow is the real SaaS Personal Developer Instance (PDI).
+
+### Remediation flow
+
+![Auto-remediation flow — from service failure to resolved incident](docs/remediation-flow.svg)
+
+> Diagrams are SVG (vector, resolution-independent). Source files and the edge-colour legend are in
+> [`docs/`](docs/).
 
 ## How it works — objects & flow
 
@@ -81,6 +86,7 @@ automation content the AAP controller and EDA pull from this Git repo.
 | `ansible/eda/` | `execution-environment.yml` + `build.sh` (build & push DE) + `configure.py` (DE, credentials, project, activation) |
 | `extensions/eda/rulebooks/` | `snow_ping_remediation.yml` — the EDA rulebook (EDA's required discovery path) |
 | `tests/` | `healthcheck.py` + `e2e_remediation.py` (controller path) + `e2e_eda.py` (full EDA auto-trigger) — re-runnable validation |
+| `docs/` | architecture + remediation-flow diagrams (SVG) |
 | `.env.example` | template for `.env` — the single secrets file (copy and fill) |
 
 ## Secrets
