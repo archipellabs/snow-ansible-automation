@@ -2,13 +2,14 @@
 """Configure the AAP controller for the PoC (idempotent, API, stdlib only).
 
 Creates: the Machine credential (target SSH), the ServiceNow credential (+ its custom
-credential type), the inventory with the two target hosts, the Git project, and the
-"Remediate Ping Server" job template. Validate the result — including the EE -> target
-path — with `python3 tests/healthcheck.py`.
+credential type), the inventory with the two target hosts, the Git project, and the two
+job templates ("Remediate Ping Server" for pull, "Execute Change Request" for push).
+Re-runs sync the project and reconcile the job-template playbook paths. Validate the
+result — including the EE -> target path — with `python3 tests/healthcheck.py`.
 
 Reads .env (FQDN, AAP_ADMIN_*, SN_*, GIT_REPO_URL) and the target SSH private key
 (bootstrap/targets/keys/target_key). Run from the repo root:
-  python3 ansible/controller/configure.py
+  python3 bootstrap/aap/controller/configure.py
 """
 import os
 import sys
@@ -21,7 +22,7 @@ import urllib.error
 import urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 
 
 def load_dotenv():
@@ -160,6 +161,11 @@ def main():
          "scm_url": os.environ["GIT_REPO_URL"], "scm_branch": "main"},
         "Project snow-ansible-automation",
     )
+    # Sync on every run so the controller has the latest content (e.g. moved playbook paths).
+    try:
+        api("POST", f"projects/{proj['id']}/update/")
+    except urllib.error.HTTPError:
+        pass  # 409 if a sync is already running
     print("   waiting for project sync...")
     status = "pending"
     for _ in range(40):
@@ -175,8 +181,8 @@ def main():
     #   push  -> "Execute Change Request" (change execution), launched by the EDA webhook
     #            rulebook that an Event Stream feeds from ServiceNow.
     # Both share the inventory/project/EE and the machine + ServiceNow credentials.
-    for jt_name, pb in (("Remediate Ping Server", "ansible/playbooks/remediate_ping.yml"),
-                        ("Execute Change Request", "ansible/playbooks/execute_change.yml")):
+    for jt_name, pb in (("Remediate Ping Server", "playbooks/remediate_ping.yml"),
+                        ("Execute Change Request", "playbooks/execute_change.yml")):
         jt = get_or_create(
             "job_templates", {"name": jt_name},
             {"name": jt_name, "job_type": "run", "inventory": inv["id"],
@@ -184,6 +190,9 @@ def main():
              "execution_environment": ee, "ask_variables_on_launch": True},
             f"Job Template {jt_name}",
         )
+        if jt.get("playbook") != pb:  # reconcile path (e.g. after the playbooks moved)
+            api("PATCH", f"job_templates/{jt['id']}/", {"playbook": pb})
+            print(f"   set playbook {pb} on '{jt_name}'")
         have = {c["id"] for c in api("GET", f"job_templates/{jt['id']}/credentials/").get("results", [])}
         for cid in (cred["id"], sn_cred["id"]):
             if cid not in have:

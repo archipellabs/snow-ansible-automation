@@ -7,10 +7,10 @@ stream onto the webhook source of snow_change_execution.yml. Reuses the existing
 decision environment (snow-eda-de) and the "AAP Controller" credential (run_job_template).
 
 Run AFTER the rulebook snow_change_execution.yml is pushed to Git (the EDA project must be
-able to sync it) and AFTER ansible/eda/configure.py (decision environment + AAP Controller
-credential) and ansible/controller/configure.py (the "Execute Change Request" job template).
+able to sync it) and AFTER bootstrap/aap/eda/configure.py (decision environment + AAP Controller
+credential) and bootstrap/aap/controller/configure.py (the "Execute Change Request" job template).
 Run from the repo root:
-  python3 ansible/eda/configure_push.py
+  python3 bootstrap/aap/eda/configure_push.py
 
 It prints the Event Stream URL — feed that (with SN_EVENTSTREAM_TOKEN) to the ServiceNow
 side via bootstrap/servicenow/setup_change.py.
@@ -26,7 +26,7 @@ import urllib.error
 import urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 
 DE_NAME = "snow-eda-de"
 CONTROLLER_CRED_NAME = "AAP Controller"
@@ -120,12 +120,12 @@ def main():
     de = find("decision-environments", DE_NAME)
     controller_cred = find("eda-credentials", CONTROLLER_CRED_NAME)
     if not de or not controller_cred:
-        sys.exit("run ansible/eda/configure.py first (decision environment + AAP Controller credential)")
+        sys.exit("run bootstrap/aap/eda/configure.py first (decision environment + AAP Controller credential)")
 
     # 3) Make sure the project has synced the rulebook, then read its source + hash.
     proj = find("projects", PROJECT_NAME)
     if not proj:
-        sys.exit("EDA project not found (run ansible/eda/configure.py)")
+        sys.exit("EDA project not found (run bootstrap/aap/eda/configure.py)")
     api("POST", f"projects/{proj['id']}/sync/")
     for _ in range(40):
         if api("GET", f"projects/{proj['id']}/").get("import_state") in ("completed", "failed"):

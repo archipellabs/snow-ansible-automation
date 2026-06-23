@@ -10,10 +10,6 @@ id_ed25519*
 !.env.example
 *.secret
 
-# Personal notes / working plans (local only)
-notes.md
-NEXT_STEPS.md
-
 # AAP install (Red Hat binaries + rendered inventory with secrets)
 bootstrap/aap/*.tar.gz
 bootstrap/aap/*.tar

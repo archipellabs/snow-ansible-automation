@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Push the AAP install assets (this folder) + the repo-root .env to the VM at ~/aap/.
+# Push the bootstrap/aap/ folder (install + config-as-code + the eda/ DE build) and the
+# repo-root .env to the VM at ~/aap/. install.sh and ~/aap/eda/build.sh run there.
 # Excludes binaries (tarball already on the VM) and the rendered inventory (secrets).
 set -euo pipefail
 cd "$(dirname "$0")"

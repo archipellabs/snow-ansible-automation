@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # Build the custom EDA decision environment (de-minimal + servicenow.itsm) and push
-# it to the private Automation Hub. Run ON the VM (after sync of ansible/eda/ + ~/aap/.env).
+# it to the private Automation Hub. Run ON the VM after sync.sh (this folder lands in
+# ~/aap/eda/; reads ~/aap/.env).
 #
 # EDA activation workers pull the DE by image_url from a registry credential -- a local
 # `localhost/...` image is NOT visible to them -- so the image must live in the hub.
-# Produces <FQDN>/snow-eda-de:latest, referenced by ansible/eda/configure.py.
+# Produces <FQDN>/snow-eda-de:latest, referenced by bootstrap/aap/eda/configure.py.
 set -euo pipefail
 cd "$(dirname "$0")"
 

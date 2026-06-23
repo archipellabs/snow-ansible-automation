@@ -10,10 +10,10 @@ Creates, in the EDA controller:
   - the EDA project (this Git repo) and the rulebook activation that wires it all
     together, injecting SN_HOST/SN_USERNAME/SN_PASSWORD for the records source.
 
-Run AFTER ansible/eda/build.sh (the DE image must be in the hub) and AFTER the
+Run AFTER bootstrap/aap/eda/build.sh (the DE image must be in the hub) and AFTER the
 controller is configured (the "Remediate Ping Server" job template must exist).
 Run from the repo root:
-  python3 ansible/eda/configure.py
+  python3 bootstrap/aap/eda/configure.py
 
 Two non-obvious requirements this script encodes (both cost real debugging time):
   1. ansible-rulebook picks the controller API path from the credential host: a host
@@ -35,7 +35,7 @@ import urllib.error
 import urllib.parse
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.abspath(os.path.join(HERE, "..", ".."))
+ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 
 DE_NAME = "snow-eda-de"
 DE_IMAGE_TAG = "snow-eda-de:latest"          # pushed to <FQDN>/<this> by build.sh

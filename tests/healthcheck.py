@@ -97,7 +97,7 @@ def c_ee_path():
     _, inv = req(f"{cbase()}/inventories/?name=POC%20Targets", a, p, insecure=True)
     _, cred = req(f"{cbase()}/credentials/?name=Target%20SSH", a, p, insecure=True)
     if not inv.get("count") or not cred.get("count"):
-        return None, "SKIP (run ansible/controller/configure.py first)"
+        return None, "SKIP (run bootstrap/aap/controller/configure.py first)"
     _, cmd = req(f"{cbase()}/ad_hoc_commands/", a, p, insecure=True, method="POST",
                  body={"inventory": inv["results"][0]["id"], "credential": cred["results"][0]["id"],
                        "module_name": "ping", "module_args": ""})

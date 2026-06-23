@@ -76,7 +76,7 @@ the same components and adds a gateway-managed **Event Stream**. The runtime flo
 | Business Rule *EDA - push approved change to AAP* | push | POSTs approved changes to the event stream |
 | Trust-store cert (AAP gateway CA) | push | lets ServiceNow trust the gateway's TLS certificate |
 
-**AAP controller** — `ansible/controller/configure.py`
+**AAP controller** — `bootstrap/aap/controller/configure.py`
 | Object | Role |
 |---|---|
 | Credential `Target SSH` (machine) | SSH key to reach the targets (user `ansible`) |
@@ -85,7 +85,7 @@ the same components and adds a gateway-managed **Event Stream**. The runtime flo
 | Project `snow-ansible-automation` | pulls the playbooks from this Git repo |
 | Job template `Remediate Ping Server` (pull) / `Execute Change Request` (push) | run the two playbooks |
 
-**EDA** — `ansible/eda/configure.py` (pull) + `configure_push.py` (push)
+**EDA** — `bootstrap/aap/eda/configure.py` (pull) + `configure_push.py` (push)
 | Object | Pattern | Role |
 |---|---|---|
 | Decision environment `snow-eda-de` | both | DE image (`de-minimal` + `servicenow.itsm`), pulled from the hub |
@@ -100,24 +100,37 @@ the same components and adds a gateway-managed **Event Stream**. The runtime flo
 
 ## Repository layout
 
-**`bootstrap/`** is one-time lab setup; **`ansible/`** + **`extensions/eda/rulebooks/`** are the
-automation content the AAP controller and EDA pull from this Git repo.
+**`bootstrap/`** holds everything you run once to *stand up and configure* the platform.
+**`playbooks/`**, **`extensions/eda/rulebooks/`**, and **`collections/`** are the automation
+content the AAP controller and EDA pull from this Git repo (the SCM project).
 
 | Path | Purpose |
 |---|---|
 | `bootstrap/infra/` | Azure VM as **Bicep** (`main.bicep` + `resources.bicep` + `cloud-init.yaml`); copy `main.parameters.example.json` → `main.parameters.json` (gitignored) |
-| `bootstrap/aap/` | AAP containerized install: inventory template + render/install script + rsync helper |
+| `bootstrap/aap/` | AAP install (`install.sh` + inventory + `sync.sh`) **and** AAP config-as-code: `controller/configure.py`, `eda/configure.py` + `configure_push.py`, and the DE build (`eda/execution-environment.yml` + `build.sh`) |
 | `bootstrap/awx/` | placeholder for a future AWX install (open-source alternative to AAP) |
 | `bootstrap/servicenow/` | `setup.py` (pull objects) + `setup_change.py` (push: Business Rule + gateway-CA trust) |
 | `bootstrap/targets/` | `Containerfile` + `deploy.sh` for the `app-node-1/2` target containers |
-| `ansible/playbooks/` | `remediate_ping.yml` (pull) + `execute_change.yml` (push) |
-| `ansible/collections/` | `requirements.yml` — collections the project/DE needs (`servicenow.itsm`) |
-| `ansible/controller/` | `configure.py` — controller config-as-code (credentials, inventory, project, both job templates) |
-| `ansible/eda/` | `execution-environment.yml` + `build.sh` + `configure.py` (pull) + `configure_push.py` (push: event stream + activation) |
+| `playbooks/` | `remediate_ping.yml` (pull) + `execute_change.yml` (push) — pulled by the controller project |
+| `collections/` | `requirements.yml` — collections AAP installs at project sync (`servicenow.itsm`) |
 | `extensions/eda/rulebooks/` | `snow_ping_remediation.yml` (pull, poll) + `snow_change_execution.yml` (push, webhook) |
-| `tests/` | `healthcheck.py` + `e2e_remediation.py` + `e2e_eda.py` (pull) + `e2e_change.py` (push) — re-runnable validation |
+| `tests/` | `healthcheck.py` + the three end-to-end tests (see below) — re-runnable validation |
 | `docs/` | architecture + remediation-flow (pull) + change-flow (push) diagrams (SVG) |
 | `.env.example` | template for `.env` — the single secrets file (copy and fill) |
+
+### Tests (`tests/`)
+
+All are idempotent and read `.env`. They build on each other from narrow to broad:
+
+| Test | Scope | What it proves |
+|---|---|---|
+| `healthcheck.py` | infrastructure | ServiceNow auth, AAP gateway/controller, subscription, targets up, and the EE→target ad-hoc ping |
+| `e2e_remediation.py` | controller only (**no EDA**) | breaks httpd, opens an incident, then **launches the job template directly** and checks the service is back + the incident resolved — isolates the playbook + ServiceNow write from the event layer |
+| `e2e_eda.py` | full **pull** chain | opens an incident and asserts **EDA itself** auto-launches the job (never launched by the test) → resolved |
+| `e2e_change.py` | full **push** chain | approves a change and asserts EDA auto-launches the execution job via the Event Stream → deployed + work note |
+
+`e2e_remediation.py` is the deliberate "lower layer": if a full-chain test fails, it tells you
+whether the break is in the playbook/ServiceNow side or in the event-driven trigger.
 
 ## Secrets
 
@@ -243,17 +256,17 @@ ports 2201/2202. Break the service with `podman exec app-node-1 systemctl stop h
 ### 5. Controller config-as-code
 
 ```bash
-python3 ansible/controller/configure.py     # credentials, inventory, project, job template
-python3 tests/healthcheck.py                # 6 checks incl. EE -> target ad-hoc ping
+python3 bootstrap/aap/controller/configure.py   # credentials, inventory, project, job templates
+python3 tests/healthcheck.py                     # 6 checks incl. EE -> target ad-hoc ping
 ```
 
 ### 6. Event-Driven Ansible
 
 ```bash
-# build the custom DE and push it to the hub (run ON the VM, after sync.sh)
-ssh -i ~/.ssh/snow-aap-poc azureuser@<FQDN> '~/eda/build.sh'   # rsync ansible/eda/ -> ~/eda/ first
+# build the custom DE and push it to the hub (run ON the VM; sync.sh already put it in ~/aap/eda/)
+ssh -i ~/.ssh/snow-aap-poc azureuser@<FQDN> '~/aap/eda/build.sh'
 # then, from your machine: DE, credentials, EDA project, rulebook activation
-python3 ansible/eda/configure.py
+python3 bootstrap/aap/eda/configure.py
 ```
 
 `configure.py` creates the decision environment, the hub registry + `AAP Controller` credentials,
@@ -268,7 +281,7 @@ python3 tests/e2e_eda.py   # break httpd -> open incident -> EDA auto-launches t
 ### 7. Push pattern (Change Request → Event Stream)
 
 ```bash
-python3 ansible/eda/configure_push.py        # event stream (token) + webhook activation
+python3 bootstrap/aap/eda/configure_push.py  # event stream (token) + webhook activation
 python3 bootstrap/servicenow/setup_change.py # Business Rule + trust the gateway CA in ServiceNow
 python3 tests/e2e_change.py                  # approve a change -> EDA executes it -> work note
 ```
@@ -354,3 +367,7 @@ az group delete  -n rg-snow-aap-poc --yes        # tear everything down
 - The target containers are **not** persistent across reboots — re-run `~/targets/deploy.sh`
   after a VM restart.
 - D4s_v5 ≈ 5-6 €/day while allocated; the 128 GB Premium disk keeps billing when deallocated.
+
+## License
+
+[MIT](LICENSE).
