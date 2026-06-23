@@ -30,9 +30,9 @@
     <circle cx="58" cy="173" r="16" fill="#1f5e5e"/>
     <text class="badge" x="58" y="179" text-anchor="middle">1</text>
     <text class="st" x="86" y="179" fill="#ffffff">Service fails</text>
-    <text class="ss" x="50" y="232">httpd stops on</text>
-    <text class="ss" x="50" y="254">app-node-1</text>
-    <text class="ss" x="50" y="286">(target container,</text>
+    <text class="ss" x="50" y="232">hr-portal stops on</text>
+    <text class="ss" x="50" y="254">hr-web-01</text>
+    <text class="ss" x="50" y="286">(Meridian fleet server,</text>
     <text class="ss" x="50" y="308">mapped to a CMDB CI)</text>
   </g>
   <!-- 2 incident -->
@@ -75,7 +75,7 @@
     <text class="ss" x="830" y="254">run_job_template</text>
     <text class="ss" x="830" y="276">via :443 /api/controller/</text>
     <text class="ss" x="830" y="308">Controller runs</text>
-    <text class="ss" x="830" y="330">Remediate Ping Server</text>
+    <text class="ss" x="830" y="330">Restart Service</text>
   </g>
   <!-- 5 remediate -->
   <g filter="url(#sh)">
@@ -86,9 +86,9 @@
     <text class="badge" x="1098" y="179" text-anchor="middle">5</text>
     <text class="st" x="1126" y="179" fill="#ffffff">Remediation</text>
     <text class="ss" x="1090" y="232">Execution Env: SSH</text>
-    <text class="ss" x="1090" y="254">systemctl restart httpd</text>
+    <text class="ss" x="1090" y="254">systemctl restart hr-portal</text>
     <text class="ss" x="1090" y="276">then re-check the service</text>
-    <text class="ss" x="1090" y="308">on app-node-1</text>
+    <text class="ss" x="1090" y="308">on hr-web-01</text>
   </g>
   <!-- 6 resolve -->
   <g filter="url(#sh)">

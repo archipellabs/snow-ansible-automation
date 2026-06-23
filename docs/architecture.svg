@@ -55,7 +55,7 @@
     <text class="boxs" x="1172" y="152">Incident table (ITSM)</text>
     <text class="boxs" x="1172" y="176">assignment group: Auto-Remediation</text>
     <text class="boxs" x="1172" y="200">service account: eda.integration (itil · TZ GMT)</text>
-    <text class="boxs" x="1172" y="224">CIs: app-node-1 / app-node-2</text>
+    <text class="boxs" x="1172" y="224">CMDB: Meridian fleet (9 servers + apps)</text>
     <text class="boxs" x="1172" y="252">REST: /api/now · OAuth token</text>
   </g>
 
@@ -141,7 +141,7 @@
     <rect x="560" y="690" width="380" height="180" rx="10" fill="#faf7ff" stroke="#6b3fa0" stroke-width="1.6" stroke-dasharray="8 5"/>
     <rect x="560" y="690" width="6" height="180" fill="#6b3fa0"/>
     <text class="boxt" x="580" y="724">Execution Environment</text>
-    <text class="boxs" x="580" y="750">runs remediate_ping.yml</text>
+    <text class="boxs" x="580" y="750">runs restart_service.yml</text>
     <text class="boxs" x="580" y="774">pasta net → host.containers.internal</text>
     <text class="boxs" x="580" y="798">updates the incident via servicenow.itsm</text>
     <text class="boxs" x="580" y="828">transient — spawned per job</text>
@@ -151,18 +151,18 @@
   <g filter="url(#shadow)">
     <rect class="card" x="1010" y="470" width="470" height="140" rx="10"/>
     <rect x="1010" y="470" width="6" height="140" fill="#2a7d7d"/>
-    <text class="boxt" x="1030" y="504">app-node-1 · target container</text>
-    <text class="boxs" x="1030" y="530">sshd :2201 · httpd (monitored service)</text>
+    <text class="boxt" x="1030" y="504">hr-web-01 · Meridian fleet</text>
+    <text class="boxs" x="1030" y="530">sshd :2211 · FastAPI hr-portal + /health</text>
     <text class="boxs" x="1030" y="554">ubi9-init systemd container</text>
-    <text class="boxs" x="1030" y="586">represented by CI app-node-1</text>
+    <text class="boxs" x="1030" y="586">CI in the Meridian CMDB</text>
   </g>
   <g filter="url(#shadow)">
     <rect class="card" x="1010" y="700" width="470" height="140" rx="10"/>
     <rect x="1010" y="700" width="6" height="140" fill="#2a7d7d"/>
-    <text class="boxt" x="1030" y="734">app-node-2 · target container</text>
-    <text class="boxs" x="1030" y="760">sshd :2202 · httpd (monitored service)</text>
-    <text class="boxs" x="1030" y="784">ubi9-init systemd container</text>
-    <text class="boxs" x="1030" y="816">represented by CI app-node-2</text>
+    <text class="boxt" x="1030" y="734">… 8 more fleet servers</text>
+    <text class="boxs" x="1030" y="760">crm · ged · intranet · mail · PostgreSQL</text>
+    <text class="boxs" x="1030" y="784">sshd :2212–2219 · exposed via the edge gateway</text>
+    <text class="boxs" x="1030" y="816">all defined in simulator/fleet.yml</text>
   </g>
 
   <!-- ===================== EDGES ===================== -->
@@ -189,7 +189,7 @@
   <!-- runtime: EE -> targets (SSH) -->
   <path class="edge" stroke="#1f6feb" marker-end="url(#ah-blue)" d="M940,724 L1010,540"/>
   <path class="edge" stroke="#1f6feb" marker-end="url(#ah-blue)" d="M940,772 L1010,772"/>
-  <g><rect x="946" y="654" width="246" height="20" rx="4" fill="#ffffff" opacity="0.9"/><text class="elab" x="952" y="669" fill="#1f6feb">④ SSH :2201/2202 · restart httpd</text></g>
+  <g><rect x="946" y="654" width="246" height="20" rx="4" fill="#ffffff" opacity="0.9"/><text class="elab" x="952" y="669" fill="#1f6feb">④ SSH :221x · restart the service</text></g>
   <!-- runtime: EE -> ServiceNow (update) -->
   <path class="edge" stroke="#1c7c54" marker-end="url(#ah-green)" d="M940,736 L975,736 L975,360 L1180,360 L1180,276"/>
   <g><rect x="986" y="418" width="180" height="20" rx="4" fill="#ffffff" opacity="0.9"/><text class="elab" x="992" y="433" fill="#1c7c54">⑤ update incident</text></g>

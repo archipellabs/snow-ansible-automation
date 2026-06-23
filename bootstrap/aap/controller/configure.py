@@ -2,10 +2,10 @@
 """Configure the AAP controller for the PoC (idempotent, API, stdlib only).
 
 Creates: the Machine credential (target SSH), the ServiceNow credential (+ its custom
-credential type), the inventory with the two target hosts, the Git project, and the two
-job templates ("Remediate Ping Server" for pull, "Execute Change Request" for push).
-Re-runs sync the project and reconcile the job-template playbook paths. Validate the
-result — including the EE -> target path — with `python3 tests/healthcheck.py`.
+credential type), the "Meridian Fleet" inventory (the 9 servers from simulator/fleet.yml),
+the Git project, and the two job templates ("Restart Service" for pull, "Execute Change
+Request" for push). Re-runs sync the project and reconcile the job-template playbook paths.
+Validate the result — including the EE -> target path — with `python3 tests/healthcheck.py`.
 
 Reads .env (FQDN, AAP_ADMIN_*, SN_*, GIT_REPO_URL) and the target SSH private key
 (bootstrap/targets/keys/target_key). Run from the repo root:

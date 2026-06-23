@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Provision the PoC ServiceNow objects (idempotent, Table API, stdlib only).
 
-Creates: the 'Auto-Remediation' assignment group (EDA trigger filter), the
-'eda.integration' service account (+ itil role, activated, timezone GMT), and the
-'app-node-1/2' CIs. The eda.integration password can't be set via the Table API: set it
-once in the UI and store it in .env as SN_EDA_PASSWORD. (GMT matters for the EDA poll
-window — see the inline note and the README key findings.)
+Creates: the 'Auto-Remediation' assignment group (EDA trigger filter) and the
+'eda.integration' service account (+ itil role, activated, timezone GMT). The server CIs
+and the rest of the Meridian CMDB are loaded separately from simulator/fleet.yml by
+dataset.py. The eda.integration password can't be set via the Table API: set it once in the
+UI and store it in .env as SN_EDA_PASSWORD. (GMT matters for the EDA poll window — see the
+inline note and the README key findings.)
 
 Usage:
   # via .env (copy .env.example -> .env at the repo root):
@@ -102,16 +103,10 @@ def main():
         "itil role on eda.integration",
     )
 
-    # 4) Target CIs (sshd containers)
-    for name in ("app-node-1", "app-node-2"):
-        ensure(
-            "cmdb_ci_linux_server",
-            f"name={name}",
-            {"name": name, "short_description": "POC target (sshd container)"},
-            f"CI {name}",
-        )
+    # The server CIs and the rest of the Meridian CMDB (applications, business services,
+    # relationships, people, support groups) are loaded by dataset.py from simulator/fleet.yml.
 
-    # 5) Reminder — the eda password is managed in .env (set via the UI)
+    # Reminder — the eda password is managed in .env (set via the UI)
     print("\n=== Next ===")
     print("Set eda.integration's password in the ServiceNow UI (user -> Set Password),")
     print("then store it in .env as SN_EDA_PASSWORD (with SN_EDA_USERNAME=eda.integration).")

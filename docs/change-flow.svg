@@ -33,7 +33,7 @@
     <text class="ss" x="50" y="254">request, approval =</text>
     <text class="ss" x="50" y="276">approved</text>
     <text class="ss" x="50" y="308">references a CI target</text>
-    <text class="ss" x="50" y="330">(app-node-1)</text>
+    <text class="ss" x="50" y="330">(hr-web-01)</text>
   </g>
   <!-- 2 business rule -->
   <g filter="url(#sh)">
@@ -87,8 +87,8 @@
     <text class="st" x="1126" y="179" fill="#ffffff">Execute change</text>
     <text class="ss" x="1090" y="232">Execution Env: SSH</text>
     <text class="ss" x="1090" y="254">deploy content +</text>
-    <text class="ss" x="1090" y="276">restart httpd</text>
-    <text class="ss" x="1090" y="308">on app-node-1</text>
+    <text class="ss" x="1090" y="276">restart the service</text>
+    <text class="ss" x="1090" y="308">on hr-web-01</text>
   </g>
   <!-- 6 annotate -->
   <g filter="url(#sh)">

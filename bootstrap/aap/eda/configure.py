@@ -11,7 +11,7 @@ Creates, in the EDA controller:
     together, injecting SN_HOST/SN_USERNAME/SN_PASSWORD for the records source.
 
 Run AFTER bootstrap/aap/eda/build.sh (the DE image must be in the hub) and AFTER the
-controller is configured (the "Remediate Ping Server" job template must exist).
+controller is configured (the "Restart Service" job template must exist).
 Run from the repo root:
   python3 bootstrap/aap/eda/configure.py
 

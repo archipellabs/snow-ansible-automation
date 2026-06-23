@@ -72,7 +72,7 @@ the same components and adds a gateway-managed **Event Stream**. The runtime flo
 |---|---|---|
 | Assignment group `Auto-Remediation` | pull | trigger filter — EDA only reacts to incidents here |
 | Service account `eda.integration` (+ `itil`, TZ `GMT`) | pull | API identity for EDA + the playbook |
-| CIs `app-node-1` / `app-node-2` | both | represent the target hosts |
+| Meridian CMDB (servers, apps, business services, relations, people) | both | loaded from `simulator/fleet.yml` by `bootstrap/servicenow/dataset.py` |
 | Business Rule *EDA - push approved change to AAP* | push | POSTs approved changes to the event stream |
 | Trust-store cert (AAP gateway CA) | push | lets ServiceNow trust the gateway's TLS certificate |
 
@@ -81,7 +81,7 @@ the same components and adds a gateway-managed **Event Stream**. The runtime flo
 |---|---|
 | Credential `Target SSH` (machine) | SSH key to reach the targets (user `ansible`) |
 | Credential `ServiceNow PDI` (custom type) | injects `SN_HOST`/`SN_USERNAME`/`SN_PASSWORD` for `servicenow.itsm` |
-| Inventory `POC Targets` | `app-node-1/2` at `host.containers.internal:2201/2202` |
+| Inventory `Meridian Fleet` | the 9 fleet servers at `host.containers.internal:221x`, with host vars `service`/`role`/`app`/… — generated from `simulator/fleet.yml` |
 | Project `snow-ansible-automation` | pulls the playbooks from this Git repo |
 | Job template `Restart Service` (pull) / `Execute Change Request` (push) | run the two playbooks |
 
@@ -109,8 +109,9 @@ content the AAP controller and EDA pull from this Git repo (the SCM project).
 | `bootstrap/infra/` | Azure VM as **Bicep** (`main.bicep` + `resources.bicep` + `cloud-init.yaml`); copy `main.parameters.example.json` → `main.parameters.json` (gitignored) |
 | `bootstrap/aap/` | AAP install (`install.sh` + inventory + `sync.sh`) **and** AAP config-as-code: `controller/configure.py`, `eda/configure.py` + `configure_push.py`, and the DE build (`eda/execution-environment.yml` + `build.sh`) |
 | `bootstrap/awx/` | placeholder for a future AWX install (open-source alternative to AAP) |
-| `bootstrap/servicenow/` | `setup.py` (pull objects) + `setup_change.py` (push: Business Rule + gateway-CA trust) |
-| `bootstrap/targets/` | `Containerfile` + `deploy.sh` for the `app-node-1/2` target containers |
+| `bootstrap/servicenow/` | `setup.py` (group + service account) + `dataset.py` (Meridian CMDB from `fleet.yml`) + `setup_change.py` (push Business Rule + gateway-CA trust) |
+| `bootstrap/targets/` | the SSH key the controller uses to reach the fleet (the servers live in `simulator/`) |
+| `simulator/` | **the simulated estate** — Meridian Group: `fleet.yml` (source of truth), real apps (`apps/`, FastAPI + intranet), DB/mail images (`base/`), edge gateway (`apps/edge/`), `compose.yml` + `deploy.sh` |
 | `playbooks/` | `restart_service.yml` (pull) + `execute_change.yml` (push) — pulled by the controller project |
 | `collections/` | `requirements.yml` — collections AAP installs at project sync (`servicenow.itsm`) |
 | `extensions/eda/rulebooks/` | `pull_incident_remediation.yml` (pull, poll) + `push_change_execution.yml` (push, webhook) |
@@ -162,7 +163,8 @@ Environment-specific values are **not committed** — they live in `.env` and
 - **FQDN** = `<dnsLabel>.<region>.cloudapp.azure.com` (set `FQDN` in `.env`).
 - **AAP UI** = `https://<FQDN>/` — user `admin`, password in `~/aap/inventory` (self-signed cert).
 - **ServiceNow PDI** = `https://<SN_INSTANCE>` (set `SN_INSTANCE` in `.env`).
-- **Targets**: `app-node-1` (ssh host:2201), `app-node-2` (ssh host:2202).
+- **Fleet**: 9 Meridian servers (`hr-web-01`, `crm-web-01`, …) reached over SSH at `host:221x`; the
+  apps are browsable through the edge gateway at `http://<FQDN>/` (`/hr`, `/crm`, `/ged`).
 
 Vendor consoles:
 
@@ -229,30 +231,35 @@ with your Red Hat username/password.
 ### 3. ServiceNow objects
 
 ```bash
-cp .env.example .env        # fill in your values
-python3 bootstrap/servicenow/setup.py
+cp .env.example .env                       # fill in your values
+python3 bootstrap/servicenow/setup.py      # Auto-Remediation group + eda.integration account
+python3 bootstrap/servicenow/dataset.py    # the Meridian CMDB from simulator/fleet.yml
 ```
 
-Creates the `Auto-Remediation` group, the `eda.integration` service account (+ `itil` role,
-`active`, `password_needs_reset=false`), and the `app-node-1/2` CIs.
+`setup.py` creates the `Auto-Remediation` group and the `eda.integration` service account
+(+ `itil` role, `active`, `password_needs_reset=false`, timezone `GMT`). `dataset.py` then loads the
+Meridian estate (servers, applications, business services, relationships, people, support groups)
+from `simulator/fleet.yml`.
 
 > **Gotcha**: ServiceNow silently ignores `user_password` writes via the Table API. Set
 > `eda.integration`'s password **once in the UI** (open the user → *Set Password*) and store it
 > in `.env` as `SN_EDA_PASSWORD` — otherwise basic auth returns 401.
 
-### 4. Target containers
+### 4. Target fleet (the Meridian simulator)
 
 ```bash
-# one-time: generate the target SSH key (private gitignored; public = authorized_keys)
-ssh-keygen -t ed25519 -f bootstrap/targets/keys/target_key -N "" -C poc-target
-cp bootstrap/targets/keys/target_key.pub bootstrap/targets/authorized_keys
+# one-time: generate the SSH key (private gitignored), trusted by the fleet build
+ssh-keygen -t ed25519 -f bootstrap/targets/keys/target_key -N "" -C meridian-fleet
+cp bootstrap/targets/keys/target_key.pub simulator/base/authorized_keys
 
-rsync -avz --exclude 'keys/' bootstrap/targets/ azureuser@<FQDN>:~/targets/
-ssh -i ~/.ssh/snow-aap-poc azureuser@<FQDN> '~/targets/deploy.sh'
+rsync -az simulator/ azureuser@<FQDN>:~/simulator/
+ssh -i ~/.ssh/snow-aap-poc azureuser@<FQDN> 'cd ~/simulator && bash deploy.sh'
 ```
 
-Builds an ubi9-init systemd container (sshd + httpd) and starts `app-node-1/2` with SSH on host
-ports 2201/2202. Break the service with `podman exec app-node-1 systemctl stop httpd`.
+Builds the base/app/db/mail images and brings up the **9 fleet servers + the edge gateway**
+(`podman compose`). Browse the apps from the internet at `http://<FQDN>/` (edge → intranet, `/hr`,
+`/crm`, `/ged`). Break a service to trigger remediation, e.g.
+`podman exec hr-web-01 systemctl stop hr-portal`.
 
 ### 5. Controller config-as-code
 
@@ -300,8 +307,8 @@ self-signed CA to ServiceNow's trust store so the outbound TLS validates (see Ke
 
 1. **EE → target networking** — the controller spawns execution environments with **pasta**
    networking, where `host.containers.internal` resolves to the host *and* can reach its
-   rootless-published ports. So the targets (SSH published on the host at 2201/2202) are reached
-   from the EE via **`host.containers.internal:2201/2202`** — the inventory sets
+   rootless-published ports. So the fleet servers (SSH published on the host at `221x`) are reached
+   from the EE via **`host.containers.internal:<ssh_port>`** — the inventory sets
    `ansible_host=host.containers.internal` + `ansible_port` (not `127.0.0.1`, which is the EE's
    own loopback).
 2. **Disk** — the RHEL LVM Azure image partitions only ~62 GB and ships tiny LVs (`/home` = 1 GB);
