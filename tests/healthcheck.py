@@ -9,33 +9,18 @@ configured — the EE -> target path via an ad-hoc ping. Exit 0 if all pass, 1 o
 """
 import os
 import sys
-import ssl
 import json
 import time
-import base64
 import subprocess
 import urllib.request
-import urllib.error
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SSH_KEY = os.path.expanduser("~/.ssh/snow-aap-poc")
-INSECURE = ssl.create_default_context()
-INSECURE.check_hostname = False
-INSECURE.verify_mode = ssl.CERT_NONE
+sys.path.insert(0, ROOT)
+from lib.poc import load_dotenv, insecure_ctx, basic_auth  # noqa: E402
 
-
-def load_dotenv():
-    for p in (os.path.join(os.getcwd(), ".env"), os.path.join(ROOT, ".env")):
-        if os.path.isfile(p):
-            for line in open(p):
-                s = line.strip()
-                if s and not s.startswith("#") and "=" in s:
-                    k, v = s.split("=", 1)
-                    os.environ.setdefault(k.strip(), v)
-            return
-
-
-load_dotenv()
+INSECURE = insecure_ctx()
+load_dotenv(ROOT)
 E = os.environ
 
 
@@ -43,7 +28,7 @@ def req(url, user=None, pw=None, insecure=False, method="GET", body=None, timeou
     data = json.dumps(body).encode() if body is not None else None
     r = urllib.request.Request(url, data=data, method=method)
     if user is not None:
-        r.add_header("Authorization", "Basic " + base64.b64encode(f"{user}:{pw}".encode()).decode())
+        r.add_header("Authorization", basic_auth(user, pw))
     if data:
         r.add_header("Content-Type", "application/json")
     resp = urllib.request.urlopen(r, context=INSECURE if insecure else None, timeout=timeout)

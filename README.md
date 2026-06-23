@@ -114,6 +114,7 @@ content the AAP controller and EDA pull from this Git repo (the SCM project).
 | `playbooks/` | `remediate_ping.yml` (pull) + `execute_change.yml` (push) — pulled by the controller project |
 | `collections/` | `requirements.yml` — collections AAP installs at project sync (`servicenow.itsm`) |
 | `extensions/eda/rulebooks/` | `snow_ping_remediation.yml` (pull, poll) + `snow_change_execution.yml` (push, webhook) |
+| `lib/` | `poc.py` — shared stdlib transport for the Python scripts (`load_dotenv`, `http_json`, auth, SSL); per-API wrappers stay inline |
 | `tests/` | `healthcheck.py` + the three end-to-end tests (see below) — re-runnable validation |
 | `docs/` | architecture + remediation-flow (pull) + change-flow (push) diagrams (SVG) |
 | `.env.example` | template for `.env` — the single secrets file (copy and fill) |

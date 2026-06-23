@@ -19,12 +19,7 @@ certificate trust store, otherwise the Business Rule's POST fails with an SSL er
 """
 import os
 import sys
-import ssl
-import json
-import base64
 import subprocess
-import urllib.request
-import urllib.error
 import urllib.parse
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
@@ -35,52 +30,26 @@ GATEWAY_CA_PATH = "~/aap/tls/ca.cert"            # AAP installer's self-signed C
 SSH_KEY = os.path.expanduser(os.environ.get("SSH_KEY", "~/.ssh/snow-aap-poc"))
 
 
-def load_dotenv():
-    for p in (os.path.join(os.getcwd(), ".env"), os.path.join(ROOT, ".env")):
-        if os.path.isfile(p):
-            for line in open(p):
-                s = line.strip()
-                if s and not s.startswith("#") and "=" in s:
-                    k, v = s.split("=", 1)
-                    os.environ.setdefault(k.strip(), v)
-            return
+sys.path.insert(0, ROOT)
+from lib.poc import load_dotenv, insecure_ctx, basic_auth, http_json  # noqa: E402
 
-
-load_dotenv()
-REQUIRED = ("SN_INSTANCE", "SN_USER", "SN_PASS", "SN_EVENTSTREAM_TOKEN",
-            "FQDN", "AAP_ADMIN_USER", "AAP_ADMIN_PASSWORD")
-_missing = [k for k in REQUIRED if not os.environ.get(k)]
-if _missing:
-    sys.exit("Missing in .env: " + ", ".join(_missing))
+load_dotenv(ROOT, required=("SN_INSTANCE", "SN_USER", "SN_PASS", "SN_EVENTSTREAM_TOKEN",
+                            "FQDN", "AAP_ADMIN_USER", "AAP_ADMIN_PASSWORD"))
 
 SN = os.environ["SN_INSTANCE"].replace("https://", "").rstrip("/")
-SN_AUTH = "Basic " + base64.b64encode(
-    f"{os.environ['SN_USER']}:{os.environ['SN_PASS']}".encode()).decode()
-CTX = ssl.create_default_context()
-CTX.check_hostname = False
-CTX.verify_mode = ssl.CERT_NONE
+SN_HEADERS = {"Authorization": basic_auth(os.environ["SN_USER"], os.environ["SN_PASS"]),
+              "Accept": "application/json"}
+CTX = insecure_ctx()  # for the AAP gateway (self-signed); ServiceNow itself has a valid cert
 
 
 def sn(method, path, body=None):
-    url = f"https://{SN}/api/now/{path}"
-    data = json.dumps(body).encode() if body is not None else None
-    r = urllib.request.Request(url, data=data, method=method)
-    r.add_header("Authorization", SN_AUTH)
-    r.add_header("Accept", "application/json")
-    if data:
-        r.add_header("Content-Type", "application/json")
-    with urllib.request.urlopen(r, timeout=30) as resp:
-        return json.load(resp)["result"]
+    return http_json(f"https://{SN}/api/now/{path}", method=method, headers=SN_HEADERS, body=body)["result"]
 
 
 def eda_stream_url():
     url = f"https://{os.environ['FQDN']}/api/eda/v1/event-streams/?{urllib.parse.urlencode({'name': STREAM_NAME})}"
-    auth = "Basic " + base64.b64encode(
-        f"{os.environ['AAP_ADMIN_USER']}:{os.environ['AAP_ADMIN_PASSWORD']}".encode()).decode()
-    r = urllib.request.Request(url)
-    r.add_header("Authorization", auth)
-    with urllib.request.urlopen(r, context=CTX, timeout=30) as resp:
-        res = json.load(resp).get("results") or []
+    headers = {"Authorization": basic_auth(os.environ["AAP_ADMIN_USER"], os.environ["AAP_ADMIN_PASSWORD"])}
+    res = http_json(url, headers=headers, ctx=CTX).get("results") or []
     if not res:
         sys.exit(f"event stream '{STREAM_NAME}' not found — run bootstrap/aap/eda/configure_push.py first")
     return res[0]["url"]

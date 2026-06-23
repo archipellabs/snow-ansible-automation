@@ -15,60 +15,22 @@ Usage:
 """
 import os
 import sys
-import json
-import base64
-import urllib.request
-import urllib.error
 import urllib.parse
 
+ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+sys.path.insert(0, ROOT)
+from lib.poc import load_dotenv, basic_auth, http_json  # noqa: E402
 
-def load_dotenv():
-    """Load a .env file (KEY=VALUE) without overriding the existing environment."""
-    here = os.path.dirname(os.path.abspath(__file__))
-    for path in (
-        os.path.join(os.getcwd(), ".env"),
-        os.path.join(here, ".env"),
-        os.path.join(here, "..", ".env"),
-        os.path.join(here, "..", "..", ".env"),
-    ):
-        if os.path.isfile(path):
-            for line in open(path):
-                line = line.strip()
-                if line and not line.startswith("#") and "=" in line:
-                    k, v = line.split("=", 1)
-                    os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
-            return
-
-
-load_dotenv()
-
-_missing = [k for k in ("SN_INSTANCE", "SN_USER", "SN_PASS") if not os.environ.get(k)]
-if _missing:
-    sys.exit(
-        "Missing variables: " + ", ".join(_missing)
-        + "\nSet them in a .env file or as environment variables (see .env.example)."
-    )
+load_dotenv(ROOT, required=("SN_INSTANCE", "SN_USER", "SN_PASS"))
 
 INSTANCE = os.environ["SN_INSTANCE"].replace("https://", "").rstrip("/")
-USER = os.environ["SN_USER"]
-PASS = os.environ["SN_PASS"]
 BASE = f"https://{INSTANCE}/api/now/table"
-AUTH = "Basic " + base64.b64encode(f"{USER}:{PASS}".encode()).decode()
+HEADERS = {"Authorization": basic_auth(os.environ["SN_USER"], os.environ["SN_PASS"]),
+           "Accept": "application/json"}
 
 
 def req(method, url, body=None):
-    data = json.dumps(body).encode() if body is not None else None
-    r = urllib.request.Request(url, data=data, method=method)
-    r.add_header("Authorization", AUTH)
-    r.add_header("Accept", "application/json")
-    if data:
-        r.add_header("Content-Type", "application/json")
-    try:
-        with urllib.request.urlopen(r) as resp:
-            return json.load(resp)["result"]
-    except urllib.error.HTTPError as e:
-        print(f"HTTP {e.code} on {method} {url}\n{e.read().decode()}", file=sys.stderr)
-        raise
+    return http_json(url, method=method, headers=HEADERS, body=body)["result"]
 
 
 def get_one(table, query, fields="sys_id"):

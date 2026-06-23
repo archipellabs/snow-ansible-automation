@@ -13,12 +13,8 @@ and that the change's content was actually deployed on the target. Exit 0 if all
 """
 import os
 import sys
-import ssl
-import json
 import time
-import base64
 import subprocess
-import urllib.request
 import urllib.parse
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
@@ -26,35 +22,18 @@ SSH_KEY = os.path.expanduser("~/.ssh/snow-aap-poc")
 TARGET = "app-node-1"
 JT_NAME = "Execute Change Request"
 TRIGGER_TIMEOUT = 180
-INSECURE = ssl.create_default_context()
-INSECURE.check_hostname = False
-INSECURE.verify_mode = ssl.CERT_NONE
+sys.path.insert(0, ROOT)
+from lib.poc import load_dotenv, insecure_ctx, basic_auth, http_json  # noqa: E402
 
-
-def load_dotenv():
-    for p in (os.path.join(os.getcwd(), ".env"), os.path.join(ROOT, ".env")):
-        if os.path.isfile(p):
-            for line in open(p):
-                s = line.strip()
-                if s and not s.startswith("#") and "=" in s:
-                    k, v = s.split("=", 1)
-                    os.environ.setdefault(k.strip(), v)
-            return
-
-
-load_dotenv()
+INSECURE = insecure_ctx()
+load_dotenv(ROOT)
 E = os.environ
 
 
 def call(url, user, pw, body=None, insecure=False, method=None):
-    data = json.dumps(body).encode() if body is not None else None
-    r = urllib.request.Request(url, data=data, method=method or ("POST" if data else "GET"))
-    r.add_header("Authorization", "Basic " + base64.b64encode(f"{user}:{pw}".encode()).decode())
-    if data:
-        r.add_header("Content-Type", "application/json")
-    resp = urllib.request.urlopen(r, context=INSECURE if insecure else None, timeout=30)
-    raw = resp.read()
-    return json.loads(raw) if raw else {}
+    return http_json(url, method=method or ("POST" if body is not None else "GET"),
+                     headers={"Authorization": basic_auth(user, pw)},
+                     body=body, ctx=INSECURE if insecure else None)
 
 
 def sn(path, body=None, method=None):

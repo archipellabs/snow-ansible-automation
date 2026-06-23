@@ -14,12 +14,8 @@ Exit 0 if it all passes, 1 otherwise.
 """
 import os
 import sys
-import ssl
-import json
 import time
-import base64
 import subprocess
-import urllib.request
 import urllib.parse
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
@@ -27,35 +23,18 @@ SSH_KEY = os.path.expanduser("~/.ssh/snow-aap-poc")
 TARGET = "app-node-1"
 JT_NAME = "Remediate Ping Server"
 TRIGGER_TIMEOUT = 180  # EDA poll interval is 10s; allow margin + job runtime
-INSECURE = ssl.create_default_context()
-INSECURE.check_hostname = False
-INSECURE.verify_mode = ssl.CERT_NONE
+sys.path.insert(0, ROOT)
+from lib.poc import load_dotenv, insecure_ctx, basic_auth, http_json  # noqa: E402
 
-
-def load_dotenv():
-    for p in (os.path.join(os.getcwd(), ".env"), os.path.join(ROOT, ".env")):
-        if os.path.isfile(p):
-            for line in open(p):
-                s = line.strip()
-                if s and not s.startswith("#") and "=" in s:
-                    k, v = s.split("=", 1)
-                    os.environ.setdefault(k.strip(), v)
-            return
-
-
-load_dotenv()
+INSECURE = insecure_ctx()
+load_dotenv(ROOT)
 E = os.environ
 
 
 def call(url, user, pw, body=None, insecure=False):
-    data = json.dumps(body).encode() if body is not None else None
-    r = urllib.request.Request(url, data=data, method="POST" if data else "GET")
-    r.add_header("Authorization", "Basic " + base64.b64encode(f"{user}:{pw}".encode()).decode())
-    if data:
-        r.add_header("Content-Type", "application/json")
-    resp = urllib.request.urlopen(r, context=INSECURE if insecure else None, timeout=30)
-    raw = resp.read()
-    return json.loads(raw) if raw else {}
+    method = "POST" if body is not None else "GET"
+    return http_json(url, method=method, headers={"Authorization": basic_auth(user, pw)},
+                     body=body, ctx=INSECURE if insecure else None)
 
 
 def sn(path, body=None):
