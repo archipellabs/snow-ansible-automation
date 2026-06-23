@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meridian Group — Intranet</title>
+  <style>
+    :root { --brand: #b5530a; --bg: #fbf6f2; --ink: #1f2328; --muted: #57606a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: var(--ink); background: var(--bg); }
+    header { background: var(--brand); color: #fff; padding: 18px 28px; display: flex; align-items: center; gap: 14px; }
+    header .logo { width: 30px; height: 30px; border-radius: 7px; background: #fff; color: var(--brand); font-weight: 800; display: grid; place-items: center; }
+    header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+    main { max-width: 880px; margin: 32px auto; padding: 0 20px; }
+    .card { background: #fff; border: 1px solid #ecdfd5; border-radius: 12px; padding: 22px 24px; margin-bottom: 18px; }
+    h2 { margin: 0 0 14px; font-size: 19px; }
+    p.muted { color: var(--muted); margin: 0 0 16px; }
+    ul.news { margin: 0; padding-left: 18px; } ul.news li { margin-bottom: 8px; }
+    .svc { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 14px; }
+    .svc a { display: block; text-decoration: none; color: inherit; border: 1px solid #efe4da; border-radius: 10px; padding: 16px; transition: border-color .15s; }
+    .svc a:hover { border-color: var(--brand); }
+    .svc b { display: block; color: var(--brand); margin-bottom: 4px; }
+    .svc span { color: var(--muted); font-size: 13px; }
+    footer { text-align: center; color: var(--muted); font-size: 13px; padding: 24px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">M</div>
+    <h1>Meridian Group · Intranet</h1>
+  </header>
+  <main>
+    <div class="card">
+      <h2>IT services directory</h2>
+      <p class="muted">Internal applications operated by the DSI.</p>
+      <div class="svc">
+        <a href="/hr/"><b>HR Self-Service</b><span>Leave, payslips, directory</span></a>
+        <a href="/crm/"><b>CRM — Relation Client</b><span>Customers, opportunities, pipeline</span></a>
+        <a href="/ged/"><b>Gestion Documentaire (GED)</b><span>Policies, contracts, procedures</span></a>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Company news</h2>
+      <ul class="news">
+        <li>New leave policy effective next quarter — see the HR Portal.</li>
+        <li>Q2 all-hands meeting scheduled; agenda on the GED.</li>
+        <li>IT maintenance window Saturday 22:00–23:00.</li>
+      </ul>
+    </div>
+  </main>
+  <footer>Meridian Group — internal intranet (simulated) · *.meridian.example</footer>
+</body>
+</html>

@@ -28,3 +28,6 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# Fleet SSH public key (copy of the target key)
+simulator/base/authorized_keys

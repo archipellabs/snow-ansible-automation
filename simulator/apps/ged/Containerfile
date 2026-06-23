@@ -1,0 +1,16 @@
+# ged-01 — Meridian Group GED. FROM the shared base, add the FastAPI app and run it as a systemd
+# service so playbooks can (re)start and health-check it.
+FROM localhost/meridian-base:latest
+
+COPY requirements.txt /opt/ged/requirements.txt
+RUN python3.12 -m pip install --no-cache-dir -r /opt/ged/requirements.txt
+
+COPY main.py /opt/ged/main.py
+COPY web/ /opt/ged/web/
+RUN mkdir -p /var/lib/ged && chown -R appuser:appuser /opt/ged /var/lib/ged
+
+COPY ged.service /etc/systemd/system/ged.service
+RUN systemctl enable ged
+
+EXPOSE 8000
+CMD ["/sbin/init"]

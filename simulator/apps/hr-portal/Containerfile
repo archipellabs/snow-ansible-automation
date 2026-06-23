@@ -1,0 +1,16 @@
+# hr-web-01 — Meridian Group HR Portal. FROM the shared base (sshd + Python 3.12), add the
+# real FastAPI app and run it as a systemd service so playbooks can (re)start and health-check it.
+FROM localhost/meridian-base:latest
+
+COPY requirements.txt /opt/hr-portal/requirements.txt
+RUN python3.12 -m pip install --no-cache-dir -r /opt/hr-portal/requirements.txt
+
+COPY main.py /opt/hr-portal/main.py
+COPY web/ /opt/hr-portal/web/
+RUN mkdir -p /var/lib/hr-portal && chown -R appuser:appuser /opt/hr-portal /var/lib/hr-portal
+
+COPY hr-portal.service /etc/systemd/system/hr-portal.service
+RUN systemctl enable hr-portal
+
+EXPOSE 8000
+CMD ["/sbin/init"]

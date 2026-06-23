@@ -1,0 +1,16 @@
+[Unit]
+Description=Meridian Group - GED (FastAPI)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=appuser
+WorkingDirectory=/opt/ged
+# `systemctl stop` keeps it down (outage to remediate); a crash auto-restarts.
+ExecStart=/usr/bin/python3.12 -m uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

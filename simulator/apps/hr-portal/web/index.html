@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meridian Group — HR Self-Service</title>
+  <style>
+    :root { --brand: #0a4a8f; --bg: #f4f7fb; --ink: #1f2328; --muted: #57606a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: var(--ink); background: var(--bg); }
+    header { background: var(--brand); color: #fff; padding: 18px 28px; display: flex; align-items: center; gap: 14px; }
+    header .logo { width: 30px; height: 30px; border-radius: 7px; background: #fff; color: var(--brand); font-weight: 800; display: grid; place-items: center; }
+    header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+    main { max-width: 880px; margin: 32px auto; padding: 0 20px; }
+    .card { background: #fff; border: 1px solid #d8dee4; border-radius: 12px; padding: 22px 24px; margin-bottom: 18px; }
+    h2 { margin: 0 0 6px; font-size: 19px; }
+    p.muted { color: var(--muted); margin: 0 0 16px; }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+    .tile { border: 1px solid #e1e6eb; border-radius: 10px; padding: 16px; }
+    .tile b { display: block; margin-bottom: 4px; }
+    .tile a { color: var(--brand); text-decoration: none; font-size: 14px; }
+    footer { text-align: center; color: var(--muted); font-size: 13px; padding: 24px; }
+    code { background: #eef2f6; padding: 2px 6px; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">M</div>
+    <h1>Meridian Group · HR Self-Service</h1>
+  </header>
+  <main>
+    <div class="card">
+      <h2>Welcome to your HR portal</h2>
+      <p class="muted">Manage leave, payslips, and personal information.</p>
+      <div class="tiles">
+        <div class="tile"><b>Leave requests</b><a href="#">Submit / track →</a></div>
+        <div class="tile"><b>Payslips</b><a href="#">Download →</a></div>
+        <div class="tile"><b>Directory</b><a href="api/employees">View employees (API) →</a></div>
+        <div class="tile"><b>Service health</b><a href="health">/health →</a></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>About this instance</h2>
+      <p class="muted">This is a simulated application for the ServiceNow + AAP + EDA proof of
+        concept. Liveness is exposed at <code>/health</code> and monitored by Event-Driven Ansible.</p>
+    </div>
+  </main>
+  <footer>Meridian Group — internal application (simulated) · *.meridian.example</footer>
+</body>
+</html>

@@ -1,0 +1,82 @@
+# Meridian Group fleet — 9 containers standing in for the servers in fleet.yml.
+# Build the images first with deploy.sh, then:  podman compose -f simulator/compose.yml up -d
+# Ports match fleet.yml: ssh 221x (Ansible) and app 908x (url_check health monitoring).
+# The EE/DE reach these via host.containers.internal:<published port>.
+x-server: &server
+  restart: unless-stopped
+  tmpfs: ["/run", "/run/lock"]      # systemd (ubi9-init) needs a writable /run
+
+services:
+  hr-web-01:
+    <<: *server
+    image: localhost/meridian-hr-portal:latest
+    container_name: hr-web-01
+    hostname: hr-web-01
+    ports: ["2211:22", "9081:8000"]
+
+  hr-db-01:
+    <<: *server
+    image: localhost/meridian-db:latest
+    container_name: hr-db-01
+    hostname: hr-db-01
+    ports: ["2212:22"]
+
+  crm-web-01:
+    <<: *server
+    image: localhost/meridian-crm:latest
+    container_name: crm-web-01
+    hostname: crm-web-01
+    ports: ["2213:22", "9082:8000"]
+
+  crm-web-02:
+    <<: *server
+    image: localhost/meridian-crm:latest
+    container_name: crm-web-02
+    hostname: crm-web-02
+    ports: ["2214:22", "9083:8000"]
+
+  crm-db-01:
+    <<: *server
+    image: localhost/meridian-db:latest
+    container_name: crm-db-01
+    hostname: crm-db-01
+    ports: ["2215:22"]
+
+  intra-01:
+    <<: *server
+    image: localhost/meridian-intranet:latest
+    container_name: intra-01
+    hostname: intra-01
+    ports: ["2216:22", "9084:80"]
+
+  ged-01:
+    <<: *server
+    image: localhost/meridian-ged:latest
+    container_name: ged-01
+    hostname: ged-01
+    ports: ["2217:22", "9085:8000"]
+
+  ged-db-01:
+    <<: *server
+    image: localhost/meridian-db:latest
+    container_name: ged-db-01
+    hostname: ged-db-01
+    ports: ["2218:22"]
+
+  mail-01:
+    <<: *server
+    image: localhost/meridian-mail:latest
+    container_name: mail-01
+    hostname: mail-01
+    ports: ["2219:22"]
+
+  # Edge gateway / DMZ "firewall" — the only internet-facing entry (NSG opens :80). Path-routes
+  # to the internal apps over the compose network. AAP keeps :443; the apps live behind this.
+  edge:
+    image: docker.io/library/caddy:2
+    container_name: meridian-edge
+    hostname: edge
+    ports: ["80:80"]
+    volumes:
+      - ./apps/edge/Caddyfile:/etc/caddy/Caddyfile:ro,Z
+    restart: unless-stopped

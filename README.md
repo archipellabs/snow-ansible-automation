@@ -357,6 +357,28 @@ config-as-code, custom DE, both activations, and the ServiceNow side of both pat
 **Optional next steps**: AWX variant (`bootstrap/awx/`), more playbooks/use cases, a CA-signed
 gateway cert, and a subscription manifest for offline entitlement.
 
+## Limitations
+
+This is a proof of concept — deliberately scoped. Be aware of:
+
+- **Not production-hardened.** Single AAP node (no HA); the gateway keeps its **self-signed
+  certificate** (ServiceNow trusts it via an uploaded trust-store cert — production should use a
+  CA-signed cert); the targets are throwaway containers; the "change" the push playbook applies is a
+  demo content deploy, not a real change.
+- **Config-as-code is bespoke (stdlib Python over the REST APIs), not the official tooling.** It is
+  written from scratch for transparency and zero dependencies. A production setup would likely use
+  Red Hat's supported collections (`infra.aap_configuration`, `ansible.controller`, `ansible.eda`) —
+  declarative playbooks instead of `urllib` scripts.
+- **The push pattern is more simplified than the pull one.** It needed more workarounds: trust the
+  gateway CA in ServiceNow, trigger on the writable `approval` field (the change state model rejects
+  arbitrary Table-API transitions), and write a **work note** rather than driving the change through
+  its ServiceNow lifecycle.
+- **Reconciliation is partial.** `configure.py` re-syncs the project and reconciles job-template
+  playbook paths, but the **EDA activations are not updated in place** — changing one means deleting
+  and re-creating it (the scripts print the `DELETE` to run).
+- **Minor.** The e2e tests leave test incidents/changes in the PDI (no cleanup); there is no CI; and
+  the AAP entitlement comes from the trial/UI rather than a downloaded subscription manifest.
+
 ## Lifecycle & cost
 
 ```bash

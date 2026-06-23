@@ -1,0 +1,16 @@
+# crm-web-01 / crm-web-02 — Meridian Group CRM. FROM the shared base, add the FastAPI app and run
+# it as a systemd service. The same image backs both CRM front-ends (hostname set per container).
+FROM localhost/meridian-base:latest
+
+COPY requirements.txt /opt/crm/requirements.txt
+RUN python3.12 -m pip install --no-cache-dir -r /opt/crm/requirements.txt
+
+COPY main.py /opt/crm/main.py
+COPY web/ /opt/crm/web/
+RUN mkdir -p /var/lib/crm && chown -R appuser:appuser /opt/crm /var/lib/crm
+
+COPY crm.service /etc/systemd/system/crm.service
+RUN systemctl enable crm
+
+EXPOSE 8000
+CMD ["/sbin/init"]

@@ -1,0 +1,25 @@
+# Meridian Group edge — the single internet-facing gateway (a DMZ reverse proxy / "firewall")
+# in front of the internal apps. Only this edge's :80 is reachable from the internet (the NSG
+# opens 22/80/443; the apps' 908x ports are host-only). Browse it at http://<FQDN>/.
+#
+# Path routing on one FQDN: / -> intranet portal, /hr -> HR Portal, /crm -> CRM, /ged -> GED.
+# The bare prefix redirects to a trailing slash so the apps' relative links resolve correctly;
+# handle_path strips the prefix so each app still sees "/".
+:80 {
+	redir /hr /hr/
+	redir /crm /crm/
+	redir /ged /ged/
+
+	handle_path /hr/* {
+		reverse_proxy hr-web-01:8000
+	}
+	handle_path /crm/* {
+		reverse_proxy crm-web-01:8000 crm-web-02:8000
+	}
+	handle_path /ged/* {
+		reverse_proxy ged-01:8000
+	}
+	handle {
+		reverse_proxy intra-01:80
+	}
+}

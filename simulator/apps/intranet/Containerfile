@@ -1,0 +1,11 @@
+# intra-01 — Meridian Group Intranet. A static site served by httpd (no app process): its only
+# failure mode is "httpd down", which Event-Driven Ansible detects via url_check on /health.
+FROM localhost/meridian-base:latest
+
+RUN dnf -y install httpd && dnf clean all && systemctl enable httpd
+
+# Serve on :80; GET /health returns the static "ok" file (200 while httpd is up).
+COPY web/ /var/www/html/
+
+EXPOSE 80
+CMD ["/sbin/init"]

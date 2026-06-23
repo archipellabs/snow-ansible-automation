@@ -1,0 +1,26 @@
+# meridian-base — shared base for every Meridian Group "server" container.
+# A systemd-enabled UBI9 image with sshd (for Ansible) + Python 3.12 (for the FastAPI apps).
+# Each fleet server image is FROM this; the role-specific service is added on top.
+#
+# Build context must contain `authorized_keys` (the public half of the controller's Target SSH
+# key — same one the existing targets use). Generate it once:
+#   cp bootstrap/targets/keys/target_key.pub simulator/base/authorized_keys
+FROM registry.access.redhat.com/ubi9/ubi-init:latest
+
+RUN dnf -y install openssh-server python3.12 python3.12-pip shadow-utils sudo \
+    && dnf clean all \
+    && ssh-keygen -A
+
+# Login user for Ansible (key-based, passwordless sudo) + an unprivileged app user.
+RUN useradd -m -s /bin/bash ansible \
+    && useradd -m -s /bin/bash appuser \
+    && echo 'ansible ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ansible \
+    && chmod 440 /etc/sudoers.d/ansible \
+    && mkdir -p /home/ansible/.ssh && chmod 700 /home/ansible/.ssh
+COPY authorized_keys /home/ansible/.ssh/authorized_keys
+RUN chown -R ansible:ansible /home/ansible/.ssh \
+    && chmod 600 /home/ansible/.ssh/authorized_keys \
+    && systemctl enable sshd
+
+EXPOSE 22
+CMD ["/sbin/init"]

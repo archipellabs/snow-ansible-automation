@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Meridian Group — GED</title>
+  <style>
+    :root { --brand: #7a3da0; --bg: #f7f4fb; --ink: #1f2328; --muted: #57606a; }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: var(--ink); background: var(--bg); }
+    header { background: var(--brand); color: #fff; padding: 18px 28px; display: flex; align-items: center; gap: 14px; }
+    header .logo { width: 30px; height: 30px; border-radius: 7px; background: #fff; color: var(--brand); font-weight: 800; display: grid; place-items: center; }
+    header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+    header .srv { margin-left: auto; font-size: 13px; opacity: .85; }
+    main { max-width: 880px; margin: 32px auto; padding: 0 20px; }
+    .card { background: #fff; border: 1px solid #e0d8e8; border-radius: 12px; padding: 22px 24px; margin-bottom: 18px; }
+    h2 { margin: 0 0 6px; font-size: 19px; }
+    p.muted { color: var(--muted); margin: 0 0 16px; }
+    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+    .tile { border: 1px solid #e7e1ec; border-radius: 10px; padding: 16px; }
+    .tile b { display: block; margin-bottom: 4px; }
+    .tile a { color: var(--brand); text-decoration: none; font-size: 14px; }
+    footer { text-align: center; color: var(--muted); font-size: 13px; padding: 24px; }
+    code { background: #f0ecf4; padding: 2px 6px; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">M</div>
+    <h1>Meridian Group · GED — Gestion Documentaire</h1>
+    <span class="srv">served by {{SERVER}}</span>
+  </header>
+  <main>
+    <div class="card">
+      <h2>Document library</h2>
+      <p class="muted">Policies, contracts, and procedures.</p>
+      <div class="tiles">
+        <div class="tile"><b>Documents</b><a href="api/documents">Browse (API) →</a></div>
+        <div class="tile"><b>Service health</b><a href="health">/health →</a></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>About this instance</h2>
+      <p class="muted">Simulated application for the ServiceNow + AAP + EDA proof of concept, backing
+        the Gestion Documentaire service on <code>ged-01</code>. Liveness is at <code>/health</code>.</p>
+    </div>
+  </main>
+  <footer>Meridian Group — internal application (simulated) · *.meridian.example</footer>
+</body>
+</html>

@@ -1,0 +1,73 @@
+---
+# Meridian Group — the simulated IT estate. Single source of truth: this manifest feeds the
+# ServiceNow CMDB (dataset.py), the target containers (compose), and the controller inventory.
+# Everything is fictional; *.meridian.example is a documentation domain.
+company: Meridian Group
+domain: meridian.example
+
+# Support teams = ServiceNow assignment groups.
+teams:
+  - {name: HR-IT, description: HR applications support}
+  - {name: CRM Team, description: CRM applications support}
+  - {name: Collab, description: Intranet and collaboration}
+  - {name: ECM, description: Document management support}
+  - {name: Infra, description: Shared infrastructure and messaging}
+  - {name: DBA, description: Database administration (cross-application)}
+  - {name: Auto-Remediation, description: Incidents eligible for automated remediation (EDA trigger)}
+
+# Applications = the real code under apps/ (FastAPI) or a static site. `service` is the systemd
+# unit name inside the container; `port` is the app's internal listen port.
+apps:
+  hr-portal: {kind: fastapi, service: hr-portal, port: 8000, path: simulator/apps/hr-portal}
+  crm:       {kind: fastapi, service: crm,       port: 8000, path: simulator/apps/crm}
+  ged:       {kind: fastapi, service: ged,       port: 8000, path: simulator/apps/ged}
+  intranet:  {kind: static,  service: httpd,     port: 80,   path: simulator/apps/intranet}
+
+# Business services = what users consume. `app` ties a service to its application.
+business_services:
+  - {name: RH Self-Service,      app: hr-portal, criticality: 2 - high}
+  - {name: Relation Client,      app: crm,       criticality: 1 - critical}
+  - {name: Intranet,             app: intranet,  criticality: 3 - moderate}
+  - {name: Gestion Documentaire, app: ged,       criticality: 3 - moderate}
+  - {name: Messagerie,           app: null,      criticality: 2 - high}
+
+# Servers = CMDB Linux server CIs and the containers that stand in for them.
+#   role            : web | app | db | mail  (drives which systemd service the playbooks act on)
+#   service         : systemd unit to (re)start / health-check
+#   app             : application hosted here (null for db/mail)
+#   business_service: the service this server supports
+#   support_group   : owning team (assignment group)
+#   ssh_port        : host port mapped to the container's sshd (Ansible reaches it here)
+#   app_port        : host port mapped to the app/web (for url_check health monitoring); null if none
+servers:
+  - {name: hr-web-01,  role: web, service: hr-portal,  app: hr-portal, business_service: RH Self-Service,      support_group: HR-IT,    os: RHEL 9, env: production, ssh_port: 2211, app_port: 9081}
+  - {name: hr-db-01,   role: db,  service: postgresql, app: null,      business_service: RH Self-Service,      support_group: DBA,      os: RHEL 9, env: production, ssh_port: 2212, app_port: null}
+  - {name: crm-web-01, role: web, service: crm,        app: crm,       business_service: Relation Client,      support_group: CRM Team, os: RHEL 9, env: production, ssh_port: 2213, app_port: 9082}
+  - {name: crm-web-02, role: web, service: crm,        app: crm,       business_service: Relation Client,      support_group: CRM Team, os: RHEL 9, env: production, ssh_port: 2214, app_port: 9083}
+  - {name: crm-db-01,  role: db,  service: postgresql, app: null,      business_service: Relation Client,      support_group: DBA,      os: RHEL 9, env: production, ssh_port: 2215, app_port: null}
+  - {name: intra-01,   role: web, service: httpd,      app: intranet,  business_service: Intranet,             support_group: Collab,   os: RHEL 9, env: production, ssh_port: 2216, app_port: 9084}
+  - {name: ged-01,     role: app, service: ged,        app: ged,       business_service: Gestion Documentaire, support_group: ECM,      os: RHEL 9, env: production, ssh_port: 2217, app_port: 9085}
+  - {name: ged-db-01,  role: db,  service: postgresql, app: null,      business_service: Gestion Documentaire, support_group: DBA,      os: RHEL 9, env: production, ssh_port: 2218, app_port: null}
+  - {name: mail-01,    role: mail, service: postfix,   app: null,      business_service: Messagerie,           support_group: Infra,    os: RHEL 9, env: production, ssh_port: 2219, app_port: null}
+
+# People — the org. DSI/IT staff are members of the support teams (they hold technical access and
+# work the incidents); business users are the end users of a service (typical incident callers).
+# The first three RH Self-Service users match the employees the HR Portal app serves.
+people:
+  # --- DSI / IT support staff (assignment-group members, technical access) ---
+  - {name: Lea Martin,       email: lea.martin@meridian.example,       team: HR-IT,    title: Application Support}
+  - {name: Thomas Petit,     email: thomas.petit@meridian.example,     team: CRM Team, title: Application Support}
+  - {name: Sophie Garnier,   email: sophie.garnier@meridian.example,   team: Collab,   title: Collaboration Engineer}
+  - {name: Marc Lefevre,     email: marc.lefevre@meridian.example,     team: ECM,      title: ECM Specialist}
+  - {name: Karim Benali,     email: karim.benali@meridian.example,     team: Infra,    title: Infrastructure Engineer}
+  - {name: Sarah Dubois,     email: sarah.dubois@meridian.example,     team: Infra,    title: IT Operations Lead}
+  - {name: Nadia Haddad,     email: nadia.haddad@meridian.example,     team: DBA,      title: Database Administrator}
+  - {name: Paul Girard,      email: paul.girard@meridian.example,      team: DBA,      title: Database Administrator}
+  # --- Business users (end users / incident callers) ---
+  - {name: Camille Roux,     email: camille.roux@meridian.example,     service: RH Self-Service,      department: Finance}
+  - {name: Yanis Bernard,    email: yanis.bernard@meridian.example,    service: RH Self-Service,      department: Logistics}
+  - {name: Aicha Diallo,     email: aicha.diallo@meridian.example,     service: RH Self-Service,      department: Human Resources}
+  - {name: Elodie Fontaine,  email: elodie.fontaine@meridian.example,  service: Relation Client,      department: Sales}
+  - {name: Hugo Moreau,      email: hugo.moreau@meridian.example,      service: Relation Client,      department: Sales}
+  - {name: Julie Mercier,    email: julie.mercier@meridian.example,    service: Intranet,             department: Communications}
+  - {name: Antoine Rousseau, email: antoine.rousseau@meridian.example, service: Gestion Documentaire, department: Legal}
