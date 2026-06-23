@@ -1,0 +1,75 @@
+---
+# restart_service_selfservice.yml — restart a server's service from a ServiceNow catalog request.
+#
+# Pattern : PUSH (self-service catalog). A Service Catalog item ("Redémarrer un service") lets a user
+#           pick a server; on request, a Business Rule on sc_req_item POSTs to an AAP Event Stream,
+#           which the push-selfservice-restart activation maps onto the webhook source of
+#           push_selfservice_restart.yml -> the "Restart Service (Self-Service)" job template -> here.
+# Extra vars (from the rulebook):
+#   target_host    : the chosen server (an inventory host)
+#   request_number : the requested-item (RITM) number, for messages
+#   request_sysid  : the requested-item sys_id, to annotate / close
+# Host vars (inventory): service (the role-aware systemd unit to restart).
+#
+# Same engine as restart_service.yml; it differs only in its trigger and in annotating/closing a
+# catalog request item (sc_req_item) instead of resolving an incident.
+- name: Restart a service from a self-service catalog request
+  hosts: "{{ target_host }}"
+  gather_facts: false
+  vars:
+    recheck_delay: 6
+  tasks:
+    - name: Restart the requested service
+      become: true
+      ansible.builtin.systemd:
+        name: "{{ service }}"
+        state: restarted
+        enabled: true
+
+    - name: Clear the injected "degraded" health flag if present (no-op if absent)
+      become: true
+      ansible.builtin.file:
+        path: "/var/lib/{{ service }}/unhealthy"
+        state: absent
+
+    - name: Wait before re-checking
+      ansible.builtin.pause:
+        seconds: "{{ recheck_delay }}"
+
+    - name: Re-check that the service is active
+      become: true
+      ansible.builtin.command: "systemctl is-active {{ service }}"
+      register: check
+      changed_when: false
+      failed_when: false
+
+    - name: Close the request item if the service is back up
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.api:
+        resource: sc_req_item
+        action: patch
+        sys_id: "{{ request_sysid }}"
+        data:
+          state: "3"            # Closed Complete
+          work_notes: >-
+            Self-service request {{ request_number }} fulfilled by AAP: restarted {{ service }}
+            on {{ target_host }} (now active).
+      when:
+        - request_sysid is defined
+        - check.stdout == "active"
+
+    - name: Flag the request item if the restart failed
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.api:
+        resource: sc_req_item
+        action: patch
+        sys_id: "{{ request_sysid }}"
+        data:
+          work_notes: >-
+            Self-service request {{ request_number }} could NOT be fulfilled on {{ target_host }}
+            ({{ service }} not active: {{ check.stdout }}).
+      when:
+        - request_sysid is defined
+        - check.stdout != "active"

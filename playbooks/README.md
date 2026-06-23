@@ -50,7 +50,7 @@ Priority: **P0** = built (core); **P1–P4** = planned, from most useful to nice
 | `patch_os.yml` | `dnf update`; flag (or, with `allow_reboot`, perform) a reboot | change / scheduled | all | **P3 ✅** |
 | `housekeeping.yml` | force logrotate, vacuum journal, prune old DB dumps + `/var/tmp` | scheduled | all | **P3 ✅** |
 | `rotate_cert.yml` | deploy a renewed TLS cert + reload | change | web | P3 — deferred¹ |
-| `restart_service_selfservice.yml` | restart a chosen service from a catalog request | push — catalog | all | P4 |
+| `restart_service_selfservice.yml` | restart a chosen server's service from a catalog request, then close the request item | push — catalog | all | **P4 ✅** |
 | `provision_employee.yml` | create an employee (HR app + account) | push — catalog | — | P4 |
 
 > ¹ `rotate_cert.yml` is deferred: in this simulator the per-server apps don't terminate TLS — the

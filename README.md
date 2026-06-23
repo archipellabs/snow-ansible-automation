@@ -68,6 +68,16 @@ the same components and adds a gateway-managed **Event Stream**. The runtime flo
 4. The job runs `execute_change.yml`: deploy the change to the target, restart the service, and
    write the result back to the change as a **work note**.
 
+### Push — self-service catalog
+
+1. A user orders the **Service Catalog** item "Redémarrer un service" and picks a server.
+2. A **Business Rule** on the request item (`sc_req_item`) POSTs the chosen server to a second AAP
+   **Event Stream** (`servicenow-catalog-stream`, same `:443` token endpoint).
+3. The stream feeds the `ansible.eda.webhook` source of the `push-selfservice-restart` activation,
+   which triggers the `Restart Service (Self-Service)` **job template**.
+4. `restart_service_selfservice.yml` restarts that server's service and **closes the request item**.
+   Set up with `bootstrap/aap/eda/configure_selfservice.py` + `bootstrap/servicenow/setup_selfservice.py`.
+
 ### Objects provisioned by the scripts
 
 **ServiceNow** — `bootstrap/servicenow/setup.py` (pull) + `setup_change.py` (push)
@@ -89,7 +99,7 @@ the same components and adds a gateway-managed **Event Stream**. The runtime flo
 | Job template `Restart Service` (pull) / `Execute Change Request` (push) | run the two core playbooks |
 | Job templates `Collect Diagnostics` · `Free Disk` · `Open Incident` · `DB Create Role` · `DB Apply Migration` · `DB Status` · `DB Backup` | the helper / DB-admin playbooks (see [playbooks/README](playbooks/README.md)) |
 
-**EDA** — `bootstrap/aap/eda/configure.py` (pull) + `configure_push.py` (push) + `configure_monitor.py` (monitoring)
+**EDA** — `configure.py` (pull) + `configure_push.py` (change) + `configure_monitor.py` (monitoring) + `configure_selfservice.py` (catalog)
 | Object | Pattern | Role |
 |---|---|---|
 | Decision environment `snow-eda-de` | all | DE image (`de-minimal` + `servicenow.itsm`), pulled from the hub |
@@ -97,8 +107,9 @@ the same components and adds a gateway-managed **Event Stream**. The runtime flo
 | EDA project `snow-ansible-automation` | all | rulebooks under `extensions/eda/rulebooks/` |
 | Activation `pull-incident-remediation` | pull | polls ServiceNow → launches the job (injects `SN_*`) |
 | Activation `monitor-health` | monitor | `ansible.eda.url_check` on each `/health` → `Open Incident` (self-driving pull) |
-| `ServiceNow …Event Stream` credential + Event Stream | push | authenticated inbound endpoint on the gateway |
-| Activation `push-change-execution` | push | webhook source mapped to the event stream → launches the job |
+| `ServiceNow …Event Stream` credential + Event Streams (`…-chg-stream`, `…-catalog-stream`) | push | authenticated inbound endpoints on the gateway |
+| Activation `push-change-execution` | push | webhook source mapped to the change stream → launches the job |
+| Activation `push-selfservice-restart` | push | webhook source mapped to the catalog stream → launches the job |
 
 > `configure.py` (controller) also removes the installer's `Demo *` objects; the `Ansible Galaxy`
 > credential is a system default and is kept.

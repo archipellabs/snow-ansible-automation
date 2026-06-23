@@ -156,6 +156,7 @@ def main():
     #   pull  -> "Collect Diagnostics"    runs collect_diagnostics.yml (read-only triage)
     #   pull  -> "Free Disk"              runs free_disk.yml           (disk-space remediation)
     #   mon   -> "Open Incident"          runs open_incident.yml        (monitor raises the ticket)
+    #   self  -> "Restart Service (Self-Service)" runs restart_service_selfservice.yml (catalog)
     #   ops   -> "Patch OS" / "Housekeeping" (change / scheduled maintenance)
     #   db    -> "DB Create Role" / "DB Apply Migration" / "DB Status" / "DB Backup"
     # All share the inventory/project/EE and the machine + ServiceNow credentials.
@@ -164,6 +165,7 @@ def main():
                         ("Collect Diagnostics", "playbooks/collect_diagnostics.yml"),
                         ("Free Disk", "playbooks/free_disk.yml"),
                         ("Open Incident", "playbooks/open_incident.yml"),
+                        ("Restart Service (Self-Service)", "playbooks/restart_service_selfservice.yml"),
                         ("Patch OS", "playbooks/patch_os.yml"),
                         ("Housekeeping", "playbooks/housekeeping.yml"),
                         ("DB Create Role", "playbooks/db_create_role.yml"),
