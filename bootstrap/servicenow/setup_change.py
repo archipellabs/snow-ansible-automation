@@ -22,6 +22,7 @@ import sys
 import ssl
 import json
 import base64
+import subprocess
 import urllib.request
 import urllib.error
 import urllib.parse
@@ -29,6 +30,9 @@ import urllib.parse
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 BR_NAME = "EDA - push approved change to AAP"
 STREAM_NAME = "servicenow-chg-stream"
+CA_NAME = "AAP gateway CA - PoC"
+GATEWAY_CA_PATH = "~/aap/tls/ca.cert"            # AAP installer's self-signed CA, on the VM
+SSH_KEY = os.path.expanduser(os.environ.get("SSH_KEY", "~/.ssh/snow-aap-poc"))
 
 
 def load_dotenv():
@@ -108,7 +112,47 @@ def br_script(endpoint, token):
     )
 
 
+def trust_gateway_ca():
+    """Add the AAP gateway's CA to ServiceNow's trust store so its outbound TLS to the event
+    stream is verified. The gateway ships a self-signed CA (issuer 'Ansible Automation
+    Platform') that ServiceNow does not trust by default, which makes the Business Rule's POST
+    fail with 'HTTP 0'. We fetch that CA from the VM over SSH and store it as a trust_store_cert.
+    Best-effort: if SSH is unavailable, upload GATEWAY_CA_PATH manually and re-run."""
+    try:
+        ca = subprocess.run(
+            ["ssh", "-i", SSH_KEY, "-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=15",
+             f"azureuser@{os.environ['FQDN']}", f"cat {GATEWAY_CA_PATH}"],
+            capture_output=True, text=True, timeout=30).stdout
+    except Exception:
+        ca = ""
+    if "BEGIN CERTIFICATE" not in ca:
+        print(f"! could not fetch the gateway CA over SSH ({GATEWAY_CA_PATH}); upload it to the\n"
+              "  ServiceNow trust store manually (sys_certificate, type trust_store). Skipping.")
+        return
+    # ServiceNow parses the PEM on save: it overrides short_description with the cert's subject
+    # CN and stores type as 'trust_store'. So dedup on that CN, not on a name we choose.
+    cn = None
+    try:
+        out = subprocess.run(["openssl", "x509", "-noout", "-subject"],
+                             input=ca, capture_output=True, text=True, timeout=10).stdout
+        for part in out.split("CN=")[-1:]:
+            cn = part.strip().splitlines()[0].strip()
+    except Exception:
+        pass
+    if cn:
+        q = urllib.parse.urlencode({"sysparm_query": f"short_description={cn}^type=trust_store",
+                                    "sysparm_limit": "1", "sysparm_fields": "sys_id"})
+        if sn("GET", f"table/sys_certificate?{q}"):
+            print(f"= gateway CA '{cn}' already in ServiceNow trust store")
+            return
+    sn("POST", "table/sys_certificate",
+       {"short_description": CA_NAME, "format": "pem", "type": "trust_store",
+        "pem_certificate": ca, "active": "true"})
+    print(f"+ gateway CA uploaded to ServiceNow trust store (CN={cn})")
+
+
 def main():
+    trust_gateway_ca()
     endpoint = eda_stream_url()
     token = os.environ["SN_EVENTSTREAM_TOKEN"]
     fields = {
