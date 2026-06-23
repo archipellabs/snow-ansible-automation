@@ -1,0 +1,114 @@
+---
+# db_apply_migration.yml — apply a versioned .sql migration to a database, exactly once.
+#
+# Pattern : PUSH (approved change) or on-demand. Schema changes driven from a ServiceNow change.
+# Extra vars:
+#   target_host    : a db server in the "Meridian Fleet" inventory (role == db)
+#   db_name        : target database (created if missing) (identifier: ^[a-z_][a-z0-9_]*$)
+#   migration_file : a file under playbooks/files/migrations/ (e.g. 001_init_hr_schema.sql)
+#   change_sysid   : (optional) ServiceNow change sys_id to annotate with the result
+# Host vars (inventory): role (must be "db").
+#
+# Tracks applied migrations in a meridian_schema_migrations table inside the target database, so a
+# re-run is a no-op. The migration runs in a single transaction (psql -1 -v ON_ERROR_STOP=1): any
+# error rolls the whole file back and the migration is not recorded. Connects as the postgres
+# superuser via peer auth (runuser), so no password / psycopg2 is required.
+- name: Apply a SQL migration
+  hosts: "{{ target_host }}"
+  gather_facts: false
+  vars:
+    pg_bin: /usr/pgsql-16/bin
+    migration_dir: /tmp/meridian_migrations
+  tasks:
+    - name: Validate inputs
+      ansible.builtin.assert:
+        that:
+          - role == 'db'
+          - db_name is defined and db_name is match('^[a-z_][a-z0-9_]*$')
+          - migration_file is defined and migration_file is match('^[A-Za-z0-9._-]+\.sql$')
+        fail_msg: "db_apply_migration expects a db host, a valid db_name and a *.sql migration_file."
+
+    - name: Check whether the database exists
+      become: true
+      ansible.builtin.command:
+        argv: [runuser, -u, postgres, --, "{{ pg_bin }}/psql", -tAc,
+               "SELECT 1 FROM pg_database WHERE datname = '{{ db_name }}'"]
+      register: db_exists
+      changed_when: false
+
+    - name: Create the database if missing
+      become: true
+      ansible.builtin.command:
+        argv: [runuser, -u, postgres, --, "{{ pg_bin }}/psql", -v, ON_ERROR_STOP=1, -c,
+               'CREATE DATABASE "{{ db_name }}"']
+      when: db_exists.stdout != "1"
+      changed_when: true
+
+    - name: Ensure the migration-tracking table exists
+      become: true
+      ansible.builtin.command:
+        argv: [runuser, -u, postgres, --, "{{ pg_bin }}/psql", -d, "{{ db_name }}", -v, ON_ERROR_STOP=1, -tAc,
+               "CREATE TABLE IF NOT EXISTS meridian_schema_migrations
+                (filename text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())"]
+      changed_when: false
+
+    - name: Check whether this migration was already applied
+      become: true
+      ansible.builtin.command:
+        argv: [runuser, -u, postgres, --, "{{ pg_bin }}/psql", -d, "{{ db_name }}", -tAc,
+               "SELECT 1 FROM meridian_schema_migrations WHERE filename = '{{ migration_file }}'"]
+      register: already
+      changed_when: false
+
+    - name: Ensure the staging directory exists (readable by postgres)
+      become: true
+      ansible.builtin.file:
+        path: "{{ migration_dir }}"
+        state: directory
+        owner: postgres
+        mode: "0755"
+      when: already.stdout != "1"
+
+    - name: Stage the migration file on the server
+      become: true
+      ansible.builtin.copy:
+        src: "{{ playbook_dir }}/files/migrations/{{ migration_file }}"
+        dest: "{{ migration_dir }}/{{ migration_file }}"
+        owner: postgres
+        mode: "0644"
+      when: already.stdout != "1"
+
+    - name: Apply the migration in a single transaction
+      become: true
+      ansible.builtin.command:
+        argv: [runuser, -u, postgres, --, "{{ pg_bin }}/psql", -d, "{{ db_name }}",
+               -v, ON_ERROR_STOP=1, -1, -f, "{{ migration_dir }}/{{ migration_file }}"]
+      when: already.stdout != "1"
+      changed_when: true
+
+    - name: Record the migration as applied
+      become: true
+      ansible.builtin.command:
+        argv: [runuser, -u, postgres, --, "{{ pg_bin }}/psql", -d, "{{ db_name }}", -v, ON_ERROR_STOP=1, -c,
+               "INSERT INTO meridian_schema_migrations (filename) VALUES ('{{ migration_file }}')"]
+      when: already.stdout != "1"
+      changed_when: true
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: >-
+          {{ migration_file }} on {{ db_name }}@{{ target_host }}:
+          {{ 'applied' if already.stdout != '1' else 'already applied (skipped)' }}.
+
+    - name: Annotate the change request (optional)
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.api:
+        resource: change_request
+        action: patch
+        sys_id: "{{ change_sysid }}"
+        data:
+          work_notes: >-
+            Change {{ change_number | default('(on-demand)') }} executed by AAP on {{ target_host }}:
+            migration {{ migration_file }} {{ 'applied to' if already.stdout != '1' else 'already present on' }} {{ db_name }}.
+      when: change_sysid is defined

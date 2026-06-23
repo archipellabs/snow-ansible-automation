@@ -1,0 +1,84 @@
+---
+# db_create_role.yml — create (or reconcile) a PostgreSQL login role on a database server.
+#
+# Pattern : PUSH (change / catalog) or on-demand. A DBA-automation example unlocked by the real
+#           PostgreSQL on the *-db fleet servers (simulator/base/db.Containerfile).
+# Extra vars:
+#   target_host  : a db server in the "Meridian Fleet" inventory (role == db)
+#   db_role      : the login role to create   (identifier: ^[a-z_][a-z0-9_]*$)
+#   db_password  : the role's password
+#   db_name      : (optional) database to GRANT CONNECT on
+#   change_sysid : (optional) ServiceNow change sys_id to annotate with the result
+# Host vars (inventory): role (must be "db").
+#
+# Connects as the postgres superuser through peer auth: psql is run as the postgres OS user via
+# `runuser` over the local socket, so no password and no psycopg2/community.postgresql are needed.
+# Idempotent: a DO block ALTERs the role if it already exists, otherwise CREATEs it.
+- name: Create a PostgreSQL login role
+  hosts: "{{ target_host }}"
+  gather_facts: false
+  vars:
+    pg_bin: /usr/pgsql-16/bin          # PGDG install prefix (see db.Containerfile)
+  tasks:
+    - name: Validate inputs
+      ansible.builtin.assert:
+        that:
+          - role == 'db'
+          - db_role is defined and db_role is match('^[a-z_][a-z0-9_]*$')
+          - db_password is defined and db_password | length > 0
+          - db_name is not defined or db_name is match('^[a-z_][a-z0-9_]*$')
+        fail_msg: "db_create_role expects a db host plus a valid db_role and db_password."
+
+    - name: Create or reconcile the role
+      become: true
+      no_log: true                     # the statement carries the password
+      ansible.builtin.command:
+        argv:
+          - runuser
+          - -u
+          - postgres
+          - --
+          - "{{ pg_bin }}/psql"
+          - -v
+          - ON_ERROR_STOP=1
+          - -tAc
+          - |
+            DO $do$
+            BEGIN
+               IF EXISTS (SELECT FROM pg_roles WHERE rolname = '{{ db_role }}') THEN
+                  ALTER ROLE "{{ db_role }}" WITH LOGIN PASSWORD '{{ db_password }}';
+               ELSE
+                  CREATE ROLE "{{ db_role }}" WITH LOGIN PASSWORD '{{ db_password }}';
+               END IF;
+            END
+            $do$;
+      changed_when: true
+
+    - name: Grant CONNECT on the database (optional)
+      become: true
+      ansible.builtin.command:
+        argv:
+          - runuser
+          - -u
+          - postgres
+          - --
+          - "{{ pg_bin }}/psql"
+          - -v
+          - ON_ERROR_STOP=1
+          - -tAc
+          - 'GRANT CONNECT ON DATABASE "{{ db_name }}" TO "{{ db_role }}";'
+      changed_when: true
+      when: db_name is defined
+
+    - name: Annotate the change request (optional)
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.api:
+        resource: change_request
+        action: patch
+        sys_id: "{{ change_sysid }}"
+        data:
+          work_notes: >-
+            Change {{ change_number | default('(on-demand)') }} executed by AAP on {{ target_host }}:
+            PostgreSQL role {{ db_role }} created/updated{{ (' with CONNECT on ' ~ db_name) if db_name is defined else '' }}.
+      when: change_sysid is defined

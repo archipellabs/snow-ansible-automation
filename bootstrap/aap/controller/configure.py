@@ -148,12 +148,18 @@ def main():
         time.sleep(3)
     print(f"   project status: {status}")
 
-    # Job templates: one per pattern (role-aware playbooks, "Meridian Fleet" inventory).
+    # Job templates: role-aware playbooks against the "Meridian Fleet" inventory. The two core
+    # patterns are EDA-triggered; the db-admin templates (P2) are launched on-demand / by a change.
     #   pull  -> "Restart Service"        runs restart_service.yml (incident remediation)
     #   push  -> "Execute Change Request" runs execute_change.yml  (change execution)
-    # Both share the inventory/project/EE and the machine + ServiceNow credentials.
+    #   db    -> "DB Create Role" / "DB Apply Migration" / "DB Status" / "DB Backup"
+    # All share the inventory/project/EE and the machine + ServiceNow credentials.
     for jt_name, pb in (("Restart Service", "playbooks/restart_service.yml"),
-                        ("Execute Change Request", "playbooks/execute_change.yml")):
+                        ("Execute Change Request", "playbooks/execute_change.yml"),
+                        ("DB Create Role", "playbooks/db_create_role.yml"),
+                        ("DB Apply Migration", "playbooks/db_apply_migration.yml"),
+                        ("DB Status", "playbooks/db_status.yml"),
+                        ("DB Backup", "playbooks/db_backup.yml")):
         jt = get_or_create(
             "job_templates", {"name": jt_name},
             {"name": jt_name, "job_type": "run", "inventory": inv["id"],

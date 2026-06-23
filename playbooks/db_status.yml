@@ -1,0 +1,72 @@
+---
+# db_status.yml — read-only health report for a PostgreSQL fleet server.
+#
+# Pattern : PULL (incident) or on-demand. Useful as a first responder to a "database slow / down"
+#           incident, or run ad hoc. Makes no changes.
+# Extra vars:
+#   target_host    : a db server in the "Meridian Fleet" inventory (role == db)
+#   incident_sysid : (optional) ServiceNow incident sys_id to attach the report to as a work note
+# Host vars (inventory): role (must be "db").
+#
+# Connects as the postgres superuser via peer auth (runuser). Reports server version + uptime,
+# the connection count, and each database's size.
+- name: PostgreSQL status report
+  hosts: "{{ target_host }}"
+  gather_facts: false
+  vars:
+    pg_bin: /usr/pgsql-16/bin
+  tasks:
+    - name: Validate inputs
+      ansible.builtin.assert:
+        that:
+          - role == 'db'
+        fail_msg: "db_status only applies to db hosts."
+
+    - name: Collect server version and uptime
+      become: true
+      ansible.builtin.command:
+        argv: [runuser, -u, postgres, --, "{{ pg_bin }}/psql", -tAc,
+               "SELECT version() || ' | uptime ' || date_trunc('second', now() - pg_postmaster_start_time())"]
+      register: version
+      changed_when: false
+
+    - name: Collect the active connection count
+      become: true
+      ansible.builtin.command:
+        argv: [runuser, -u, postgres, --, "{{ pg_bin }}/psql", -tAc,
+               "SELECT count(*) FROM pg_stat_activity"]
+      register: connections
+      changed_when: false
+
+    - name: Collect per-database sizes
+      become: true
+      ansible.builtin.command:
+        argv: [runuser, -u, postgres, --, "{{ pg_bin }}/psql", -tAc,
+               "SELECT datname || ' = ' || pg_size_pretty(pg_database_size(datname))
+                FROM pg_database WHERE datistemplate = false ORDER BY datname"]
+      register: sizes
+      changed_when: false
+
+    - name: Assemble the report
+      ansible.builtin.set_fact:
+        db_report: |-
+          PostgreSQL status on {{ target_host }}
+          {{ version.stdout }}
+          connections: {{ connections.stdout }}
+          databases:
+          {{ sizes.stdout | indent(2, true) }}
+
+    - name: Show the report
+      ansible.builtin.debug:
+        msg: "{{ db_report.splitlines() }}"
+
+    - name: Attach the report to the incident (optional)
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.api:
+        resource: incident
+        action: patch
+        sys_id: "{{ incident_sysid }}"
+        data:
+          work_notes: "{{ db_report }}"
+      when: incident_sysid is defined

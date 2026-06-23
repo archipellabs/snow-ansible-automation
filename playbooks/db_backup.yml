@@ -1,0 +1,93 @@
+---
+# db_backup.yml — take a pg_dump archive of a database and prune old ones.
+#
+# Pattern : scheduled or on-demand (e.g. a nightly workflow, or before a risky change).
+# Extra vars:
+#   target_host    : a db server in the "Meridian Fleet" inventory (role == db)
+#   db_name        : database to dump (identifier: ^[a-z_][a-z0-9_]*$)
+#   retention_days : (optional, default 7) delete this database's dumps older than N days
+#   change_sysid   : (optional) ServiceNow change sys_id to annotate with the result
+# Host vars (inventory): role (must be "db").
+#
+# Dumps in PostgreSQL's compressed custom format (pg_dump -Fc) to /var/backups/postgresql, run as
+# the postgres OS user via peer auth (runuser). Restore with: pg_restore -d <db> <file>.
+- name: Back up a PostgreSQL database
+  hosts: "{{ target_host }}"
+  gather_facts: false
+  vars:
+    pg_bin: /usr/pgsql-16/bin
+    backup_dir: /var/backups/postgresql
+    retention_days: 7
+  tasks:
+    - name: Validate inputs
+      ansible.builtin.assert:
+        that:
+          - role == 'db'
+          - db_name is defined and db_name is match('^[a-z_][a-z0-9_]*$')
+        fail_msg: "db_backup expects a db host and a valid db_name."
+
+    - name: Ensure the backup directory exists (owned by postgres)
+      become: true
+      ansible.builtin.file:
+        path: "{{ backup_dir }}"
+        state: directory
+        owner: postgres
+        group: postgres
+        mode: "0750"
+
+    - name: Build a timestamped backup path
+      become: true
+      ansible.builtin.command: date -u +%Y%m%dT%H%M%SZ
+      register: ts
+      changed_when: false
+
+    - name: Dump the database (custom compressed format)
+      become: true
+      ansible.builtin.command:
+        argv: [runuser, -u, postgres, --, "{{ pg_bin }}/pg_dump", -Fc, -d, "{{ db_name }}",
+               -f, "{{ backup_dir }}/{{ db_name }}-{{ ts.stdout }}.dump"]
+      changed_when: true
+
+    - name: Read the archive size
+      become: true
+      ansible.builtin.stat:
+        path: "{{ backup_dir }}/{{ db_name }}-{{ ts.stdout }}.dump"
+      register: dump
+
+    - name: Prune dumps older than the retention window
+      become: true
+      ansible.builtin.find:
+        paths: "{{ backup_dir }}"
+        patterns: "{{ db_name }}-*.dump"
+        age: "{{ retention_days }}d"
+      register: old
+
+    - name: Delete the pruned dumps
+      become: true
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old.files }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: >-
+          Backed up {{ db_name }}@{{ target_host }} to
+          {{ backup_dir }}/{{ db_name }}-{{ ts.stdout }}.dump
+          ({{ dump.stat.size | default(0) | human_readable }}); pruned {{ old.files | length }} old dump(s).
+
+    - name: Annotate the change request (optional)
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.api:
+        resource: change_request
+        action: patch
+        sys_id: "{{ change_sysid }}"
+        data:
+          work_notes: >-
+            Change {{ change_number | default('(on-demand)') }} executed by AAP on {{ target_host }}:
+            backed up {{ db_name }} to {{ db_name }}-{{ ts.stdout }}.dump
+            ({{ dump.stat.size | default(0) | human_readable }}).
+      when: change_sysid is defined

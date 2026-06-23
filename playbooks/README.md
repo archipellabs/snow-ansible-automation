@@ -24,10 +24,10 @@ Priority: **P0** = built (core); **P1–P4** = planned, from most useful to nice
 | `execute_change.yml` | record a change marker, restart the `service`, verify, annotate the change | **push** — approved change | all | **P0 ✅** |
 | `collect_diagnostics.yml` | service status + disk + memory + recent logs → incident work note | pull — incident (P1) | all | P1 |
 | `free_disk.yml` | clean `/var/log`, temp, caches; re-check | pull — "disk full" incident | all | P1 |
-| `db_create_role.yml` | create a PostgreSQL login role + grants | push — change/catalog | db | P2 |
-| `db_apply_migration.yml` | run a `.sql` migration against a database | push — change | db | P2 |
-| `db_status.yml` | connections, database sizes, uptime → work note | pull / on-demand | db | P2 |
-| `db_backup.yml` | `pg_dump` a database to an archive | scheduled / on-demand | db | P2 |
+| `db_create_role.yml` | create/reconcile a PostgreSQL login role (+ optional CONNECT grant) | push — change/catalog | db | **P2 ✅** |
+| `db_apply_migration.yml` | apply a tracked `.sql` migration to a database, exactly once | push — change | db | **P2 ✅** |
+| `db_status.yml` | version, uptime, connections, database sizes → work note | pull / on-demand | db | **P2 ✅** |
+| `db_backup.yml` | `pg_dump -Fc` a database to an archive + prune old ones | scheduled / on-demand | db | **P2 ✅** |
 | `patch_os.yml` | `dnf update` (+ reboot if needed) | change / scheduled | all | P3 |
 | `rotate_cert.yml` | deploy a renewed TLS cert + reload | change | web | P3 |
 | `housekeeping.yml` | logrotate, purge old data | scheduled | all | P3 |
@@ -35,4 +35,12 @@ Priority: **P0** = built (core); **P1–P4** = planned, from most useful to nice
 | `provision_employee.yml` | create an employee (HR app + account) | push — catalog | — | P4 |
 
 > The DB playbooks (P2) are unlocked by the real PostgreSQL on the `*-db` servers (PGDG); see
-> `simulator/base/db.Containerfile`.
+> `simulator/base/db.Containerfile`. They connect as the `postgres` superuser through **peer auth**
+> — `psql`/`pg_dump` are run as the `postgres` OS user via `runuser`, over the local socket — so no
+> password and no `psycopg2`/`community.postgresql` are needed in the execution environment. Each
+> guards on `role == db` and only annotates ServiceNow when a record id (`change_sysid` /
+> `incident_sysid`) is passed, so they also run on-demand. SQL migrations live in
+> `playbooks/files/migrations/` and are tracked per-database in `meridian_schema_migrations`.
+> The controller exposes them as the `DB Create Role` / `DB Apply Migration` / `DB Status` /
+> `DB Backup` job templates (`bootstrap/aap/controller/configure.py`). Smoke-test the lifecycle
+> against `hr-db-01` with `python3 tests/db_admin_lifecycle.py`.
