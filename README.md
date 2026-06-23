@@ -20,10 +20,51 @@ ServiceNow PDI (cloud)  <->  AAP 2.7  (gateway + controller + EDA + hub, one RHE
 Everything except ServiceNow runs as **rootless podman** containers on a single Azure RHEL 9 VM.
 ServiceNow is the real SaaS Personal Developer Instance (PDI).
 
+## How it works — objects & flow
+
+End-to-end flow:
+
+1. A monitored service goes down → an **incident** is opened in ServiceNow, assigned to the
+   **Auto-Remediation** group (`state = New`).
+2. **EDA** polls ServiceNow (`servicenow.itsm.records`), detects the incident, and triggers the
+   controller **job template**, passing the incident number + the affected host.
+3. The **job template** runs `remediate_ping.yml` in an execution environment: SSH to the target,
+   restart the service, re-check.
+4. The playbook updates the incident via `servicenow.itsm`: **Resolved** if the service is back,
+   otherwise **escalated**.
+
+Objects provisioned by the scripts:
+
+**ServiceNow** — `bootstrap/servicenow/setup.py`
+| Object | Role |
+|---|---|
+| Assignment group `Auto-Remediation` | trigger filter — EDA only reacts to incidents in this group |
+| Service account `eda.integration` (+ `itil`) | API identity used by EDA (read) and the playbook (update) |
+| CIs `app-node-1` / `app-node-2` | represent the target hosts |
+
+**AAP controller** — `ansible/controller/configure.py`
+| Object | Role |
+|---|---|
+| Credential `Target SSH` (machine) | SSH key to reach the targets (user `ansible`) |
+| Credential `ServiceNow PDI` (custom type) | injects `SN_HOST`/`SN_USERNAME`/`SN_PASSWORD` for `servicenow.itsm` |
+| Inventory `POC Targets` | `app-node-1/2` at `host.containers.internal:2201/2202` |
+| Project `snow-ansible-automation` | pulls the playbooks from this Git repo |
+| Job template `Remediate Ping Server` | runs `ansible/playbooks/remediate_ping.yml` on `POC Targets` |
+
+**EDA** — to be wired (see Status)
+| Object | Role |
+|---|---|
+| Decision environment | EE image with `servicenow.itsm` (for the records source) |
+| EDA project | same Git repo, `ansible/rulebooks/` |
+| Rulebook activation | polls ServiceNow → launches the job template |
+
+> `configure.py` also removes the installer's `Demo *` objects; the `Ansible Galaxy` credential is
+> a system default and is kept.
+
 ## Repository layout
 
-Two top-level areas: **`bootstrap/`** is one-time lab setup (not pulled by AAP), **`ansible/`**
-is the automation content that the AAP controller and EDA pull as a Git project.
+**`bootstrap/`** is one-time lab setup; **`ansible/`** + **`extensions/eda/rulebooks/`** are the
+automation content the AAP controller and EDA pull from this Git repo.
 
 | Path | Purpose |
 |---|---|
@@ -33,10 +74,11 @@ is the automation content that the AAP controller and EDA pull as a Git project.
 | `bootstrap/servicenow/` | `setup.py` — provisions the ServiceNow objects (group, service account, CIs) |
 | `bootstrap/targets/` | `Containerfile` + `deploy.sh` for the `app-node-1/2` target containers |
 | `ansible/playbooks/` | `remediate_ping.yml` — the remediation playbook |
-| `ansible/rulebooks/` | `snow_ping_remediation.yml` — the EDA rulebook (draft) |
 | `ansible/collections/` | `requirements.yml` — collections the project/DE needs (`servicenow.itsm`) |
-| `ansible/controller/` | controller config-as-code (to be added) |
-| `ansible/eda/` | EDA decision-environment build (to be added) |
+| `ansible/controller/` | `configure.py` — controller config-as-code (credentials, inventory, project, job template) |
+| `ansible/eda/` | `execution-environment.yml` + `build.sh` — custom EDA decision environment |
+| `extensions/eda/rulebooks/` | `snow_ping_remediation.yml` — the EDA rulebook (EDA's required discovery path) |
+| `tests/` | `healthcheck.py` + `e2e_remediation.py` — re-runnable validation |
 | `.env.example` | template for `.env` — the single secrets file (copy and fill) |
 
 ## Secrets

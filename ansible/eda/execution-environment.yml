@@ -1,0 +1,18 @@
+---
+# Custom EDA decision environment: de-supported + servicenow.itsm (for the
+# servicenow.itsm.records event source used by the rulebook). Built with ansible-builder.
+version: 3
+
+images:
+  base_image:
+    name: registry.redhat.io/ansible-automation-platform-27/de-supported-rhel9:latest
+
+options:
+  package_manager_path: /usr/bin/microdnf
+
+dependencies:
+  system:
+    - python3.12-devel [platform:rpm]
+  galaxy:
+    collections:
+      - name: servicenow.itsm

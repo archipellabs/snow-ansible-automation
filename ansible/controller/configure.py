@@ -85,7 +85,20 @@ def get_or_create(endpoint, query, body, label):
     return obj
 
 
+def delete_by_name(endpoint, name):
+    res = api("GET", f"{endpoint}/?{urllib.parse.urlencode({'name': name})}")
+    if res.get("count"):
+        oid = res["results"][0]["id"]
+        api("DELETE", f"{endpoint}/{oid}/")
+        print(f"- removed {endpoint} '{name}' (id={oid})")
+
+
 def main():
+    # Remove the installer's demo objects (keep 'Ansible Galaxy', a system default).
+    for ep, nm in (("job_templates", "Demo Job Template"), ("projects", "Demo Project"),
+                   ("inventories", "Demo Inventory"), ("credentials", "Demo Credential")):
+        delete_by_name(ep, nm)
+
     org = first("organizations", "Default")["id"]
     machine_type = first("credential_types", "Machine")["id"]
     ee = first("execution_environments", "Default execution environment")["id"]
