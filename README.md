@@ -18,8 +18,8 @@ ServiceNow is a real SaaS Personal Developer Instance (PDI). The automation cont
 | Trigger | service down → incident in `Auto-Remediation` group | change request **approved** (with a CI) |
 | Direction | EDA → ServiceNow (**outbound** poll) | ServiceNow → EDA (**inbound** webhook) |
 | EDA source | `servicenow.itsm.records` (poll, 10 s) | `ansible.eda.webhook` via an **Event Stream** |
-| Job template | `Remediate Ping Server` | `Execute Change Request` |
-| Playbook | `remediate_ping.yml` (restart + resolve) | `execute_change.yml` (deploy + work note) |
+| Job template | `Restart Service` | `Execute Change Request` |
+| Playbook | `restart_service.yml` (restart + resolve) | `execute_change.yml` (deploy + work note) |
 | Custom DE? | **yes** (`servicenow.itsm` is in no stock DE) | no — same DE; `ansible.eda` is built in |
 | Exposure | outbound only | inbound on **:443** (gateway-managed, TLS) |
 | End-to-end test | `tests/e2e_eda.py` | `tests/e2e_change.py` |
@@ -49,8 +49,8 @@ the same components and adds a gateway-managed **Event Stream**. The runtime flo
 1. A monitored service goes down → an **incident** is opened in ServiceNow, assigned to the
    **Auto-Remediation** group (`state = New`).
 2. **EDA** polls ServiceNow (`servicenow.itsm.records`), detects the incident, and triggers the
-   `Remediate Ping Server` **job template**, passing the incident number + the affected host.
-3. The job runs `remediate_ping.yml` in an execution environment: SSH to the target, restart the
+   `Restart Service` **job template**, passing the incident number + the affected host.
+3. The job runs `restart_service.yml` in an execution environment: SSH to the target, restart the
    service, re-check.
 4. The playbook updates the incident via `servicenow.itsm`: **Resolved** if the service is back,
    otherwise **escalated**.
@@ -83,7 +83,7 @@ the same components and adds a gateway-managed **Event Stream**. The runtime flo
 | Credential `ServiceNow PDI` (custom type) | injects `SN_HOST`/`SN_USERNAME`/`SN_PASSWORD` for `servicenow.itsm` |
 | Inventory `POC Targets` | `app-node-1/2` at `host.containers.internal:2201/2202` |
 | Project `snow-ansible-automation` | pulls the playbooks from this Git repo |
-| Job template `Remediate Ping Server` (pull) / `Execute Change Request` (push) | run the two playbooks |
+| Job template `Restart Service` (pull) / `Execute Change Request` (push) | run the two playbooks |
 
 **EDA** — `bootstrap/aap/eda/configure.py` (pull) + `configure_push.py` (push)
 | Object | Pattern | Role |
@@ -111,7 +111,7 @@ content the AAP controller and EDA pull from this Git repo (the SCM project).
 | `bootstrap/awx/` | placeholder for a future AWX install (open-source alternative to AAP) |
 | `bootstrap/servicenow/` | `setup.py` (pull objects) + `setup_change.py` (push: Business Rule + gateway-CA trust) |
 | `bootstrap/targets/` | `Containerfile` + `deploy.sh` for the `app-node-1/2` target containers |
-| `playbooks/` | `remediate_ping.yml` (pull) + `execute_change.yml` (push) — pulled by the controller project |
+| `playbooks/` | `restart_service.yml` (pull) + `execute_change.yml` (push) — pulled by the controller project |
 | `collections/` | `requirements.yml` — collections AAP installs at project sync (`servicenow.itsm`) |
 | `extensions/eda/rulebooks/` | `snow_ping_remediation.yml` (pull, poll) + `snow_change_execution.yml` (push, webhook) |
 | `lib/` | `poc.py` — shared stdlib transport for the Python scripts (`load_dotenv`, `http_json`, auth, SSL); per-API wrappers stay inline |

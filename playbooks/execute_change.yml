@@ -19,6 +19,13 @@
   hosts: "{{ target_host }}"
   gather_facts: false
   tasks:
+    - name: Apply the change - ensure the marker directory exists
+      become: true
+      ansible.builtin.file:
+        path: /var/lib/meridian
+        state: directory
+        mode: "0755"
+
     - name: Apply the change - record a change marker
       become: true
       ansible.builtin.copy:
