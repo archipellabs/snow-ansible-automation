@@ -51,15 +51,17 @@ Objects provisioned by the scripts:
 | Project `snow-ansible-automation` | pulls the playbooks from this Git repo |
 | Job template `Remediate Ping Server` | runs `ansible/playbooks/remediate_ping.yml` on `POC Targets` |
 
-**EDA** — to be wired (see Status)
+**EDA** — `ansible/eda/configure.py`
 | Object | Role |
 |---|---|
-| Decision environment | EE image with `servicenow.itsm` (for the records source) |
-| EDA project | same Git repo, `ansible/rulebooks/` |
-| Rulebook activation | polls ServiceNow → launches the job template |
+| Decision environment `snow-eda-de` | DE image with `servicenow.itsm` (records source), pulled from the hub |
+| Credential `Hub …Container Registry` | pulls the DE image from the private Automation Hub |
+| Credential `AAP Controller` | lets the rulebook launch the job template (host `…/api/controller/`) |
+| EDA project `snow-ansible-automation` | same Git repo; rulebooks under `extensions/eda/rulebooks/` |
+| Rulebook activation `snow-ping-remediation` | polls ServiceNow → launches the job template (injects `SN_*`) |
 
-> `configure.py` also removes the installer's `Demo *` objects; the `Ansible Galaxy` credential is
-> a system default and is kept.
+> `configure.py` (controller) also removes the installer's `Demo *` objects; the `Ansible Galaxy`
+> credential is a system default and is kept.
 
 ## Repository layout
 
@@ -76,9 +78,9 @@ automation content the AAP controller and EDA pull from this Git repo.
 | `ansible/playbooks/` | `remediate_ping.yml` — the remediation playbook |
 | `ansible/collections/` | `requirements.yml` — collections the project/DE needs (`servicenow.itsm`) |
 | `ansible/controller/` | `configure.py` — controller config-as-code (credentials, inventory, project, job template) |
-| `ansible/eda/` | `execution-environment.yml` + `build.sh` — custom EDA decision environment |
+| `ansible/eda/` | `execution-environment.yml` + `build.sh` (build & push DE) + `configure.py` (DE, credentials, project, activation) |
 | `extensions/eda/rulebooks/` | `snow_ping_remediation.yml` — the EDA rulebook (EDA's required discovery path) |
-| `tests/` | `healthcheck.py` + `e2e_remediation.py` — re-runnable validation |
+| `tests/` | `healthcheck.py` + `e2e_remediation.py` (controller path) + `e2e_eda.py` (full EDA auto-trigger) — re-runnable validation |
 | `.env.example` | template for `.env` — the single secrets file (copy and fill) |
 
 ## Secrets
@@ -202,6 +204,31 @@ ssh -i ~/.ssh/snow-aap-poc azureuser@<FQDN> '~/targets/deploy.sh'
 Builds an ubi9-init systemd container (sshd + httpd) and starts `app-node-1/2` with SSH on host
 ports 2201/2202. Break the service with `podman exec app-node-1 systemctl stop httpd`.
 
+### 5. Controller config-as-code
+
+```bash
+python3 ansible/controller/configure.py     # credentials, inventory, project, job template
+python3 tests/healthcheck.py                # 6 checks incl. EE -> target ad-hoc ping
+```
+
+### 6. Event-Driven Ansible
+
+```bash
+# build the custom DE and push it to the hub (run ON the VM, after sync.sh)
+ssh -i ~/.ssh/snow-aap-poc azureuser@<FQDN> '~/eda/build.sh'   # rsync ansible/eda/ -> ~/eda/ first
+# then, from your machine: DE, credentials, EDA project, rulebook activation
+python3 ansible/eda/configure.py
+```
+
+`configure.py` creates the decision environment, the hub registry + `AAP Controller` credentials,
+the EDA project, and the rulebook activation (`log_level: info`). Two settings are load-bearing
+(see Key findings): the controller credential host ends in **`/api/controller/`**, and
+`eda.integration`'s ServiceNow timezone is **GMT**.
+
+```bash
+python3 tests/e2e_eda.py   # break httpd -> open incident -> EDA auto-launches the job -> resolved
+```
+
 ---
 
 ## Key findings (lessons learned)
@@ -220,17 +247,29 @@ ports 2201/2202. Break the service with `podman exec app-node-1 systemctl stop h
    providers → register providers + request quota (the DSv5 grant may land in only one region).
 5. **PAYG vs BYOS** — the RHEL PAYG image avoids Cloud Access/subscription-manager; the AAP trial
    only entitles image pulls (via the registry service account).
+6. **EDA → controller API path** — `ansible-rulebook` chooses the controller API slug from the
+   credential host: a host *with a path* (`https://<FQDN>/api/controller/`) selects the AAP 2.5+
+   gateway slugs (`v2/config/`); a bare host selects the legacy `/api/v2/`, which **404s** behind
+   the gateway. `run_job_template` silently never launches until the host carries the path.
+7. **ServiceNow source timezone** — the `servicenow.itsm.records` source builds its poll-window
+   filter with `gs.dateGenerate`, which ServiceNow evaluates in the **querying user's** timezone.
+   The rulebook pins `remote_servicenow_timezone: UTC`, so `eda.integration`'s timezone must be
+   **GMT** (`setup.py` sets it) — otherwise the window shifts hours ahead and new incidents are
+   never matched. A far-past `updated_since` masks this in quick tests; it only bites at "now".
+8. **EDA DE image must be in a registry** — activation workers pull the DE by `image_url` from a
+   registry credential; a `localhost/...` image is invisible to them, so `build.sh` pushes the DE
+   to the private hub and the DE points at `<FQDN>/snow-eda-de:latest` (pull policy `always`).
 
 ## Status
 
-**Done**: infra, host base, AAP 2.7 install, ServiceNow objects + working service account, target
-containers, EE→target network path validated, subscription active.
+**Done — full event-driven loop working end-to-end** (`tests/e2e_eda.py` passes): a ServiceNow
+incident in the `Auto-Remediation` group is auto-detected by the EDA activation, which launches the
+controller job template; the playbook restarts the service and resolves the incident — no manual
+launch. Covered: infra, host base, AAP 2.7 install, ServiceNow objects + service account, target
+containers, EE→target path, controller config-as-code, custom DE, EDA config-as-code + activation.
 
-**Left (the wiring)**:
-- build a custom EDA **decision environment** with `servicenow.itsm`;
-- **controller** config-as-code: project, inventory (`app-node-1/2` at `127.0.0.1:2201/2202`),
-  machine + ServiceNow credentials, job template "Remediate Ping Server";
-- **EDA rulebook activation** + the end-to-end test (break a service → incident → auto-resolve).
+**Optional next steps**: AWX variant (`bootstrap/awx/`), more remediation playbooks/use cases,
+hardening (reverse proxy, real certs), and obtaining a subscription manifest for offline entitlement.
 
 ## Lifecycle & cost
 

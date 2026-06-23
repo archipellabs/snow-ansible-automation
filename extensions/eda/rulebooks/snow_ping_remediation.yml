@@ -15,7 +15,10 @@
         # Trigger filter (see bootstrap/servicenow/setup.py): dedicated group + New state.
         sysparm_query: "assignment_group.name=Auto-Remediation^state=1"
         interval: 10
-        # The source errors out without a resolvable timezone; pin it.
+        # The source builds its poll-window filter with gs.dateGenerate, which ServiceNow
+        # evaluates in the querying user's timezone. Pinning UTC here only works because
+        # bootstrap/servicenow/setup.py sets eda.integration's timezone to GMT; otherwise
+        # the window shifts and new incidents are never matched.
         remote_servicenow_timezone: UTC
   rules:
     - name: New incident in Auto-Remediation -> launch remediation

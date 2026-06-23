@@ -119,9 +119,13 @@ def main():
     # Activate the account and clear the reset flag (these DO work via the API).
     # The password itself cannot be set reliably via the Table API -> set it once in
     # the UI (open the user -> Set Password), then store it in .env as SN_EDA_PASSWORD.
+    # time_zone=GMT is REQUIRED: the EDA records source builds its poll-window filter with
+    # gs.dateGenerate, evaluated in this user's timezone; the rulebook pins UTC, so a
+    # non-GMT user shifts the window and new incidents never trigger the activation.
     req("PATCH", f"{BASE}/sys_user/{user_sid}",
-        {"active": "true", "locked_out": "false", "password_needs_reset": "false"})
-    print("  -> active=true, locked_out=false, password_needs_reset=false")
+        {"active": "true", "locked_out": "false", "password_needs_reset": "false",
+         "time_zone": "GMT"})
+    print("  -> active=true, locked_out=false, password_needs_reset=false, time_zone=GMT")
 
     # 3) itil role (incident read/write)
     role = get_one("sys_user_role", "name=itil")
