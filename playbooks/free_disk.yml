@@ -1,0 +1,100 @@
+---
+# free_disk.yml — reclaim disk space on a server, then resolve or escalate the incident.
+#
+# Pattern : PULL (a "disk full / low space" incident) or on-demand. Safe, reversible housekeeping:
+#           vacuum the systemd journal, drop rotated logs, clear the package-manager cache. It then
+#           re-measures usage and, like restart_service.yml, resolves the incident if usage fell
+#           below the threshold or escalates it otherwise.
+# Extra vars:
+#   target_host     : the affected server in the "Meridian Fleet" inventory
+#   incident_number : (optional) ServiceNow incident to resolve/escalate
+#   disk_threshold  : (optional, default 90) acceptable root-filesystem usage %, post-cleanup
+# Host vars (inventory): support_group (for the escalation note).
+- name: Free disk space to remediate an incident
+  hosts: "{{ target_host }}"
+  gather_facts: false
+  vars:
+    disk_threshold: 90
+    mount: /
+  tasks:
+    - name: Measure usage before cleanup
+      become: true
+      ansible.builtin.shell: "df --output=pcent {{ mount }} | tail -1 | tr -dc '0-9'"
+      register: before
+      changed_when: false
+
+    - name: Vacuum the systemd journal to 2 days
+      become: true
+      ansible.builtin.command: journalctl --vacuum-time=2d
+      register: vac
+      changed_when: "'Deleted' in vac.stderr or 'vacuuming' in vac.stderr"
+      failed_when: false
+
+    - name: Find rotated/compressed logs under /var/log
+      become: true
+      ansible.builtin.find:
+        paths: /var/log
+        patterns: ['*.gz', '*.xz', '*.old', '*.[0-9]']
+        use_regex: false
+        recurse: true
+      register: old_logs
+
+    - name: Delete the rotated logs
+      become: true
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_logs.files }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Clear the dnf cache
+      become: true
+      ansible.builtin.command: dnf clean all
+      register: dnf_clean
+      changed_when: true
+      failed_when: false
+
+    - name: Measure usage after cleanup
+      become: true
+      ansible.builtin.shell: "df --output=pcent {{ mount }} | tail -1 | tr -dc '0-9'"
+      register: after
+      changed_when: false
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: >-
+          {{ mount }} usage on {{ target_host }}: {{ before.stdout }}% -> {{ after.stdout }}%
+          (removed {{ old_logs.files | length }} rotated log file[s]; threshold {{ disk_threshold }}%).
+
+    - name: Resolve the incident if usage is back under the threshold
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.incident:
+        number: "{{ incident_number }}"
+        state: resolved
+        close_code: "Solution provided"
+        close_notes: >-
+          Disk space reclaimed automatically by AAP on {{ target_host }}:
+          {{ mount }} usage {{ before.stdout }}% -> {{ after.stdout }}% (threshold {{ disk_threshold }}%).
+        other:
+          work_notes: >-
+            Auto-remediation (EDA -> AAP): freed disk on {{ target_host }}
+            (removed {{ old_logs.files | length }} rotated logs, vacuumed journal, cleared dnf cache).
+      when:
+        - incident_number is defined
+        - after.stdout | int < disk_threshold | int
+
+    - name: Escalate the incident if usage is still over the threshold
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.incident:
+        number: "{{ incident_number }}"
+        state: in_progress
+        other:
+          work_notes: >-
+            Auto-remediation PARTIAL on {{ target_host }}: {{ mount }} still at {{ after.stdout }}%
+            after housekeeping (threshold {{ disk_threshold }}%). Escalating to {{ support_group | default('L2') }}.
+      when:
+        - incident_number is defined
+        - after.stdout | int >= disk_threshold | int

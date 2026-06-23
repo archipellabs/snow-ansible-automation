@@ -22,8 +22,8 @@ Priority: **P0** = built (core); **P1–P4** = planned, from most useful to nice
 |---|---|---|---|---|
 | `restart_service.yml` | restart the host's `service`, clear the FastAPI "degraded" flag, re-check, resolve/escalate the incident | **pull** — incident | all | **P0 ✅** |
 | `execute_change.yml` | record a change marker, restart the `service`, verify, annotate the change | **push** — approved change | all | **P0 ✅** |
-| `collect_diagnostics.yml` | service status + disk + memory + recent logs → incident work note | pull — incident (P1) | all | P1 |
-| `free_disk.yml` | clean `/var/log`, temp, caches; re-check | pull — "disk full" incident | all | P1 |
+| `collect_diagnostics.yml` | service status + disk + memory + recent logs → incident work note (read-only) | pull — incident | all | **P1 ✅** |
+| `free_disk.yml` | vacuum journal, drop rotated logs, clear dnf cache; re-check + resolve/escalate | pull — "disk full" incident | all | **P1 ✅** |
 | `db_create_role.yml` | create/reconcile a PostgreSQL login role (+ optional CONNECT grant) | push — change/catalog | db | **P2 ✅** |
 | `db_apply_migration.yml` | apply a tracked `.sql` migration to a database, exactly once | push — change | db | **P2 ✅** |
 | `db_status.yml` | version, uptime, connections, database sizes → work note | pull / on-demand | db | **P2 ✅** |

@@ -1,0 +1,69 @@
+---
+# collect_diagnostics.yml — first-responder diagnostics for an incident (read-only).
+#
+# Pattern : PULL (incident) or on-demand. Runs no remediation: it gathers the service state, disk
+#           and memory usage, and the service's recent logs, then attaches them to the incident as
+#           a work note and moves it to In Progress (acknowledged / under investigation).
+# Extra vars:
+#   target_host     : the affected server in the "Meridian Fleet" inventory
+#   incident_number : (optional) ServiceNow incident to attach the report to
+# Host vars (inventory): service (the systemd unit to inspect), role.
+# ServiceNow credentials are injected by the controller credential as SN_HOST/SN_USERNAME/SN_PASSWORD.
+- name: Collect diagnostics for an incident
+  hosts: "{{ target_host }}"
+  gather_facts: false
+  tasks:
+    - name: Service state
+      become: true
+      ansible.builtin.command: "systemctl is-active {{ service }}"
+      register: svc_state
+      changed_when: false
+      failed_when: false
+
+    - name: Disk usage
+      become: true
+      ansible.builtin.command: df -h /
+      register: disk
+      changed_when: false
+
+    - name: Memory usage
+      become: true
+      ansible.builtin.command: free -m
+      register: mem
+      changed_when: false
+
+    - name: Recent service logs
+      become: true
+      ansible.builtin.command: "journalctl -u {{ service }} -n 25 --no-pager"
+      register: logs
+      changed_when: false
+      failed_when: false
+
+    - name: Assemble the diagnostics report
+      ansible.builtin.set_fact:
+        diag_report: |-
+          Diagnostics for {{ service }} on {{ target_host }} ({{ role }})
+          service is-active: {{ svc_state.stdout }}
+
+          # df -h /
+          {{ disk.stdout }}
+
+          # free -m
+          {{ mem.stdout }}
+
+          # journalctl -u {{ service }} -n 25
+          {{ logs.stdout | default('(no logs)') }}
+
+    - name: Show the report
+      ansible.builtin.debug:
+        msg: "{{ diag_report.splitlines() }}"
+
+    - name: Attach the report to the incident and acknowledge it (optional)
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.incident:
+        number: "{{ incident_number }}"
+        state: in_progress
+        other:
+          work_notes: "{{ diag_report }}"
+      when: incident_number is defined
