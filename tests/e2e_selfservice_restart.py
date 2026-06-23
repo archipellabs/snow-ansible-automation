@@ -13,6 +13,7 @@ import os
 import sys
 import time
 import subprocess
+import urllib.parse
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 TARGET = "hr-web-01"
@@ -47,7 +48,8 @@ def ssh(cmd):
 
 
 def main():
-    item = sn(f"table/sc_cat_item?sysparm_query=name={ITEM_NAME}&sysparm_fields=sys_id&sysparm_limit=1")["result"]
+    q = urllib.parse.urlencode({"sysparm_query": f"name={ITEM_NAME}", "sysparm_fields": "sys_id", "sysparm_limit": "1"})
+    item = sn(f"table/sc_cat_item?{q}")["result"]
     if not item:
         sys.exit(f"catalog item '{ITEM_NAME}' not found — run bootstrap/servicenow/setup_selfservice.py first")
     item_sid = item[0]["sys_id"]
@@ -61,28 +63,30 @@ def main():
     req_sid = order.get("sys_id")
     print(f"   request {order.get('request_number') or order.get('number')}")
 
-    print(">> Waiting for the self-service chain to restart the service...")
-    svc = "unknown"
+    def ritm():
+        rq = urllib.parse.urlencode({"sysparm_query": f"request={req_sid}",
+                                     "sysparm_fields": "number,state", "sysparm_limit": "1"})
+        res = sn(f"table/sc_req_item?{rq}")["result"]
+        return res[0] if res else None
+
+    print(">> Waiting for the self-service chain to restart the service and close the request...")
+    svc, rec = "unknown", None
     for _ in range(RECOVER_TIMEOUT // 5):
         time.sleep(5)
         svc = ssh(f"podman exec {TARGET} systemctl is-active {SERVICE}")
-        if svc == "active":
+        rec = ritm() if req_sid else None
+        # The playbook restarts first, then (after a recheck) closes the RITM to state 3.
+        if svc == "active" and rec and rec["state"] == "3":
             break
-
-    # Report the request item's state (3 = Closed Complete) for context.
-    ritm_state = "?"
-    if req_sid:
-        ritm = sn(f"table/sc_req_item?sysparm_query=request={req_sid}&sysparm_fields=number,state&sysparm_limit=1")["result"]
-        if ritm:
-            ritm_state = f"{ritm[0]['number']} state={ritm[0]['state']}"
 
     if svc != "active":
         ssh(f"podman exec {TARGET} systemctl start {SERVICE}")   # safety net: never leave it down
 
+    closed = bool(rec and rec["state"] == "3")
     print()
-    print(f"  {SERVICE} active        : {svc == 'active'}")
-    print(f"  request item          : {ritm_state}")
-    ok = svc == "active"
+    print(f"  {SERVICE} active            : {svc == 'active'}")
+    print(f"  request item closed (3)   : {closed}" + (f" ({rec['number']} state={rec['state']})" if rec else ""))
+    ok = svc == "active" and closed
     print("\n>> " + ("SELF-SERVICE E2E PASSED" if ok else "SELF-SERVICE E2E FAILED"))
     sys.exit(0 if ok else 1)
 

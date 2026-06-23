@@ -74,6 +74,21 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2023-11-01' = {
           destinationPortRange: '443'
         }
       }
+      {
+        // Meridian simulator edge (Caddy, TLS). :443 and :8443 are taken by AAP (gateway envoy +
+        // hub/eda nginx), so the edge — and Keycloak behind it at /auth — live on :9443.
+        name: 'allow-meridian-edge'
+        properties: {
+          priority: 1004
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '9443'
+        }
+      }
     ]
   }
 }

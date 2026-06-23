@@ -1,14 +1,27 @@
 #!/usr/bin/env bash
-# Build the Meridian Group fleet images and bring up the 9 containers (compose). Run ON the VM
-# after syncing simulator/ there:  rsync -avz simulator/ azureuser@<FQDN>:~/simulator/  &&  ~/simulator/deploy.sh
+# Build the Meridian Group fleet images and bring up the containers (compose). Runs ON the VM —
+# normally invoked for you by simulator/sync.sh from your laptop (rsync + .env + remote run). To run
+# it by hand: sync simulator/ + the repo-root .env to ~/simulator/ there, then ~/simulator/deploy.sh
 #
 # The fleet reuses the controller's Target SSH key, so the existing "Target SSH" credential logs
-# into every server. Put its public half at base/authorized_keys before deploying:
-#   cp bootstrap/targets/keys/target_key.pub simulator/base/authorized_keys
+# into every server. sync.sh copies its public half to base/authorized_keys before deploying.
 set -euo pipefail
 cd "$(dirname "$0")"
 export PATH="$HOME/.local/bin:$PATH"   # podman-compose installs here (pip --user)
 
+# Load the secrets compose interpolates from .env if present (parsed, never sourced — values can
+# contain shell-hostile chars). sync.sh pushes the repo-root .env here as ~/simulator/.env.
+if [ -f .env ]; then
+  while IFS='=' read -r k v; do
+    case "$k" in
+      FQDN|KEYCLOAK_ADMIN_PASSWORD|KC_HRPORTAL_CLIENT_SECRET|HRPORTAL_SESSION_SECRET) export "$k=$v" ;;
+    esac
+  done < <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' .env)
+fi
+
+: "${FQDN:?set FQDN (env var or ~/simulator/.env) — the edge (TLS cert + redirect) and Keycloak need it}"
+export FQDN
+export KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin}"
 [ -f base/authorized_keys ] || { echo "missing base/authorized_keys — cp the target_key.pub there" >&2; exit 1; }
 command -v podman-compose >/dev/null || { echo "podman-compose missing — pip3 install --user podman-compose" >&2; exit 1; }
 
@@ -23,6 +36,18 @@ podman build -t localhost/meridian-intranet:latest    apps/intranet
 
 podman-compose -f compose.yml up -d
 
+# Survive VM reboots: rootless containers with restart:unless-stopped only auto-start on boot if the
+# user's podman-restart service is enabled (cloud-init already sets linger). Without this, a VM
+# resize/reboot leaves the whole simulator Exited while AAP (systemd units) comes back on its own.
+systemctl --user enable podman-restart.service 2>/dev/null || true
+
+# Open the edge port in the host firewall. firewalld (running on RHEL) drops inbound traffic to
+# ports it doesn't know — the AAP installer opened 80/443/84xx but not the simulator edge's 9443, so
+# without this it times out even when the NSG allows it. --permanent survives reboots.
+sudo firewall-cmd --add-port=9443/tcp --permanent >/dev/null 2>&1 && sudo firewall-cmd --reload >/dev/null 2>&1 || true
+
 echo "== fleet =="
-podman ps --format "  {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E 'web|db|intra|ged|mail|edge' || true
-echo ">> Next: regenerate the controller inventory + load the ServiceNow dataset from fleet.yml."
+podman ps --format "  {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E 'web|db|intra|ged|mail|edge|keycloak' || true
+echo ">> Edge on https://${FQDN}:9443/ (apps) + /auth (Keycloak). Open NSG :9443 if not already."
+echo ">> Next: python3 bootstrap/keycloak/configure.py   (build the 'meridian' realm from fleet.yml)"
+echo ">>       then regenerate the controller inventory + load the ServiceNow dataset from fleet.yml."

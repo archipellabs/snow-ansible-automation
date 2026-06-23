@@ -13,6 +13,16 @@ services:
     container_name: hr-web-01
     hostname: hr-web-01
     ports: ["2211:22", "9081:8000"]
+    # SSO (Étape 2). Browser + back-channel both use the external issuer (via the edge), so the
+    # token issuer stays consistent; the edge has a network alias for ${FQDN} so this resolves
+    # inside the compose network. Empty values (no Keycloak) -> the app runs open (auth disabled).
+    environment:
+      OIDC_ISSUER: https://${FQDN}:9443/auth/realms/meridian
+      OIDC_CLIENT_ID: hr-portal
+      OIDC_CLIENT_SECRET: ${KC_HRPORTAL_CLIENT_SECRET:-}
+      OIDC_REDIRECT_URI: https://${FQDN}:9443/hr/callback
+      APP_BASE_URL: https://${FQDN}:9443/hr
+      SESSION_SECRET: ${HRPORTAL_SESSION_SECRET:-change-me-session}
 
   hr-db-01:
     <<: *server
@@ -70,13 +80,38 @@ services:
     hostname: mail-01
     ports: ["2219:22"]
 
-  # Edge gateway / DMZ "firewall" — the only internet-facing entry (NSG opens :80). Path-routes
-  # to the internal apps over the compose network. AAP keeps :443; the apps live behind this.
+  # Edge gateway / DMZ "firewall" — the internet-facing entry. Terminates TLS on :9443 (AAP owns
+  # :443 on this VM) and path-routes to the internal apps + the corporate IdP. :80 redirects to
+  # :9443. NSG must open :9443. FQDN is needed for the TLS cert (Caddy internal CA) + redirect.
   edge:
     image: docker.io/library/caddy:2
     container_name: meridian-edge
     hostname: edge
-    ports: ["80:80"]
+    ports: ["80:80", "9443:9443"]
+    environment:
+      FQDN: ${FQDN}
     volumes:
       - ./apps/edge/Caddyfile:/etc/caddy/Caddyfile:ro,Z
+    depends_on: [keycloak]
+    # Resolve ${FQDN} to the edge inside the compose network, so server-side OIDC calls from the
+    # apps reach Keycloak through the edge (consistent external issuer) without NAT hairpinning.
+    networks:
+      default:
+        aliases: ["${FQDN}"]
+    restart: unless-stopped
+
+  # Corporate IdP — Meridian's single sign-on (Keycloak). Browser-facing only through the edge at
+  # https://<FQDN>:9443/auth (no published port of its own). Dev mode (H2, ephemeral) for the PoC;
+  # KC_PROXY_HEADERS lets it build correct https URLs from the edge's X-Forwarded-* headers.
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: keycloak
+    hostname: keycloak
+    command: ["start-dev"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_HTTP_RELATIVE_PATH: /auth
+      KC_PROXY_HEADERS: xforwarded
+      KC_HOSTNAME_STRICT: "false"
     restart: unless-stopped

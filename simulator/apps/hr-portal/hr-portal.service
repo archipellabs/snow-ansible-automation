@@ -7,6 +7,9 @@ Wants=network-online.target
 Type=simple
 User=appuser
 WorkingDirectory=/opt/hr-portal
+# Forward the OIDC/SSO config from the container environment (set by compose) into the service.
+# systemd does not pass arbitrary container env to units unless named here.
+PassEnvironment=OIDC_ISSUER OIDC_CLIENT_ID OIDC_CLIENT_SECRET OIDC_REDIRECT_URI APP_BASE_URL SESSION_SECRET
 # `systemctl stop` keeps it down (outage to remediate); a crash auto-restarts.
 ExecStart=/usr/bin/python3.12 -m uvicorn main:app --host 0.0.0.0 --port 8000
 Restart=on-failure

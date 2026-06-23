@@ -1,11 +1,24 @@
-# Meridian Group edge — the single internet-facing gateway (a DMZ reverse proxy / "firewall")
-# in front of the internal apps. Only this edge's :80 is reachable from the internet (the NSG
-# opens 22/80/443; the apps' 908x ports are host-only). Browse it at http://<FQDN>/.
+# Meridian Group edge — the single internet-facing gateway (a DMZ reverse proxy / "firewall").
+# It now terminates TLS on :9443 (AAP owns :443 on this VM) and fronts both the apps and the
+# corporate IdP. Browse it at https://<FQDN>:9443/. :80 redirects to :9443.
 #
-# Path routing on one FQDN: / -> intranet portal, /hr -> HR Portal, /crm -> CRM, /ged -> GED.
-# The bare prefix redirects to a trailing slash so the apps' relative links resolve correctly;
-# handle_path strips the prefix so each app still sees "/".
-:80 {
+#   https://<FQDN>:9443/              -> intranet portal
+#   https://<FQDN>:9443/hr|/crm|/ged  -> the apps
+#   https://<FQDN>:9443/auth          -> Keycloak (SSO)
+#
+# tls internal = Caddy's self-signed internal CA (browser warning, like AAP's gateway cert;
+# PoC-acceptable). The NSG must open :9443. FQDN comes from the edge container's environment.
+{$FQDN}:9443 {
+	tls internal
+
+	# Corporate IdP. Keycloak runs with KC_HTTP_RELATIVE_PATH=/auth, so forward /auth/* unchanged
+	# (do NOT strip the prefix). Caddy's X-Forwarded-* headers let Keycloak build correct https URLs.
+	handle /auth/* {
+		reverse_proxy keycloak:8080
+	}
+
+	# The bare prefix redirects to a trailing slash so the apps' relative links resolve; handle_path
+	# strips the prefix so each app still sees "/". /health stays reachable under each app prefix.
 	redir /hr /hr/
 	redir /crm /crm/
 	redir /ged /ged/
@@ -22,4 +35,9 @@
 	handle {
 		reverse_proxy intra-01:80
 	}
+}
+
+# Redirect plain HTTP to HTTPS on :9443 (keeps the path and query string).
+:80 {
+	redir https://{$FQDN}:9443{uri}
 }

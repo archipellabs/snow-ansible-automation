@@ -11,8 +11,11 @@ param resourceGroupName string = 'rg-snow-aap-poc'
 @description('VM name')
 param vmName string = 'aap-poc'
 
+// AAP containerized (~24 containers) + the Meridian simulator (11 containers incl. Keycloak/JVM)
+// exceed 16 GB, so the VM needs 32 GB. D8s_v5 = 8 vCPU / 32 GB (same Dsv5 family as before, so it
+// resizes in place). Drop back to Standard_D4s_v5 (4 vCPU / 16 GB) if you only run AAP.
 @description('VM size')
-param vmSize string = 'Standard_D4s_v5'
+param vmSize string = 'Standard_D8s_v5'
 
 @description('Linux admin user')
 param adminUsername string = 'azureuser'

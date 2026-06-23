@@ -49,14 +49,8 @@ Priority: **P0** = built (core); **P1–P4** = planned, from most useful to nice
 | `db_backup.yml` | `pg_dump -Fc` a database to an archive + prune old ones | scheduled / on-demand | db | **P2 ✅** |
 | `patch_os.yml` | `dnf update`; flag (or, with `allow_reboot`, perform) a reboot | change / scheduled | all | **P3 ✅** |
 | `housekeeping.yml` | force logrotate, vacuum journal, prune old DB dumps + `/var/tmp` | scheduled | all | **P3 ✅** |
-| `rotate_cert.yml` | deploy a renewed TLS cert + reload | change | web | P3 — deferred¹ |
 | `restart_service_selfservice.yml` | restart a chosen server's service from a catalog request, then close the request item | push — catalog | all | **P4 ✅** |
-| `provision_employee.yml` | create an employee (HR app + account) | push — catalog | — | P4 |
-
-> ¹ `rotate_cert.yml` is deferred: in this simulator the per-server apps don't terminate TLS — the
-> edge gateway (Caddy) is the only TLS-capable hop and currently serves plain `:80`. There is no
-> per-server certificate to rotate yet, so a meaningful version waits until the edge serves `:443`
-> (or an app is given its own TLS listener).
+| `provision_employee.yml` | create an employee (HR app + account) | push — catalog | — | P4 (with Keycloak) |
 
 > The DB playbooks (P2) are unlocked by the real PostgreSQL on the `*-db` servers (PGDG); see
 > `simulator/base/db.Containerfile`. They connect as the `postgres` superuser through **peer auth**

@@ -127,7 +127,7 @@ content the AAP controller and EDA pull from this Git repo (the SCM project).
 | `bootstrap/awx/` | placeholder for a future AWX install (open-source alternative to AAP) |
 | `bootstrap/servicenow/` | `setup.py` (group + service account) + `dataset.py` (Meridian CMDB from `fleet.yml`) + `setup_change.py` (push Business Rule + gateway-CA trust) |
 | `bootstrap/targets/` | the SSH key the controller uses to reach the fleet (the servers live in `simulator/`) |
-| `simulator/` | **the simulated estate** — Meridian Group: `fleet.yml` (source of truth), real apps (`apps/`, FastAPI + intranet), DB/mail images (`base/`), edge gateway (`apps/edge/`), `compose.yml` + `deploy.sh` |
+| `simulator/` | **the simulated estate** — Meridian Group: `fleet.yml` (source of truth), real apps (`apps/`, FastAPI + intranet), DB/mail images (`base/`), edge gateway (`apps/edge/`) + Keycloak, `compose.yml`; `sync.sh` (laptop installer) + `deploy.sh` (on the VM) |
 | `playbooks/` | `restart_service.yml` (pull) + `execute_change.yml` (push) — pulled by the controller project |
 | `collections/` | `requirements.yml` — collections AAP installs at project sync (`servicenow.itsm`) |
 | `extensions/eda/rulebooks/` | `pull_incident_remediation.yml` (pull, poll) + `push_change_execution.yml` (push, webhook) |
@@ -166,10 +166,17 @@ characters (`% ! > { } # & ; $` …). SSH keys stay as files.
 ## Prerequisites
 
 - Azure subscription + `az` CLI (`az login`).
+- **VM sizing**: the Bicep default is `Standard_D8s_v5` — **8 vCPU / 32 GB**. AAP containerized
+  (~24 containers) **plus** the Meridian simulator (11 containers incl. Keycloak/JVM) need 32 GB;
+  16 GB (`Standard_D4s_v5`) OOMs once the simulator is up. Running **AAP only**? Drop back to
+  `Standard_D4s_v5` in `main.parameters.json`. Either way you need that many `Standard DSv5 Family`
+  vCPUs of quota **in your region** (8 for D8s_v5) — see the quota note in step 1.
 - Red Hat account with an active AAP subscription — the free **60-day AAP trial** works.
 - A ServiceNow **PDI**.
 - A project SSH key: `ssh-keygen -t ed25519 -f ~/.ssh/snow-aap-poc -N ""`.
 - Local tools: `az`, `ssh`, `rsync`, `python3`.
+- NSG inbound opened: **22** (SSH), **80** (edge HTTP→HTTPS redirect), **443** (AAP gateway),
+  **9443** (Meridian edge: apps + Keycloak) — all declared in `bootstrap/infra/resources.bicep`.
 
 ## Naming & consoles
 
@@ -180,7 +187,8 @@ Environment-specific values are **not committed** — they live in `.env` and
 - **AAP UI** = `https://<FQDN>/` — user `admin`, password in `~/aap/inventory` (self-signed cert).
 - **ServiceNow PDI** = `https://<SN_INSTANCE>` (set `SN_INSTANCE` in `.env`).
 - **Fleet**: 9 Meridian servers (`hr-web-01`, `crm-web-01`, …) reached over SSH at `host:221x`; the
-  apps are browsable through the edge gateway at `http://<FQDN>/` (`/hr`, `/crm`, `/ged`).
+  apps are browsable through the edge gateway at `https://<FQDN>:9443/` (`/hr`, `/crm`, `/ged`), and
+  the corporate IdP (Keycloak) at `https://<FQDN>:9443/auth`. (`:443`/`:8443` belong to AAP.)
 
 Vendor consoles:
 
@@ -221,7 +229,8 @@ Brand-new subscription gotchas (do these first if needed):
 az provider register -n Microsoft.Compute
 az provider register -n Microsoft.Network
 # Quota: Portal -> Subscription -> Usage + quotas -> "Standard DSv5 Family vCPUs"
-#        in your region -> Request increase (e.g. 5).
+#        in your region -> Request increase (>= 8 for the default D8s_v5; 4 if you use D4s_v5).
+#        Small/paired regions (e.g. australiacentral) may need the increase before D8s_v5 deploys.
 ```
 
 - `cloud-init` installs podman/git/ansible-core at first boot and enables rootless linger.
@@ -266,15 +275,26 @@ from `simulator/fleet.yml`.
 ```bash
 # one-time: generate the SSH key (private gitignored), trusted by the fleet build
 ssh-keygen -t ed25519 -f bootstrap/targets/keys/target_key -N "" -C meridian-fleet
-cp bootstrap/targets/keys/target_key.pub simulator/base/authorized_keys
 
-rsync -az simulator/ azureuser@<FQDN>:~/simulator/
-ssh -i ~/.ssh/snow-aap-poc azureuser@<FQDN> 'cd ~/simulator && bash deploy.sh'
+# push simulator/ + .env to the VM and build/start the whole stack — one command
+./simulator/sync.sh
+
+# build Keycloak's 'meridian' realm (groups/users/clients) from fleet.yml
+python3 bootstrap/keycloak/configure.py
+
+# (optional) federate AAP admin login to Keycloak — the local 'admin' login still works
+python3 bootstrap/aap/configure_sso.py
 ```
 
-Builds the base/app/db/mail images and brings up the **9 fleet servers + the edge gateway**
-(`podman compose`). Browse the apps from the internet at `http://<FQDN>/` (edge → intranet, `/hr`,
-`/crm`, `/ged`). Break a service to trigger remediation, e.g.
+> **SSO is optional.** Keycloak (employee app login + AAP admin SSO) is a realism layer; the two
+> ServiceNow ↔ AAP patterns work without it. AAP always keeps its local `admin` account, so you can
+> skip `configure_sso.py` (and the whole Keycloak phase) and lose nothing core.
+
+`sync.sh` copies the trusted SSH pubkey, rsyncs `simulator/` + the repo-root `.env` to the VM, and
+runs `deploy.sh` there (use `--sync` to skip the remote run). It builds the base/app/db/mail images
+and brings up the **9 fleet servers + the edge gateway + Keycloak** (`podman compose`). Browse the
+apps at `https://<FQDN>:9443/` (edge → intranet, `/hr`, `/crm`, `/ged`) and the IdP at
+`https://<FQDN>:9443/auth` — open the NSG for `:9443`. Break a service to trigger remediation, e.g.
 `podman exec hr-web-01 systemctl stop hr-portal`.
 
 ### 5. Controller config-as-code
@@ -333,6 +353,8 @@ self-signed CA to ServiceNow's trust store so the outbound TLS validates (see Ke
    `password_needs_reset`.
 4. **Azure quota/region** — a fresh subscription has 0 per-family vCPU quota and unregistered
    providers → register providers + request quota (the DSv5 grant may land in only one region).
+   The default `D8s_v5` needs **8** DSv5 vCPUs; small/paired regions (e.g. `australiacentral`) may
+   require raising the quota before it deploys.
 5. **PAYG vs BYOS** — the RHEL PAYG image avoids Cloud Access/subscription-manager; the AAP trial
    only entitles image pulls (via the registry service account).
 6. **EDA → controller API path** — `ansible-rulebook` chooses the controller API slug from the
@@ -399,6 +421,12 @@ This is a proof of concept — deliberately scoped. Be aware of:
 - **Reconciliation is partial.** `configure.py` re-syncs the project and reconciles job-template
   playbook paths, but the **EDA activations are not updated in place** — changing one means deleting
   and re-creating it (the scripts print the `DELETE` to run).
+- **SSO covers the apps and AAP, not ServiceNow.** Keycloak gives single sign-on to the simulated
+  apps (employees, Étape 2) and AAP admins (Étape 3), but **ServiceNow keeps its native login** —
+  federating a SaaS PDI to a Keycloak on a private VM would need the IdP publicly reachable with a
+  CA-signed cert and SAML/OIDC config on the PDI, which would take this PoC too far for little gain.
+  SSO as a whole is **optional**: the core ServiceNow ↔ AAP patterns work without Keycloak, and AAP
+  always keeps its local `admin` login.
 - **Minor.** The e2e tests leave test incidents/changes in the PDI (no cleanup); there is no CI; and
   the AAP entitlement comes from the trial/UI rather than a downloaded subscription manifest.
 
@@ -410,9 +438,11 @@ az vm start      -g rg-snow-aap-poc -n aap-poc   # restart
 az group delete  -n rg-snow-aap-poc --yes        # tear everything down
 ```
 
-- The target containers are **not** persistent across reboots — re-run `~/targets/deploy.sh`
+- The fleet containers (and Keycloak's dev-mode H2 data) are **not** persistent across reboots —
+  re-run `~/simulator/deploy.sh` (or `./simulator/sync.sh`) and `bootstrap/keycloak/configure.py`
   after a VM restart.
-- D4s_v5 ≈ 5-6 €/day while allocated; the 128 GB Premium disk keeps billing when deallocated.
+- `D8s_v5` ≈ 10-12 €/day while allocated (≈ 2× `D4s_v5`); the 128 GB Premium disk keeps billing
+  even when deallocated, so `az group delete` to fully stop costs.
 
 ## License
 
