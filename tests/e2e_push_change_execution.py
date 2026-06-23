@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """End-to-end PUSH test (Change Request -> Event Stream -> EDA), re-runnable.
 
-Mirrors e2e_eda.py for the push pattern: it never launches the job itself. It opens a
+Mirrors e2e_pull_incident_remediation.py for the push pattern: it never launches the job itself. It opens a
 ServiceNow change request and approves it; the Business Rule POSTs to the AAP event stream,
 which feeds the webhook rulebook, which launches the "Execute Change Request" job. Run from
 the repo root:
 
-  python3 tests/e2e_change.py
+  python3 tests/e2e_push_change_execution.py
 
 Asserts that EDA launched a NEW controller job carrying our change number, that it succeeded,
 and that the change's content was actually deployed on the target. Exit 0 if all pass.

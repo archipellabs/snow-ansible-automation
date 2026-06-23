@@ -95,7 +95,7 @@
     <rect x="70" y="462" width="6" height="150" fill="#c0392b"/>
     <text class="boxt" x="90" y="496">Automation Controller</text>
     <text class="boxs" x="90" y="522">Project · Inventory · Credentials</text>
-    <text class="boxs" x="90" y="546">Job template: Remediate Ping Server</text>
+    <text class="boxs" x="90" y="546">Job template: Restart Service</text>
     <text class="boxs" x="90" y="570">spawns Execution Environments</text>
     <text class="boxs" x="90" y="594">pulls playbooks from Git</text>
   </g>
@@ -104,8 +104,8 @@
     <rect class="card" x="70" y="630" width="430" height="150" rx="10"/>
     <rect x="70" y="630" width="6" height="150" fill="#c0392b"/>
     <text class="boxt" x="90" y="664">EDA Controller</text>
-    <text class="boxs" x="90" y="690">activation: snow-ping-remediation</text>
-    <text class="boxs" x="90" y="714">rulebook: snow_ping_remediation.yml</text>
+    <text class="boxs" x="90" y="690">activation: pull-incident-remediation</text>
+    <text class="boxs" x="90" y="714">rulebook: pull_incident_remediation.yml</text>
     <text class="boxs" x="90" y="738">manages the Decision Environment</text>
     <text class="boxs" x="90" y="762">pulls rulebooks from Git</text>
   </g>

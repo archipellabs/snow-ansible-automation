@@ -22,7 +22,7 @@ ServiceNow is a real SaaS Personal Developer Instance (PDI). The automation cont
 | Playbook | `restart_service.yml` (restart + resolve) | `execute_change.yml` (deploy + work note) |
 | Custom DE? | **yes** (`servicenow.itsm` is in no stock DE) | no — same DE; `ansible.eda` is built in |
 | Exposure | outbound only | inbound on **:443** (gateway-managed, TLS) |
-| End-to-end test | `tests/e2e_eda.py` | `tests/e2e_change.py` |
+| End-to-end test | `tests/e2e_pull_incident_remediation.py` | `tests/e2e_push_change_execution.py` |
 
 **Trade-off:** pull needs no inbound exposure and self-heals (it re-polls), at the cost of
 latency; push is near-real-time but requires ServiceNow to reach an authenticated endpoint and
@@ -60,7 +60,7 @@ the same components and adds a gateway-managed **Event Stream**. The runtime flo
 1. A **Change Request** is **approved** in ServiceNow (and references a CI target).
 2. A **Business Rule** POSTs the change (number, sys_id, target) to an AAP **Event Stream** — a
    gateway-managed webhook endpoint on `:443` with token auth.
-3. The event stream feeds the `ansible.eda.webhook` source of the `snow-change-execution`
+3. The event stream feeds the `ansible.eda.webhook` source of the `push-change-execution`
    activation, which triggers the `Execute Change Request` **job template**.
 4. The job runs `execute_change.yml`: deploy the change to the target, restart the service, and
    write the result back to the change as a **work note**.
@@ -91,9 +91,9 @@ the same components and adds a gateway-managed **Event Stream**. The runtime flo
 | Decision environment `snow-eda-de` | both | DE image (`de-minimal` + `servicenow.itsm`), pulled from the hub |
 | Credential `AAP Controller` (host `…/api/controller/`) | both | lets the rulebooks launch job templates |
 | EDA project `snow-ansible-automation` | both | rulebooks under `extensions/eda/rulebooks/` |
-| Activation `snow-ping-remediation` | pull | polls ServiceNow → launches the job (injects `SN_*`) |
+| Activation `pull-incident-remediation` | pull | polls ServiceNow → launches the job (injects `SN_*`) |
 | `ServiceNow …Event Stream` credential + Event Stream | push | authenticated inbound endpoint on the gateway |
-| Activation `snow-change-execution` | push | webhook source mapped to the event stream → launches the job |
+| Activation `push-change-execution` | push | webhook source mapped to the event stream → launches the job |
 
 > `configure.py` (controller) also removes the installer's `Demo *` objects; the `Ansible Galaxy`
 > credential is a system default and is kept.
@@ -113,7 +113,7 @@ content the AAP controller and EDA pull from this Git repo (the SCM project).
 | `bootstrap/targets/` | `Containerfile` + `deploy.sh` for the `app-node-1/2` target containers |
 | `playbooks/` | `restart_service.yml` (pull) + `execute_change.yml` (push) — pulled by the controller project |
 | `collections/` | `requirements.yml` — collections AAP installs at project sync (`servicenow.itsm`) |
-| `extensions/eda/rulebooks/` | `snow_ping_remediation.yml` (pull, poll) + `snow_change_execution.yml` (push, webhook) |
+| `extensions/eda/rulebooks/` | `pull_incident_remediation.yml` (pull, poll) + `push_change_execution.yml` (push, webhook) |
 | `lib/` | `poc.py` — shared stdlib transport for the Python scripts (`load_dotenv`, `http_json`, auth, SSL); per-API wrappers stay inline |
 | `tests/` | `healthcheck.py` + the three end-to-end tests (see below) — re-runnable validation |
 | `docs/` | architecture + remediation-flow (pull) + change-flow (push) diagrams (SVG) |
@@ -126,11 +126,11 @@ All are idempotent and read `.env`. They build on each other from narrow to broa
 | Test | Scope | What it proves |
 |---|---|---|
 | `healthcheck.py` | infrastructure | ServiceNow auth, AAP gateway/controller, subscription, targets up, and the EE→target ad-hoc ping |
-| `e2e_remediation.py` | controller only (**no EDA**) | breaks httpd, opens an incident, then **launches the job template directly** and checks the service is back + the incident resolved — isolates the playbook + ServiceNow write from the event layer |
-| `e2e_eda.py` | full **pull** chain | opens an incident and asserts **EDA itself** auto-launches the job (never launched by the test) → resolved |
-| `e2e_change.py` | full **push** chain | approves a change and asserts EDA auto-launches the execution job via the Event Stream → deployed + work note |
+| `e2e_controller_restart_direct.py` | controller only (**no EDA**) | breaks httpd, opens an incident, then **launches the job template directly** and checks the service is back + the incident resolved — isolates the playbook + ServiceNow write from the event layer |
+| `e2e_pull_incident_remediation.py` | full **pull** chain | opens an incident and asserts **EDA itself** auto-launches the job (never launched by the test) → resolved |
+| `e2e_push_change_execution.py` | full **push** chain | approves a change and asserts EDA auto-launches the execution job via the Event Stream → deployed + work note |
 
-`e2e_remediation.py` is the deliberate "lower layer": if a full-chain test fails, it tells you
+`e2e_controller_restart_direct.py` is the deliberate "lower layer": if a full-chain test fails, it tells you
 whether the break is in the playbook/ServiceNow side or in the event-driven trigger.
 
 ## Secrets
@@ -276,7 +276,7 @@ the EDA project, and the rulebook activation (`log_level: info`). Two settings a
 `eda.integration`'s ServiceNow timezone is **GMT**.
 
 ```bash
-python3 tests/e2e_eda.py   # break httpd -> open incident -> EDA auto-launches the job -> resolved
+python3 tests/e2e_pull_incident_remediation.py   # break httpd -> open incident -> EDA auto-launches the job -> resolved
 ```
 
 ### 7. Push pattern (Change Request → Event Stream)
@@ -284,12 +284,12 @@ python3 tests/e2e_eda.py   # break httpd -> open incident -> EDA auto-launches t
 ```bash
 python3 bootstrap/aap/eda/configure_push.py  # event stream (token) + webhook activation
 python3 bootstrap/servicenow/setup_change.py # Business Rule + trust the gateway CA in ServiceNow
-python3 tests/e2e_change.py                  # approve a change -> EDA executes it -> work note
+python3 tests/e2e_push_change_execution.py                  # approve a change -> EDA executes it -> work note
 ```
 
 `configure_push.py` reuses the same decision environment and `AAP Controller` credential, adds a
 `ServiceNow Event Stream` credential (token = `SN_EVENTSTREAM_TOKEN`), creates the **Event Stream**
-(a webhook endpoint on the gateway), and the `snow-change-execution` activation whose
+(a webhook endpoint on the gateway), and the `push-change-execution` activation whose
 `ansible.eda.webhook` source is **mapped to the stream** (`source_mappings`). `setup_change.py`
 creates the Business Rule that POSTs approved changes to that endpoint, and uploads the gateway's
 self-signed CA to ServiceNow's trust store so the outbound TLS validates (see Key findings).
@@ -344,10 +344,10 @@ self-signed CA to ServiceNow's trust store so the outbound TLS validates (see Ke
 
 **Done — both integration patterns working end-to-end**, each with a passing re-runnable test:
 
-- **Pull** (`tests/e2e_eda.py`): a ServiceNow incident in `Auto-Remediation` is auto-detected by
+- **Pull** (`tests/e2e_pull_incident_remediation.py`): a ServiceNow incident in `Auto-Remediation` is auto-detected by
   the polling activation, which launches the job; the playbook restarts the service and resolves
   the incident — no manual launch.
-- **Push** (`tests/e2e_change.py`): an approved Change Request is pushed via the Event Stream to
+- **Push** (`tests/e2e_push_change_execution.py`): an approved Change Request is pushed via the Event Stream to
   the webhook activation, which launches the job; the playbook deploys the change and writes a work
   note back — no manual launch.
 

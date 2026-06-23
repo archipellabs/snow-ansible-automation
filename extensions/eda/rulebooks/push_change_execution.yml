@@ -4,7 +4,7 @@
 # :443, token auth); the event stream forwards the request to the ansible.eda.webhook source
 # below. The activation maps the stream onto this source via source_mappings, so no host
 # port is published and nothing extra is opened in the NSG (compare the pull rulebook,
-# snow_ping_remediation.yml, where EDA polls ServiceNow instead).
+# pull_incident_remediation.yml, where EDA polls ServiceNow instead).
 - name: Execute approved ServiceNow Change Requests (push via Event Stream)
   hosts: all
   sources:

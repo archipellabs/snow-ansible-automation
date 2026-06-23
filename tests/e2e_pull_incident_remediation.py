@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """End-to-end EDA auto-trigger test (full event-driven path), re-runnable.
 
-Unlike e2e_remediation.py, this test never launches the job template itself: it only
+Unlike e2e_controller_restart_direct.py, this test never launches the job template itself: it only
 breaks the service and opens the incident, then proves that the EDA rulebook activation
 detected it and auto-launched the "Restart Service" job. Run from repo root:
 
-  python3 tests/e2e_eda.py
+  python3 tests/e2e_pull_incident_remediation.py
 
 Steps: stop hr-portal on hr-web-01 -> open a ServiceNow incident in the Auto-Remediation
 group -> wait for EDA to launch a NEW controller job for the template -> assert that job

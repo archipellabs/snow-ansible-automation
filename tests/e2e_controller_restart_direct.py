@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """End-to-end remediation test (controller path), re-runnable. Run from repo root:
 
-  python3 tests/e2e_remediation.py
+  python3 tests/e2e_controller_restart_direct.py
 
 Breaks hr-portal on hr-web-01 (a Meridian Fleet server), opens a ServiceNow incident, launches
 the "Restart Service" job template (incident_number + target_host), then asserts the job

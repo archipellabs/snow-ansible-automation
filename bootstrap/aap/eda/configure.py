@@ -37,8 +37,8 @@ DE_IMAGE_TAG = "snow-eda-de:latest"          # pushed to <FQDN>/<this> by build.
 HUB_CRED_NAME = "Hub Decision Environment Container Registry"
 CONTROLLER_CRED_NAME = "AAP Controller"
 PROJECT_NAME = "snow-ansible-automation"
-RULEBOOK_NAME = "snow_ping_remediation.yml"
-ACTIVATION_NAME = "snow-ping-remediation"
+RULEBOOK_NAME = "pull_incident_remediation.yml"
+ACTIVATION_NAME = "pull-incident-remediation"
 
 
 sys.path.insert(0, ROOT)
@@ -159,7 +159,7 @@ def main():
         body["extra_var"] = extra
     act = api("POST", "activations/", body)
     print(f"+ Activation created (id={act['id']})")
-    print("\n>> EDA configured. Validate end-to-end: python3 tests/e2e_eda.py")
+    print("\n>> EDA configured. Validate end-to-end: python3 tests/e2e_pull_incident_remediation.py")
 
 
 if __name__ == "__main__":

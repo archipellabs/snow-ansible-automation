@@ -149,7 +149,7 @@ def main():
         print(f"+ Business Rule created (sys_id={created['sys_id']})")
     print(f"   table=change_request  when=after  condition=approval changesTo approved")
     print(f"   endpoint={endpoint}")
-    print("\n>> Validate end-to-end: python3 tests/e2e_change.py")
+    print("\n>> Validate end-to-end: python3 tests/e2e_push_change_execution.py")
 
 
 if __name__ == "__main__":

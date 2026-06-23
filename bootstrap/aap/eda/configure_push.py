@@ -3,10 +3,10 @@
 
 Creates: the "ServiceNow Event Stream" credential (token from .env), the Event Stream
 (a gateway-managed webhook endpoint on :443), and the rulebook activation that maps that
-stream onto the webhook source of snow_change_execution.yml. Reuses the existing
+stream onto the webhook source of push_change_execution.yml. Reuses the existing
 decision environment (snow-eda-de) and the "AAP Controller" credential (run_job_template).
 
-Run AFTER the rulebook snow_change_execution.yml is pushed to Git (the EDA project must be
+Run AFTER the rulebook push_change_execution.yml is pushed to Git (the EDA project must be
 able to sync it) and AFTER bootstrap/aap/eda/configure.py (decision environment + AAP Controller
 credential) and bootstrap/aap/controller/configure.py (the "Execute Change Request" job template).
 Run from the repo root:
@@ -29,8 +29,8 @@ ES_CRED_NAME = "ServiceNow CHG Event Stream cred"
 ES_CRED_TYPE = "ServiceNow Event Stream"
 STREAM_NAME = "servicenow-chg-stream"
 PROJECT_NAME = "snow-ansible-automation"
-RULEBOOK_NAME = "snow_change_execution.yml"
-ACTIVATION_NAME = "snow-change-execution"
+RULEBOOK_NAME = "push_change_execution.yml"
+ACTIVATION_NAME = "push-change-execution"
 
 
 sys.path.insert(0, ROOT)
@@ -132,7 +132,7 @@ def main():
     print("\n>> Event Stream URL (configure ServiceNow to POST here):")
     print(f"   {stream['url']}")
     print(">> Next: python3 bootstrap/servicenow/setup_change.py   (creates the ServiceNow Business Rule)")
-    print(">> Validate end-to-end: python3 tests/e2e_change.py")
+    print(">> Validate end-to-end: python3 tests/e2e_push_change_execution.py")
 
 
 if __name__ == "__main__":
