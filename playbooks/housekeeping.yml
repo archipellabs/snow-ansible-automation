@@ -1,0 +1,94 @@
+---
+# housekeeping.yml — preventive maintenance: trim logs and prune old artifacts.
+#
+# Pattern : scheduled, every server. The preventive counterpart to free_disk.yml (which is the
+#           reactive, incident-driven version). Safe and idempotent — nothing here removes live data.
+# Extra vars:
+#   target_host      : a server in the "Meridian Fleet" inventory
+#   log_keep_days    : (optional, default 7)  systemd journal retention
+#   backup_keep_days : (optional, default 14) age after which DB dumps are pruned (db hosts only)
+#   change_sysid     : (optional) ServiceNow change sys_id to annotate
+# Host vars (inventory): role.
+- name: Preventive housekeeping
+  hosts: "{{ target_host }}"
+  gather_facts: false
+  vars:
+    log_keep_days: 7
+    backup_keep_days: 14
+    backup_dir: /var/backups/postgresql
+  tasks:
+    - name: Force log rotation (best-effort)
+      become: true
+      ansible.builtin.command: logrotate -f /etc/logrotate.conf
+      register: lr
+      changed_when: lr.rc == 0
+      failed_when: false
+
+    - name: Vacuum the systemd journal by age
+      become: true
+      ansible.builtin.command: "journalctl --vacuum-time={{ log_keep_days }}d"
+      changed_when: false
+      failed_when: false
+
+    - name: Check for a database backup directory
+      become: true
+      ansible.builtin.stat:
+        path: "{{ backup_dir }}"
+      register: bdir
+
+    - name: Find old database backups (db hosts)
+      become: true
+      ansible.builtin.find:
+        paths: "{{ backup_dir }}"
+        patterns: ['*.dump']
+        age: "{{ backup_keep_days }}d"
+      register: old_dumps
+      when: bdir.stat.exists
+
+    - name: Prune old database backups
+      become: true
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ old_dumps.files | default([]) }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Find stale files under /var/tmp
+      become: true
+      ansible.builtin.find:
+        paths: /var/tmp
+        age: 14d
+        recurse: true
+        file_type: file
+      register: stale_tmp
+
+    - name: Remove the stale temp files
+      become: true
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ stale_tmp.files }}"
+      loop_control:
+        label: "{{ item.path }}"
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: >-
+          Housekeeping on {{ target_host }} ({{ role }}): pruned
+          {{ old_dumps.files | default([]) | length }} old backup(s) and
+          {{ stale_tmp.files | length }} stale temp file(s); journal trimmed to {{ log_keep_days }}d.
+
+    - name: Annotate the change request (optional)
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.api:
+        resource: change_request
+        action: patch
+        sys_id: "{{ change_sysid }}"
+        data:
+          work_notes: >-
+            Change {{ change_number | default('(scheduled)') }} executed by AAP on {{ target_host }}:
+            housekeeping pruned {{ old_dumps.files | default([]) | length }} backup(s) and
+            {{ stale_tmp.files | length }} temp file(s).
+      when: change_sysid is defined

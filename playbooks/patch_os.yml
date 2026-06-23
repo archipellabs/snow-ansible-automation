@@ -1,0 +1,71 @@
+---
+# patch_os.yml — apply OS package updates, then flag (or optionally perform) a reboot.
+#
+# Pattern : change-driven or scheduled, every server — a standard "patch night" run.
+# Extra vars:
+#   target_host     : a server in the "Meridian Fleet" inventory
+#   update_packages : (optional) list of packages to update; default all (['*'])
+#   allow_reboot    : (optional, default false) actually reboot when the update needs it. Left false
+#                     by default so the run is safe to schedule — and harmless to the sim containers,
+#                     which a reboot would tear down; set it true on real VMs.
+#   change_sysid    : (optional) ServiceNow change sys_id to annotate
+# All package operations use dnf via command (so no python3-dnf binding is required in the EE).
+- name: Apply OS updates
+  hosts: "{{ target_host }}"
+  gather_facts: false
+  vars:
+    update_packages: ['*']
+    allow_reboot: false
+  tasks:
+    - name: Check for available updates
+      become: true
+      ansible.builtin.command: "dnf -q check-update {{ update_packages | join(' ') }}"
+      register: check
+      changed_when: false
+      failed_when: check.rc not in [0, 100]      # 100 = updates available, 0 = none
+
+    - name: Apply updates
+      become: true
+      ansible.builtin.command: "dnf -y update {{ update_packages | join(' ') }}"
+      when: check.rc == 100
+      changed_when: true
+
+    - name: Check whether a reboot is required
+      become: true
+      ansible.builtin.command: dnf needs-restarting -r
+      register: reboot_check
+      changed_when: false
+      failed_when: false      # rc 1 = reboot required; 127 = plugin absent (treated as "unknown")
+
+    - name: Set patch facts
+      ansible.builtin.set_fact:
+        updates_applied: "{{ check.rc == 100 }}"
+        reboot_required: "{{ reboot_check.rc == 1 }}"
+
+    - name: Reboot if required and allowed
+      become: true
+      ansible.builtin.reboot:
+        reboot_timeout: 300
+      when: reboot_required and (allow_reboot | bool)
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: >-
+          {{ target_host }}: {{ 'updates applied' if updates_applied else 'already up to date' }};
+          reboot {{ 'required' if reboot_required else 'not required' }}{{
+            ' (performed)' if (reboot_required and (allow_reboot | bool))
+            else (' — left for a maintenance window' if reboot_required else '') }}.
+
+    - name: Annotate the change request (optional)
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.api:
+        resource: change_request
+        action: patch
+        sys_id: "{{ change_sysid }}"
+        data:
+          work_notes: >-
+            Change {{ change_number | default('(scheduled)') }} executed by AAP on {{ target_host }}:
+            OS patching {{ 'applied updates' if updates_applied else 'no updates pending' }};
+            reboot {{ 'required' if reboot_required else 'not required' }}.
+      when: change_sysid is defined
