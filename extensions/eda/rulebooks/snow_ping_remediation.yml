@@ -1,9 +1,9 @@
 ---
-# EDA: detect "ping server" incidents in ServiceNow and trigger remediation.
+# EDA (pull): detect incidents in ServiceNow and trigger service remediation on the fleet.
 # Discovery: AAP EDA only finds rulebooks under extensions/eda/rulebooks/ (or rulebooks/).
 # Source: servicenow.itsm.records polls the incident table. SN_HOST / SN_USERNAME /
 # SN_PASSWORD are provided by the rulebook activation's variables.
-- name: Auto-remediate "ping server" incident (ServiceNow -> EDA -> AAP)
+- name: Auto-remediate incident (ServiceNow -> EDA -> AAP)
   hosts: all
   sources:
     - servicenow.itsm.records:
@@ -25,7 +25,7 @@
       condition: event.number is defined
       action:
         run_job_template:
-          name: "Remediate Ping Server"
+          name: "Restart Service"
           organization: "Default"
           job_args:
             extra_vars:

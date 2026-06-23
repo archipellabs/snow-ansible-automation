@@ -70,16 +70,16 @@ def c_subscription():
 def c_targets():
     cmd = ["ssh", "-i", SSH_KEY, "-o", "StrictHostKeyChecking=accept-new",
            "-o", "ConnectTimeout=15", f"azureuser@{E['FQDN']}",
-           "for n in app-node-1 app-node-2; do printf '%s=' $n; "
-           "podman exec $n systemctl is-active httpd sshd 2>/dev/null | tr '\\n' ',' ; echo; done"]
+           "for n in hr-web-01 crm-web-01 ged-01 hr-db-01 mail-01; do printf '%s=' $n; "
+           "podman exec $n systemctl is-active sshd 2>/dev/null | tr '\\n' ',' ; echo; done"]
     out = subprocess.run(cmd, capture_output=True, text=True, timeout=45)
     txt = out.stdout.strip().replace("\n", " ")
-    return txt.count("active") >= 4, txt or out.stderr.strip()
+    return txt.count("active") >= 5, txt or out.stderr.strip()
 
 
 def c_ee_path():
     a, p = E["AAP_ADMIN_USER"], E["AAP_ADMIN_PASSWORD"]
-    _, inv = req(f"{cbase()}/inventories/?name=POC%20Targets", a, p, insecure=True)
+    _, inv = req(f"{cbase()}/inventories/?name=Meridian%20Fleet", a, p, insecure=True)
     _, cred = req(f"{cbase()}/credentials/?name=Target%20SSH", a, p, insecure=True)
     if not inv.get("count") or not cred.get("count"):
         return None, "SKIP (run bootstrap/aap/controller/configure.py first)"

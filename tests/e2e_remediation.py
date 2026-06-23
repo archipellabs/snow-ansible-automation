@@ -3,9 +3,9 @@
 
   python3 tests/e2e_remediation.py
 
-Breaks httpd on app-node-1, opens a ServiceNow incident, launches the "Remediate Ping
-Server" job template (incident_number + target_host), then asserts the job succeeds, the
-service is back up, and the incident is resolved. Exit 0 if it all passes, 1 otherwise.
+Breaks hr-portal on hr-web-01 (a Meridian Fleet server), opens a ServiceNow incident, launches
+the "Restart Service" job template (incident_number + target_host), then asserts the job
+succeeds, the service is active again, and the incident is resolved. Exit 0 if all pass.
 """
 import os
 import sys
@@ -14,7 +14,9 @@ import subprocess
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SSH_KEY = os.path.expanduser("~/.ssh/snow-aap-poc")
-TARGET = "app-node-1"
+TARGET = "hr-web-01"       # a Meridian Fleet server
+SERVICE = "hr-portal"      # the systemd unit it runs
+JT_NAME = "Restart Service"
 sys.path.insert(0, ROOT)
 from lib.poc import load_dotenv, insecure_ctx, basic_auth, http_json  # noqa: E402
 
@@ -47,8 +49,8 @@ def ssh(cmd):
 
 
 def main():
-    print(f">> Breaking httpd on {TARGET}")
-    ssh(f"podman exec {TARGET} systemctl stop httpd")
+    print(f">> Breaking {SERVICE} on {TARGET}")
+    ssh(f"podman exec {TARGET} systemctl stop {SERVICE}")
 
     print(">> Opening ServiceNow incident")
     inc = sn("table/incident?sysparm_input_display_value=true",
@@ -57,8 +59,8 @@ def main():
     num, sid = inc["number"], inc["sys_id"]
     print(f"   incident {num}")
 
-    print(">> Launching job template 'Remediate Ping Server'")
-    jt = aap("job_templates/?name=Remediate%20Ping%20Server")["results"][0]["id"]
+    print(f">> Launching job template '{JT_NAME}'")
+    jt = aap("job_templates/?name=" + JT_NAME.replace(" ", "%20"))["results"][0]["id"]
     job = aap(f"job_templates/{jt}/launch/",
               {"extra_vars": {"incident_number": num, "target_host": TARGET}})
     jid = job["id"]
@@ -70,14 +72,14 @@ def main():
             break
     print(f"   job status: {status}")
 
-    httpd = ssh(f"podman exec {TARGET} systemctl is-active httpd")
+    svc = ssh(f"podman exec {TARGET} systemctl is-active {SERVICE}")
     state = sn(f"table/incident/{sid}?sysparm_fields=state")["result"]["state"]  # 6 = Resolved
 
     print()
     print(f"  job successful : {status == 'successful'}")
-    print(f"  httpd active   : {httpd == 'active'}")
+    print(f"  {SERVICE} active : {svc == 'active'}")
     print(f"  incident state : {state} ({'Resolved' if state == '6' else 'not resolved'})")
-    ok = status == "successful" and httpd == "active" and state == "6"
+    ok = status == "successful" and svc == "active" and state == "6"
     print("\n>> " + ("E2E PASSED" if ok else "E2E FAILED"))
     sys.exit(0 if ok else 1)
 

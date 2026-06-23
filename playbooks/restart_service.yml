@@ -1,0 +1,69 @@
+---
+# restart_service.yml — remediate an incident by restarting the affected server's service.
+#
+# Pattern : PULL (incident-driven). Launched by the "Restart Service" job template, which EDA
+#           triggers from a ServiceNow incident in the Auto-Remediation group.
+# Extra vars (from the rulebook):
+#   incident_number : the ServiceNow incident number (to resolve/escalate)
+#   target_host     : the affected server — must exist in the "Meridian Fleet" inventory
+# Host vars (from the inventory, generated from simulator/fleet.yml):
+#   service : the systemd unit to restart (hr-portal | crm | ged | httpd | postgresql | postfix)
+#   role    : web | app | db | mail (informational)
+# ServiceNow credentials are injected by the controller credential as SN_HOST/SN_USERNAME/SN_PASSWORD.
+#
+# Role-aware: it restarts whatever `service` the server runs, clears the FastAPI apps' injected
+# "degraded" flag if present, then confirms the unit is active before resolving the incident.
+- name: Restart service to remediate an incident
+  hosts: "{{ target_host }}"
+  gather_facts: false
+  vars:
+    recheck_delay: 6
+  tasks:
+    - name: Restart the affected service
+      become: true
+      ansible.builtin.systemd:
+        name: "{{ service }}"
+        state: restarted
+        enabled: true
+
+    - name: Clear the injected "degraded" health flag if present (FastAPI apps; no-op otherwise)
+      become: true
+      ansible.builtin.file:
+        path: "/var/lib/{{ service }}/unhealthy"
+        state: absent
+
+    - name: Wait before re-checking
+      ansible.builtin.pause:
+        seconds: "{{ recheck_delay }}"
+
+    - name: Re-check that the service is active
+      become: true
+      ansible.builtin.command: "systemctl is-active {{ service }}"
+      register: check
+      changed_when: false
+      failed_when: false
+
+    - name: Resolve the incident if the service recovered
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.incident:
+        number: "{{ incident_number }}"
+        state: resolved
+        close_code: "Solution provided"
+        close_notes: >-
+          Service {{ service }} restarted automatically by AAP on {{ target_host }}; unit is active.
+        other:
+          work_notes: "Auto-remediation (EDA -> AAP): restarted {{ service }} on {{ target_host }}."
+      when: check.stdout == "active"
+
+    - name: Escalate the incident if the service is still down
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.incident:
+        number: "{{ incident_number }}"
+        state: in_progress
+        other:
+          work_notes: >-
+            Auto-remediation FAILED on {{ target_host }} ({{ service }} not active: {{ check.stdout }}).
+            Escalating to {{ support_group | default('L2') }}.
+      when: check.stdout != "active"

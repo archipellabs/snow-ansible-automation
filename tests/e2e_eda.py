@@ -3,13 +3,13 @@
 
 Unlike e2e_remediation.py, this test never launches the job template itself: it only
 breaks the service and opens the incident, then proves that the EDA rulebook activation
-detected it and auto-launched the "Remediate Ping Server" job. Run from repo root:
+detected it and auto-launched the "Restart Service" job. Run from repo root:
 
   python3 tests/e2e_eda.py
 
-Steps: break httpd on app-node-1 -> open a ServiceNow incident in the Auto-Remediation
+Steps: stop hr-portal on hr-web-01 -> open a ServiceNow incident in the Auto-Remediation
 group -> wait for EDA to launch a NEW controller job for the template -> assert that job
-carries our incident number, succeeds, the service is back up, and the incident resolves.
+carries our incident number, succeeds, the service is active again, and the incident resolves.
 Exit 0 if it all passes, 1 otherwise.
 """
 import os
@@ -20,8 +20,9 @@ import urllib.parse
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SSH_KEY = os.path.expanduser("~/.ssh/snow-aap-poc")
-TARGET = "app-node-1"
-JT_NAME = "Remediate Ping Server"
+TARGET = "hr-web-01"       # a Meridian Fleet server
+SERVICE = "hr-portal"      # the systemd unit it runs (matches the inventory host var)
+JT_NAME = "Restart Service"
 TRIGGER_TIMEOUT = 180  # EDA poll interval is 10s; allow margin + job runtime
 sys.path.insert(0, ROOT)
 from lib.poc import load_dotenv, insecure_ctx, basic_auth, http_json  # noqa: E402
@@ -64,8 +65,8 @@ def main():
     baseline = max((j["id"] for j in jt_jobs(jt)), default=0)
     print(f">> Baseline: latest '{JT_NAME}' job id = {baseline}")
 
-    print(f">> Breaking httpd on {TARGET}")
-    ssh(f"podman exec {TARGET} systemctl stop httpd")
+    print(f">> Breaking {SERVICE} on {TARGET}")
+    ssh(f"podman exec {TARGET} systemctl stop {SERVICE}")
 
     print(">> Opening ServiceNow incident (Auto-Remediation group)")
     inc = sn("table/incident?sysparm_input_display_value=true",
@@ -99,15 +100,15 @@ def main():
         status = aap(f"jobs/{jid}/")["status"]
     print(f"   job status: {status}")
 
-    httpd = ssh(f"podman exec {TARGET} systemctl is-active httpd")
+    svc = ssh(f"podman exec {TARGET} systemctl is-active {SERVICE}")
     state = sn(f"table/incident/{sid}?sysparm_fields=state")["result"]["state"]  # 6 = Resolved
 
     print()
     print(f"  EDA auto-launched : {job is not None}")
     print(f"  job successful    : {status == 'successful'}")
-    print(f"  httpd active      : {httpd == 'active'}")
+    print(f"  {SERVICE} active   : {svc == 'active'}")
     print(f"  incident state    : {state} ({'Resolved' if state == '6' else 'not resolved'})")
-    ok = job is not None and status == "successful" and httpd == "active" and state == "6"
+    ok = job is not None and status == "successful" and svc == "active" and state == "6"
     print("\n>> " + ("EDA E2E PASSED" if ok else "EDA E2E FAILED"))
     sys.exit(0 if ok else 1)
 

@@ -17,6 +17,8 @@ import time
 import urllib.error
 import urllib.parse
 
+import yaml
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, ROOT)
@@ -29,6 +31,7 @@ BASE = f"https://{os.environ['FQDN']}/api/controller/v2"
 HEADERS = {"Authorization": basic_auth(os.environ["AAP_ADMIN_USER"], os.environ["AAP_ADMIN_PASSWORD"])}
 CTX = insecure_ctx()
 KEY_PATH = os.path.join(ROOT, "bootstrap", "targets", "keys", "target_key")
+FLEET = yaml.safe_load(open(os.path.join(ROOT, "simulator", "fleet.yml")))
 
 
 def api(method, path, body=None):
@@ -65,7 +68,8 @@ def delete_by_name(endpoint, name):
 def main():
     # Remove the installer's demo objects (keep 'Ansible Galaxy', a system default).
     for ep, nm in (("job_templates", "Demo Job Template"), ("projects", "Demo Project"),
-                   ("inventories", "Demo Inventory"), ("credentials", "Demo Credential")):
+                   ("inventories", "Demo Inventory"), ("credentials", "Demo Credential"),
+                   ("job_templates", "Remediate Ping Server"), ("inventories", "POC Targets")):
         delete_by_name(ep, nm)
 
     org = first("organizations", "Default")["id"]
@@ -79,25 +83,26 @@ def main():
         "Credential Target SSH",
     )
 
+    # Inventory generated from the fleet manifest (simulator/fleet.yml). The EE uses pasta
+    # networking: host.containers.internal resolves to the host and reaches its rootless-published
+    # SSH ports (221x). The per-host vars (service/role/app/...) make the playbooks role-aware.
     inv = get_or_create(
-        "inventories", {"name": "POC Targets"},
-        {"name": "POC Targets", "organization": org, "variables": "ansible_user: ansible"},
-        "Inventory POC Targets",
+        "inventories", {"name": "Meridian Fleet"},
+        {"name": "Meridian Fleet", "organization": org, "variables": "ansible_user: ansible"},
+        "Inventory Meridian Fleet",
     )
-
-    # The EE uses pasta networking: host.containers.internal resolves to the host, with
-    # access to its rootless-published ports (2201/2202). Upsert the host vars on re-run.
-    for name, port in (("app-node-1", 2201), ("app-node-2", 2202)):
-        hvars = f"ansible_host: host.containers.internal\nansible_port: {port}"
-        res = api("GET", f"hosts/?{urllib.parse.urlencode({'name': name, 'inventory': inv['id']})}")
+    for s in FLEET["servers"]:
+        hvars = yaml.safe_dump(
+            {"ansible_host": "host.containers.internal", "ansible_port": s["ssh_port"],
+             "service": s["service"], "role": s["role"], "app": s["app"],
+             "business_service": s["business_service"], "support_group": s["support_group"]},
+            default_flow_style=False)
+        res = api("GET", f"hosts/?{urllib.parse.urlencode({'name': s['name'], 'inventory': inv['id']})}")
         if res.get("count"):
-            hid = res["results"][0]["id"]
-            api("PATCH", f"hosts/{hid}/", {"variables": hvars})
-            print(f"= Host {name} updated (id={hid})")
+            api("PATCH", f"hosts/{res['results'][0]['id']}/", {"variables": hvars})
         else:
-            obj = api("POST", "hosts/", {"name": name, "inventory": inv["id"],
-                                         "enabled": True, "variables": hvars})
-            print(f"+ Host {name} created (id={obj['id']})")
+            api("POST", "hosts/", {"name": s["name"], "inventory": inv["id"], "enabled": True, "variables": hvars})
+    print(f"= Inventory Meridian Fleet: {len(FLEET['servers'])} hosts upserted")
 
     # ServiceNow credential: custom type injecting SN_HOST/USERNAME/PASSWORD as env vars
     # (read by the servicenow.itsm collection in the playbook).
@@ -143,13 +148,11 @@ def main():
         time.sleep(3)
     print(f"   project status: {status}")
 
-    # Job templates: one per pattern.
-    #   pull  -> "Remediate Ping Server" (incident auto-remediation), launched by the EDA
-    #            servicenow.itsm.records rulebook.
-    #   push  -> "Execute Change Request" (change execution), launched by the EDA webhook
-    #            rulebook that an Event Stream feeds from ServiceNow.
+    # Job templates: one per pattern (role-aware playbooks, "Meridian Fleet" inventory).
+    #   pull  -> "Restart Service"        runs restart_service.yml (incident remediation)
+    #   push  -> "Execute Change Request" runs execute_change.yml  (change execution)
     # Both share the inventory/project/EE and the machine + ServiceNow credentials.
-    for jt_name, pb in (("Remediate Ping Server", "playbooks/remediate_ping.yml"),
+    for jt_name, pb in (("Restart Service", "playbooks/restart_service.yml"),
                         ("Execute Change Request", "playbooks/execute_change.yml")):
         jt = get_or_create(
             "job_templates", {"name": jt_name},
@@ -158,9 +161,9 @@ def main():
              "execution_environment": ee, "ask_variables_on_launch": True},
             f"Job Template {jt_name}",
         )
-        if jt.get("playbook") != pb:  # reconcile path (e.g. after the playbooks moved)
-            api("PATCH", f"job_templates/{jt['id']}/", {"playbook": pb})
-            print(f"   set playbook {pb} on '{jt_name}'")
+        if jt.get("playbook") != pb or jt.get("inventory") != inv["id"]:  # reconcile on re-run
+            api("PATCH", f"job_templates/{jt['id']}/", {"playbook": pb, "inventory": inv["id"]})
+            print(f"   reconciled '{jt_name}' (playbook + inventory)")
         have = {c["id"] for c in api("GET", f"job_templates/{jt['id']}/credentials/").get("results", [])}
         for cid in (cred["id"], sn_cred["id"]):
             if cid not in have:

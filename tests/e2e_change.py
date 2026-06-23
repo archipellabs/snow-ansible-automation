@@ -19,7 +19,8 @@ import urllib.parse
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SSH_KEY = os.path.expanduser("~/.ssh/snow-aap-poc")
-TARGET = "app-node-1"
+TARGET = "hr-web-01"       # a Meridian Fleet server
+SERVICE = "hr-portal"      # the systemd unit it runs
 JT_NAME = "Execute Change Request"
 TRIGGER_TIMEOUT = 180
 sys.path.insert(0, ROOT)
@@ -94,14 +95,16 @@ def main():
         status = aap(f"jobs/{jid}/")["status"]
     print(f"   job status: {status}")
 
-    deployed = ssh(f"podman exec {TARGET} cat /var/www/html/index.html 2>/dev/null")
-    content_ok = num in deployed
+    marker = ssh(f"podman exec {TARGET} cat /var/lib/meridian/last_change 2>/dev/null")
+    applied = num in marker
+    svc = ssh(f"podman exec {TARGET} systemctl is-active {SERVICE}")
 
     print()
     print(f"  EDA auto-launched : {job is not None}")
     print(f"  job successful    : {status == 'successful'}")
-    print(f"  change deployed   : {content_ok} (index.html mentions {num})")
-    ok = job is not None and status == "successful" and content_ok
+    print(f"  change applied    : {applied} (marker mentions {num})")
+    print(f"  {SERVICE} active   : {svc == 'active'}")
+    ok = job is not None and status == "successful" and applied and svc == "active"
     print("\n>> " + ("PUSH E2E PASSED" if ok else "PUSH E2E FAILED"))
     sys.exit(0 if ok else 1)
 
