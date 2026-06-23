@@ -1,0 +1,70 @@
+---
+# open_incident.yml — open a ServiceNow incident when monitoring finds a fleet app down.
+#
+# Pattern : the front of the self-driving PULL loop. The monitor rulebook
+#           (extensions/eda/rulebooks/monitor_health_open_incident.yml) runs ansible.eda.url_check
+#           against each app's /health endpoint and, on "down", launches the "Open Incident" job
+#           template -> this playbook. The incident it creates (assignment group Auto-Remediation,
+#           short_description "<host> ...") is then picked up by the pull-incident-remediation
+#           activation -> "Restart Service". So: app down -> incident -> remediation -> resolved,
+#           with no human or test opening the ticket.
+# Extra vars (from the monitor rulebook):
+#   target_host       : the server whose health check failed (also the CMDB CI name)
+#   short_description : (optional) defaults to "<host> health check failing"; MUST start with the
+#                       host name, because the remediation rulebook derives target_host from it.
+# ServiceNow credentials come from the controller's ServiceNow PDI credential as
+# SN_HOST / SN_USERNAME / SN_PASSWORD (read here via the env lookup). Runs on the EE itself.
+#
+# Deduplicated: if an active Auto-Remediation incident already exists for this CI, no new ticket is
+# opened — url_check keeps emitting "down" until the app recovers, so this prevents an incident storm.
+- name: Open a ServiceNow incident for a failing health check
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    sn_host: "{{ lookup('env', 'SN_HOST') }}"
+    sn_user: "{{ lookup('env', 'SN_USERNAME') }}"
+    sn_pass: "{{ lookup('env', 'SN_PASSWORD') }}"
+    desc: "{{ short_description | default(target_host ~ ' health check failing') }}"
+  tasks:
+    - name: Validate input
+      ansible.builtin.assert:
+        that: target_host is defined and (target_host | length) > 0
+        fail_msg: "open_incident requires target_host."
+
+    - name: Look for an existing active incident on this CI
+      ansible.builtin.uri:
+        url: "{{ sn_host }}/api/now/table/incident?sysparm_query=cmdb_ci.name={{ target_host }}%5Eactive=true%5Eassignment_group.name=Auto-Remediation&sysparm_fields=number,sys_id&sysparm_limit=1"
+        method: GET
+        url_username: "{{ sn_user }}"
+        url_password: "{{ sn_pass }}"
+        force_basic_auth: true
+        headers:
+          Accept: application/json
+      register: existing
+
+    - name: Open the incident if none is active
+      ansible.builtin.uri:
+        url: "{{ sn_host }}/api/now/table/incident?sysparm_input_display_value=true"
+        method: POST
+        url_username: "{{ sn_user }}"
+        url_password: "{{ sn_pass }}"
+        force_basic_auth: true
+        headers:
+          Accept: application/json
+          Content-Type: application/json
+        body_format: json
+        body:
+          short_description: "{{ desc }}"
+          assignment_group: Auto-Remediation
+          cmdb_ci: "{{ target_host }}"
+        status_code: 201
+      register: created
+      when: (existing.json.result | length) == 0
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: >-
+          {{ ('Opened incident ' ~ created.json.result.number) if (existing.json.result | length) == 0
+             else ('Active incident ' ~ existing.json.result[0].number ~ ' already open') }}
+          for {{ target_host }}.

@@ -14,12 +14,31 @@ via an Event Stream).
   `SN_PASSWORD`; the `servicenow.itsm` collection reads them.
 - **Target:** `target_host` (an inventory host) and the record id come from the rulebook as extra vars.
 
+## Self-driving pull loop (monitoring)
+
+By default the pull pattern is triggered by an incident someone (or a test) opens. The
+`monitor-health` activation makes it self-driving: the rulebook
+`extensions/eda/rulebooks/monitor_health_open_incident.yml` runs `ansible.eda.url_check` against
+each app's `/health` (the `908x` host ports) and, on a failure, launches the **Open Incident** job
+template (`open_incident.yml`). That incident lands in the Auto-Remediation group and the existing
+`pull-incident-remediation` activation remediates it. End to end, with no human in the loop:
+
+```
+app /health down  ──url_check──▶  Open Incident  ──▶  ServiceNow incident (Auto-Remediation)
+                                                            │
+        incident resolved  ◀──Restart Service──◀  pull-incident-remediation
+```
+
+Wire it with `bootstrap/aap/eda/configure_monitor.py`; validate with
+`python3 tests/e2e_monitor_selfheal.py` (it only injects the fault — the monitor opens the ticket).
+
 ## Catalogue
 
 Priority: **P0** = built (core); **P1–P4** = planned, from most useful to nice-to-have.
 
 | Playbook | Does | Pattern / trigger | Targets | Status |
 |---|---|---|---|---|
+| `open_incident.yml` | open an Auto-Remediation incident for a down server (deduplicated) | **monitor** — url_check | all | **✅** |
 | `restart_service.yml` | restart the host's `service`, clear the FastAPI "degraded" flag, re-check, resolve/escalate the incident | **pull** — incident | all | **P0 ✅** |
 | `execute_change.yml` | record a change marker, restart the `service`, verify, annotate the change | **push** — approved change | all | **P0 ✅** |
 | `collect_diagnostics.yml` | service status + disk + memory + recent logs → incident work note (read-only) | pull — incident | all | **P1 ✅** |

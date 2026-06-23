@@ -1,0 +1,99 @@
+---
+# EDA (pull, monitoring): probe each Meridian app's /health and open a ServiceNow incident when one
+# is down. This is the self-driving front of the pull loop — no human or test opens the ticket; the
+# incident it raises is then remediated by the pull-incident-remediation activation ("Restart
+# Service"). Together: app down -> incident opened -> service restarted -> incident resolved.
+#
+# Discovery: AAP EDA only finds rulebooks under extensions/eda/rulebooks/ (or rulebooks/).
+# Source: ansible.eda.url_check GETs each URL every `delay` seconds and emits status "up"/"down"
+#         (down = not HTTP 200 — connection refused if the service is stopped, or 503 from the
+#         FastAPI apps' degraded flag). The activation pod reaches the host-published app ports
+#         (908x, see simulator/compose.yml) via host.containers.internal, same as the EE.
+# Dedup : the "Open Incident" playbook skips creation when an active incident already exists for the
+#         CI; the per-URL throttle here further damps repeated "down" events into one launch.
+- name: Monitor Meridian app health and open incidents
+  hosts: all
+  sources:
+    - ansible.eda.url_check:
+        urls:
+          - http://host.containers.internal:9081/health   # hr-web-01  (hr-portal)
+          - http://host.containers.internal:9082/health   # crm-web-01 (crm)
+          - http://host.containers.internal:9083/health   # crm-web-02 (crm)
+          - http://host.containers.internal:9084/health   # intra-01   (intranet)
+          - http://host.containers.internal:9085/health   # ged-01     (ged)
+        delay: 15
+  rules:
+    - name: hr-web-01 health failing -> open incident
+      condition: event.url_check.status == "down" and event.url_check.url is search("9081")
+      throttle:
+        once_within: 2 minutes
+        group_by_attributes:
+          - event.url_check.url
+      action:
+        run_job_template:
+          name: "Open Incident"
+          organization: "Default"
+          job_args:
+            extra_vars:
+              target_host: hr-web-01
+              short_description: "hr-web-01 health check failing (hr-portal, port 9081)"
+
+    - name: crm-web-01 health failing -> open incident
+      condition: event.url_check.status == "down" and event.url_check.url is search("9082")
+      throttle:
+        once_within: 2 minutes
+        group_by_attributes:
+          - event.url_check.url
+      action:
+        run_job_template:
+          name: "Open Incident"
+          organization: "Default"
+          job_args:
+            extra_vars:
+              target_host: crm-web-01
+              short_description: "crm-web-01 health check failing (crm, port 9082)"
+
+    - name: crm-web-02 health failing -> open incident
+      condition: event.url_check.status == "down" and event.url_check.url is search("9083")
+      throttle:
+        once_within: 2 minutes
+        group_by_attributes:
+          - event.url_check.url
+      action:
+        run_job_template:
+          name: "Open Incident"
+          organization: "Default"
+          job_args:
+            extra_vars:
+              target_host: crm-web-02
+              short_description: "crm-web-02 health check failing (crm, port 9083)"
+
+    - name: intra-01 health failing -> open incident
+      condition: event.url_check.status == "down" and event.url_check.url is search("9084")
+      throttle:
+        once_within: 2 minutes
+        group_by_attributes:
+          - event.url_check.url
+      action:
+        run_job_template:
+          name: "Open Incident"
+          organization: "Default"
+          job_args:
+            extra_vars:
+              target_host: intra-01
+              short_description: "intra-01 health check failing (intranet, port 9084)"
+
+    - name: ged-01 health failing -> open incident
+      condition: event.url_check.status == "down" and event.url_check.url is search("9085")
+      throttle:
+        once_within: 2 minutes
+        group_by_attributes:
+          - event.url_check.url
+      action:
+        run_job_template:
+          name: "Open Incident"
+          organization: "Default"
+          job_args:
+            extra_vars:
+              target_host: ged-01
+              short_description: "ged-01 health check failing (ged, port 9085)"

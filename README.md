@@ -47,7 +47,10 @@ the same components and adds a gateway-managed **Event Stream**. The runtime flo
 ### Pull — incident remediation
 
 1. A monitored service goes down → an **incident** is opened in ServiceNow, assigned to the
-   **Auto-Remediation** group (`state = New`).
+   **Auto-Remediation** group (`state = New`). This can be opened by anyone, or **self-driven**: the
+   `monitor-health` activation probes each app's `/health` with `ansible.eda.url_check` and raises
+   the incident itself (via the `Open Incident` job template → `open_incident.yml`) — see
+   [playbooks/README](playbooks/README.md#self-driving-pull-loop-monitoring).
 2. **EDA** polls ServiceNow (`servicenow.itsm.records`), detects the incident, and triggers the
    `Restart Service` **job template**, passing the incident number + the affected host.
 3. The job runs `restart_service.yml` in an execution environment: SSH to the target, restart the
@@ -83,15 +86,17 @@ the same components and adds a gateway-managed **Event Stream**. The runtime flo
 | Credential `ServiceNow PDI` (custom type) | injects `SN_HOST`/`SN_USERNAME`/`SN_PASSWORD` for `servicenow.itsm` |
 | Inventory `Meridian Fleet` | the 9 fleet servers at `host.containers.internal:221x`, with host vars `service`/`role`/`app`/… — generated from `simulator/fleet.yml` |
 | Project `snow-ansible-automation` | pulls the playbooks from this Git repo |
-| Job template `Restart Service` (pull) / `Execute Change Request` (push) | run the two playbooks |
+| Job template `Restart Service` (pull) / `Execute Change Request` (push) | run the two core playbooks |
+| Job templates `Collect Diagnostics` · `Free Disk` · `Open Incident` · `DB Create Role` · `DB Apply Migration` · `DB Status` · `DB Backup` | the helper / DB-admin playbooks (see [playbooks/README](playbooks/README.md)) |
 
-**EDA** — `bootstrap/aap/eda/configure.py` (pull) + `configure_push.py` (push)
+**EDA** — `bootstrap/aap/eda/configure.py` (pull) + `configure_push.py` (push) + `configure_monitor.py` (monitoring)
 | Object | Pattern | Role |
 |---|---|---|
-| Decision environment `snow-eda-de` | both | DE image (`de-minimal` + `servicenow.itsm`), pulled from the hub |
-| Credential `AAP Controller` (host `…/api/controller/`) | both | lets the rulebooks launch job templates |
-| EDA project `snow-ansible-automation` | both | rulebooks under `extensions/eda/rulebooks/` |
+| Decision environment `snow-eda-de` | all | DE image (`de-minimal` + `servicenow.itsm`), pulled from the hub |
+| Credential `AAP Controller` (host `…/api/controller/`) | all | lets the rulebooks launch job templates |
+| EDA project `snow-ansible-automation` | all | rulebooks under `extensions/eda/rulebooks/` |
 | Activation `pull-incident-remediation` | pull | polls ServiceNow → launches the job (injects `SN_*`) |
+| Activation `monitor-health` | monitor | `ansible.eda.url_check` on each `/health` → `Open Incident` (self-driving pull) |
 | `ServiceNow …Event Stream` credential + Event Stream | push | authenticated inbound endpoint on the gateway |
 | Activation `push-change-execution` | push | webhook source mapped to the event stream → launches the job |
 
