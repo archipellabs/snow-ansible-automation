@@ -24,11 +24,17 @@
       ansible.builtin.include_role:
         name: infra.aap_configuration.eda_event_streams
 
+    # Materialize an "absent" copy under a DISTINCT name (referencing eda_rulebook_activations from
+    # inside a var of the same name would recurse).
+    - name: Build the delete (absent) variant of the activations
+      ansible.builtin.set_fact:
+        eda_activations_absent: "{{ eda_rulebook_activations | map('combine', {'state': 'absent'}) | list }}"
+
     - name: Remove existing activations (EDA can't update a running one)
       ansible.builtin.include_role:
         name: infra.aap_configuration.eda_rulebook_activations
       vars:
-        eda_rulebook_activations: "{{ eda_rulebook_activations | map('combine', {'state': 'absent'}) | list }}"
+        eda_rulebook_activations: "{{ eda_activations_absent }}"
 
     - name: Create activations
       ansible.builtin.include_role:
