@@ -20,12 +20,9 @@
   vars_files:
     - vars/eda.yml
   tasks:
-    - name: Reconcile event streams (idempotent, in place)
-      ansible.builtin.include_role:
-        name: infra.aap_configuration.eda_event_streams
-
-    # Materialize an "absent" copy under a DISTINCT name (referencing eda_rulebook_activations from
-    # inside a var of the same name would recurse).
+    # Order matters: delete the activations first (so the event streams are unmapped and can be
+    # updated), reconcile the streams, then recreate the activations bound to them.
+    # Materialize an "absent" copy under a DISTINCT name (a var referencing itself would recurse).
     - name: Build the delete (absent) variant of the activations
       ansible.builtin.set_fact:
         eda_activations_absent: "{{ eda_rulebook_activations | map('combine', {'state': 'absent'}) | list }}"
@@ -36,6 +33,10 @@
       vars:
         eda_rulebook_activations: "{{ eda_activations_absent }}"
 
-    - name: Create activations
+    - name: Reconcile event streams (forward_events -> production routing, not test mode)
+      ansible.builtin.include_role:
+        name: infra.aap_configuration.eda_event_streams
+
+    - name: Create activations (bound to the event streams)
       ansible.builtin.include_role:
         name: infra.aap_configuration.eda_rulebook_activations

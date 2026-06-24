@@ -9,10 +9,11 @@
 # 'organization' is required by the roles.
 
 # Inbound endpoints (gateway-managed). They reuse the shared ServiceNow event-stream token credential.
+# forward_events: true => production routing (NOT test mode) -> events are forwarded to the activation.
 eda_event_streams:
-  - { name: servicenow-chg-stream,        organization: Default, credential_name: "ServiceNow CHG Event Stream cred" }
-  - { name: servicenow-catalog-stream,    organization: Default, credential_name: "ServiceNow CHG Event Stream cred" }
-  - { name: servicenow-onboarding-stream, organization: Default, credential_name: "ServiceNow CHG Event Stream cred" }
+  - { name: servicenow-chg-stream,        organization: Default, forward_events: true, credential_name: "ServiceNow CHG Event Stream cred" }
+  - { name: servicenow-catalog-stream,    organization: Default, forward_events: true, credential_name: "ServiceNow CHG Event Stream cred" }
+  - { name: servicenow-onboarding-stream, organization: Default, forward_events: true, credential_name: "ServiceNow CHG Event Stream cred" }
 
 eda_rulebook_activations:
   # PULL — records source; no event stream; injects SN_* for the records poller.
