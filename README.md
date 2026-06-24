@@ -436,6 +436,12 @@ store so the outbound TLS validates (see Key findings).
 12. **ServiceNow change state model** — the Table API rejects arbitrary `state` jumps (a guard
    business rule), so the trigger keys off the writable `approval` field (`approved`), and the
    playbook records a **work note** instead of transitioning the change.
+13. **Resolved incidents stay `active=true`** — in ServiceNow `active` only flips to `false` at
+   **Closed** (state 7, via auto-close days later) or **Canceled** (8); a **Resolved** (6) incident
+   is still "active". So the monitor's anti-storm dedup (`open_incident.yml`) keys on the **open
+   states** (`stateIN1,2,3` = New / In Progress / On Hold), *not* `active` — otherwise a recurrence
+   after a fix would be deduped against the still-active Resolved ticket and never re-remediated. The
+   remediation **resolves** (ServiceNow auto-closes); each outage gets its own incident.
 
 ## Status
 

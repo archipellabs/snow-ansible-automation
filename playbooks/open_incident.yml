@@ -15,8 +15,11 @@
 # ServiceNow credentials come from the controller's ServiceNow PDI credential as
 # SN_HOST / SN_USERNAME / SN_PASSWORD (read here via the env lookup). Runs on the EE itself.
 #
-# Deduplicated: if an active Auto-Remediation incident already exists for this CI, no new ticket is
-# opened — url_check keeps emitting "down" until the app recovers, so this prevents an incident storm.
+# Deduplicated: if an OPEN Auto-Remediation incident (New / In Progress / On Hold) already exists for
+# this CI, no new ticket is opened — url_check keeps emitting "down" until the app recovers, so this
+# prevents an incident storm. NB: we key on the open states (stateIN1,2,3), NOT `active`, because a
+# Resolved incident stays active=true in ServiceNow until it is Closed (days later) — keying on
+# `active` would block a brand-new failure from opening a ticket after an earlier one was fixed.
 - name: Open a ServiceNow incident for a failing health check
   hosts: localhost
   connection: local
@@ -32,9 +35,9 @@
         that: target_host is defined and (target_host | length) > 0
         fail_msg: "open_incident requires target_host."
 
-    - name: Look for an existing active incident on this CI
+    - name: Look for an existing OPEN incident on this CI (New / In Progress / On Hold)
       ansible.builtin.uri:
-        url: "{{ sn_host }}/api/now/table/incident?sysparm_query=cmdb_ci.name={{ target_host }}%5Eactive=true%5Eassignment_group.name=Auto-Remediation&sysparm_fields=number,sys_id&sysparm_limit=1"
+        url: "{{ sn_host }}/api/now/table/incident?sysparm_query=cmdb_ci.name={{ target_host }}%5Eassignment_group.name=Auto-Remediation%5EstateIN1,2,3&sysparm_fields=number,sys_id&sysparm_limit=1"
         method: GET
         url_username: "{{ sn_user }}"
         url_password: "{{ sn_pass }}"

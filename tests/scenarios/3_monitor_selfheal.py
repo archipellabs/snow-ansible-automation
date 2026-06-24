@@ -40,11 +40,20 @@ def run():
     env()
     snow = Snow(creds="eda")
 
-    # Clear any leftover active incident from a previous broken run so we observe a fresh open.
-    pre = active_incident(snow)
-    if pre:
-        print(f"!! pre-existing active incident {pre['number']} for {TARGET}; "
-              "let it resolve or close it before a clean run.")
+    # Clean slate so we observe a FRESH open: the monitor de-duplicates (open_incident.yml won't open
+    # a 2nd active incident for the same host), so ANY leftover active incident would block this test.
+    # Cancel them (admin creds — a stale incident outside the poll window is never auto-remediated) and
+    # heal the app first.
+    admin = Snow(creds="admin")
+    for _ in range(30):
+        pre = active_incident(admin)
+        if not pre:
+            break
+        admin.call(f"table/incident/{pre['sys_id']}",
+                   {"state": "8", "close_notes": "monitor_selfheal: canceled stale test incident"}, method="PATCH")
+        print(f"!! canceled leftover active incident {pre['number']} for a clean run")
+    ssh(f"podman exec {TARGET} rm -f {FLAG}")                 # heal before injecting a fresh fault
+    ssh(f"podman exec {TARGET} systemctl restart {SERVICE}")
 
     print(f">> Injecting fault: degrading {SERVICE} on {TARGET} (/health -> 503)")
     ssh(f"podman exec {TARGET} touch {FLAG}")
@@ -54,7 +63,7 @@ def run():
     for _ in range(OPEN_TIMEOUT // 5):
         time.sleep(5)
         inc = active_incident(snow)
-        if inc and (not pre or inc["number"] != pre["number"]):
+        if inc:
             break
     if not inc:
         ssh(f"podman exec {TARGET} rm -f {FLAG}")    # restore before bailing
