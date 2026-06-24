@@ -64,7 +64,7 @@ Two non-obvious points the wiring handles:
   `hr-portal.service` lists the `OIDC_*` vars under `PassEnvironment`, and compose sets them on
   `hr-web-01` (secret from `.env`).
 
-Smoke-test it (no browser): `python3 tests/e2e_hrportal_sso.py`.
+Smoke-test it (no browser): `python3 tests/health.py --only sso`.
 
 ## AAP admin SSO (Étape 3)
 
@@ -83,7 +83,7 @@ the browser uses, so the token issuer is consistent (hairpin to the public IP wo
 
 ```bash
 python3 bootstrap/aap/configure_sso.py      # after bootstrap/keycloak/configure.py
-python3 tests/e2e_aap_sso.py                # headless OIDC login -> asserts an IT-Admins user is superuser
+python3 tests/health.py --only sso          # SSO install checks (gateway OIDC login -> superuser, hr-portal grant)
 ```
 
 Browser: open `https://<FQDN>/` → **Sign in with Keycloak (Meridian)** → e.g. `nadia.haddad` /
@@ -104,8 +104,8 @@ ServiceNow catalog "Arrivée collaborateur" (name, email, service)
 
 The playbook authenticates to Keycloak with the **`aap-provisioner`** service-account client
 (`manage-users`, `client_credentials`) — least privilege, no master admin in AAP. Wire it with
-the **Configure EDA** job template (declarative) + `bootstrap/servicenow/setup_onboarding.py`; validate
-with `python3 tests/e2e_employee_onboarding.py`.
+the **Configure EDA** job template (declarative) + `bootstrap/servicenow/4_catalog.py`; validate
+with `python3 tests/scenarios/5_employee_onboarding.py`.
 
 ## Build order
 

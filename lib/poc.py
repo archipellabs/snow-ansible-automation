@@ -1,20 +1,28 @@
-"""Shared transport helpers for the PoC config-as-code and test scripts (stdlib only).
+"""Shared helpers for the PoC config-as-code and test scripts (stdlib only).
 
 Each script computes the repo root (`ROOT`) and imports from here:
 
     sys.path.insert(0, ROOT)
     from lib.poc import load_dotenv, insecure_ctx, basic_auth, http_json
 
-Only the API-agnostic transport lives here; per-API wrappers (ServiceNow's `["result"]`
-unwrap, the controller/EDA base URLs, `get_or_create`) stay inline in each script.
+This module holds the API-agnostic transport (`http_json`, auth, TLS, `.env`) plus two helpers
+shared across every layer: `env()` (load `.env` + return the environment) and `ssh()` (run a
+command on the VM). The per-API clients live in sibling lib modules: `lib.servicenow` (ServiceNow
+Table API + Business Rule builder) and `lib.aap` (controller/EDA client with job polling).
 """
 import os
 import sys
 import ssl
 import json
 import base64
+import subprocess
 import urllib.request
 import urllib.error
+
+# Repo root, derived from this file's location (lib/poc.py -> repo root), so callers don't recompute
+# it. Note: a script still needs `sys.path.insert(0, <root>)` before it can import lib at all.
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+SSH_KEY = "~/.ssh/snow-aap-poc"
 
 
 def load_dotenv(root=None, required=()):
@@ -65,3 +73,19 @@ def http_json(url, method="GET", headers=None, body=None, ctx=None, timeout=30):
     except urllib.error.HTTPError as e:
         sys.stderr.write(f"HTTP {e.code} {method} {url}\n{e.read().decode()}\n")
         raise
+
+
+def env(required=()):
+    """Load `.env` (from REPO_ROOT) into the environment and return os.environ."""
+    load_dotenv(REPO_ROOT, required=required)
+    return os.environ
+
+
+def ssh(cmd, fqdn=None, timeout=40, key=SSH_KEY, connect_timeout=15):
+    """Run a command on the VM over SSH (azureuser@FQDN); return stdout, stripped. fqdn defaults to
+    $FQDN. `connect_timeout` bounds the TCP connect (lower it for liveness probes so a dead host fails
+    fast); `timeout` is the hard subprocess kill. Raises on connection/timeout failure."""
+    return subprocess.run(
+        ["ssh", "-i", os.path.expanduser(key), "-o", "StrictHostKeyChecking=accept-new",
+         "-o", f"ConnectTimeout={connect_timeout}", f"azureuser@{fqdn or os.environ['FQDN']}", cmd],
+        capture_output=True, text=True, timeout=timeout).stdout.strip()

@@ -1,60 +1,35 @@
 #!/usr/bin/env python3
-"""Provision the PoC ServiceNow objects (idempotent, Table API, stdlib only).
+"""Step 1 — the ServiceNow integration account (idempotent, Table API, stdlib only).
 
 Creates: the 'Auto-Remediation' assignment group (EDA trigger filter) and the
 'eda.integration' service account (+ itil role, activated, timezone GMT). The server CIs
 and the rest of the Meridian CMDB are loaded separately from simulator/fleet.yml by
-dataset.py. The eda.integration password can't be set via the Table API: set it once in the
+2_cmdb.py. The eda.integration password can't be set via the Table API: set it once in the
 UI and store it in .env as SN_EDA_PASSWORD. (GMT matters for the EDA poll window — see the
 inline note and the README key findings.)
 
 Usage:
   # via .env (copy .env.example -> .env at the repo root):
-  python3 bootstrap/servicenow/setup.py
+  python3 bootstrap/servicenow/1_account.py
   # or via environment variables:
-  SN_INSTANCE=your-instance.service-now.com SN_USER=admin SN_PASS=*** python3 bootstrap/servicenow/setup.py
+  SN_INSTANCE=your-instance.service-now.com SN_USER=admin SN_PASS=*** python3 bootstrap/servicenow/1_account.py
 """
 import os
 import sys
-import urllib.parse
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 sys.path.insert(0, ROOT)
-from lib.poc import load_dotenv, basic_auth, http_json  # noqa: E402
+from lib.poc import load_dotenv  # noqa: E402
+from lib.servicenow import Snow  # noqa: E402
 
 load_dotenv(ROOT, required=("SN_INSTANCE", "SN_USER", "SN_PASS"))
 
-INSTANCE = os.environ["SN_INSTANCE"].replace("https://", "").rstrip("/")
-BASE = f"https://{INSTANCE}/api/now/table"
-HEADERS = {"Authorization": basic_auth(os.environ["SN_USER"], os.environ["SN_PASS"]),
-           "Accept": "application/json"}
-
-
-def req(method, url, body=None):
-    return http_json(url, method=method, headers=HEADERS, body=body)["result"]
-
-
-def get_one(table, query, fields="sys_id"):
-    q = urllib.parse.urlencode(
-        {"sysparm_query": query, "sysparm_limit": "1", "sysparm_fields": fields}
-    )
-    res = req("GET", f"{BASE}/{table}?{q}")
-    return res[0] if res else None
-
-
-def ensure(table, key_query, body, label):
-    found = get_one(table, key_query)
-    if found:
-        print(f"= {label} already exists (sys_id={found['sys_id']})")
-        return found["sys_id"]
-    created = req("POST", f"{BASE}/{table}", body)
-    print(f"+ {label} created (sys_id={created['sys_id']})")
-    return created["sys_id"]
-
 
 def main():
+    snow = Snow()
+
     # 1) Trigger group
-    ensure(
+    snow.ensure(
         "sys_user_group",
         "name=Auto-Remediation",
         {"name": "Auto-Remediation", "description": "POC EDA/AAP auto-remediation"},
@@ -62,21 +37,17 @@ def main():
     )
 
     # 2) Service account
-    existing = get_one("sys_user", "user_name=eda.integration")
+    existing = snow.get_one("sys_user", "user_name=eda.integration")
     if existing:
         user_sid = existing["sys_id"]
         print(f"= User eda.integration already exists (sys_id={user_sid})")
     else:
-        created = req(
-            "POST",
-            f"{BASE}/sys_user",
-            {
-                "user_name": "eda.integration",
-                "first_name": "EDA",
-                "last_name": "Integration",
-                "email": "eda.integration@example.com",
-            },
-        )
+        created = snow.result("table/sys_user", {
+            "user_name": "eda.integration",
+            "first_name": "EDA",
+            "last_name": "Integration",
+            "email": "eda.integration@example.com",
+        })
         user_sid = created["sys_id"]
         print(f"+ User eda.integration created (sys_id={user_sid})")
 
@@ -86,17 +57,17 @@ def main():
     # time_zone=GMT is REQUIRED: the EDA records source builds its poll-window filter with
     # gs.dateGenerate, evaluated in this user's timezone; the rulebook pins UTC, so a
     # non-GMT user shifts the window and new incidents never trigger the activation.
-    req("PATCH", f"{BASE}/sys_user/{user_sid}",
-        {"active": "true", "locked_out": "false", "password_needs_reset": "false",
-         "time_zone": "GMT"})
+    snow.call(f"table/sys_user/{user_sid}",
+              {"active": "true", "locked_out": "false", "password_needs_reset": "false",
+               "time_zone": "GMT"}, method="PATCH")
     print("  -> active=true, locked_out=false, password_needs_reset=false, time_zone=GMT")
 
     # 3) itil role (incident read/write)
-    role = get_one("sys_user_role", "name=itil")
+    role = snow.get_one("sys_user_role", "name=itil")
     if not role:
         print("! 'itil' role not found", file=sys.stderr)
         sys.exit(1)
-    ensure(
+    snow.ensure(
         "sys_user_has_role",
         f"user={user_sid}^role={role['sys_id']}",
         {"user": user_sid, "role": role["sys_id"]},

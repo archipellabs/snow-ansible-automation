@@ -1,6 +1,6 @@
 ---
 # Meridian Group — the simulated IT estate. Single source of truth: this manifest feeds the
-# ServiceNow CMDB (dataset.py), the target containers (compose), and the controller inventory.
+# ServiceNow CMDB (2_cmdb.py), the target containers (compose), and the controller inventory.
 # Everything is fictional; *.meridian.example is a documentation domain.
 company: Meridian Group
 domain: meridian.example

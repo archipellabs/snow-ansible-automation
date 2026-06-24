@@ -20,7 +20,7 @@ Run AFTER bootstrap/aap/eda/build.sh (the DE image must be in the hub). From the
 Non-obvious requirement encoded here (cost real debugging time): ansible-rulebook picks the
 controller API path from the credential host — a host with a path (".../api/controller/") selects
 the AAP 2.5+ gateway slugs; a bare host selects the legacy "/api/v2/" slugs, which 404 behind the
-gateway. (The GMT-timezone requirement for the records source lives in bootstrap/servicenow/setup.py.)
+gateway. (The GMT-timezone requirement for the records source lives in bootstrap/servicenow/1_account.py.)
 """
 import os
 import sys

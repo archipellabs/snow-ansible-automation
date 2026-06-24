@@ -5,7 +5,7 @@ Creates: the Machine credential (target SSH), the ServiceNow credential (+ its c
 credential type), the "Meridian Fleet" inventory (the 9 servers from simulator/fleet.yml),
 the Git project, and the two job templates ("Restart Service" for pull, "Execute Change
 Request" for push). Re-runs sync the project and reconcile the job-template playbook paths.
-Validate the result — including the EE -> target path — with `python3 tests/healthcheck.py`.
+Validate the result — including the EE -> target path — with `python3 tests/health.py`.
 
 Reads .env (FQDN, AAP_ADMIN_*, SN_*, GIT_REPO_URL) and the target SSH private key
 (bootstrap/targets/keys/target_key). Run from the repo root:
@@ -282,7 +282,7 @@ def main():
         # Usually means the project hasn't finished syncing the new playbook yet — re-run shortly.
         print("!  could not create 'Configure EDA' (project playbook not synced yet?) — re-run this script")
 
-    print("\n>> Controller configured. Validate: python3 tests/healthcheck.py")
+    print("\n>> Controller configured. Validate: python3 tests/health.py")
     print(">> GitOps: launch the 'Configure EDA' job template to apply bootstrap/aap/eda/configure.yml")
 
 

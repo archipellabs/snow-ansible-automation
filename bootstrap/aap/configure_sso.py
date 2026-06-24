@@ -82,7 +82,7 @@ def main():
     print("\n>> AAP admin SSO is wired. The local 'admin' login is unchanged (no lock-out).")
     print(f">> Test: open https://{FQDN}/ -> 'Sign in with {AUTH_NAME}' -> log in as an IT-Admins")
     print("   user (e.g. nadia.haddad / the demo password) -> you land in AAP as a superuser.")
-    print(">> Validate from the CLI: python3 tests/e2e_aap_sso.py")
+    print(">> Validate from the CLI: python3 tests/health.py --only sso")
 
 
 if __name__ == "__main__":

@@ -22,7 +22,7 @@ ServiceNow is a real SaaS Personal Developer Instance (PDI). The automation cont
 | Playbook | `restart_service.yml` (restart + resolve) | `execute_change.yml` (deploy + work note) |
 | Custom DE? | **yes** (`servicenow.itsm` is in no stock DE) | no — same DE; `ansible.eda` is built in |
 | Exposure | outbound only | inbound on **:443** (gateway-managed, TLS) |
-| End-to-end test | `tests/e2e_pull_incident_remediation.py` | `tests/e2e_push_change_execution.py` |
+| Scenario test | `tests/scenarios/1_pull_incident_remediation.py` | `tests/scenarios/2_push_change_execution.py` |
 
 **Trade-off:** pull needs no inbound exposure and self-heals (it re-polls), at the cost of
 latency; push is near-real-time but requires ServiceNow to reach an authenticated endpoint and
@@ -81,16 +81,16 @@ control plane, and `identity-sso.svg` covers the SSO/identity layer.
 3. The stream feeds the `ansible.eda.webhook` source of the `push-selfservice-restart` activation,
    which triggers the `Restart Service (Self-Service)` **job template**.
 4. `restart_service_selfservice.yml` restarts that server's service and **closes the request item**.
-   Set up declaratively (the **Configure EDA** job template) + `bootstrap/servicenow/setup_selfservice.py`.
+   Set up declaratively (the **Configure EDA** job template) + `bootstrap/servicenow/4_catalog.py`.
 
 ### Objects provisioned by the scripts
 
-**ServiceNow** — `bootstrap/servicenow/setup.py` (pull) + `setup_change.py` (push)
+**ServiceNow** — `bootstrap/servicenow/1_account.py` (pull) + `3_push_change.py` (push)
 | Object | Pattern | Role |
 |---|---|---|
 | Assignment group `Auto-Remediation` | pull | trigger filter — EDA only reacts to incidents here |
 | Service account `eda.integration` (+ `itil`, TZ `GMT`) | pull | API identity for EDA + the playbook |
-| Meridian CMDB (servers, apps, business services, relations, people) | both | loaded from `simulator/fleet.yml` by `bootstrap/servicenow/dataset.py` |
+| Meridian CMDB (servers, apps, business services, relations, people) | both | loaded from `simulator/fleet.yml` by `bootstrap/servicenow/2_cmdb.py` |
 | Business Rule *EDA - push approved change to AAP* | push | POSTs approved changes to the event stream |
 | Trust-store cert (AAP gateway CA) | push | lets ServiceNow trust the gateway's TLS certificate |
 
@@ -132,30 +132,40 @@ content the AAP controller and EDA pull from this Git repo (the SCM project).
 | `bootstrap/infra/` | Azure VM as **Bicep** (`main.bicep` + `resources.bicep` + `cloud-init.yaml`); copy `main.parameters.example.json` → `main.parameters.json` (gitignored) |
 | `bootstrap/aap/` | AAP install (`install.sh` + inventory + `sync.sh`) **and** AAP config-as-code: `controller/configure.py` + `eda/configure.py` (base, Python), the **declarative** EDA config (`eda/configure.yml` + `eda/vars/eda.yml`, run by the Configure EDA job template), and the DE build (`eda/execution-environment.yml` + `build.sh`) |
 | `bootstrap/awx/` | placeholder for a future AWX install (open-source alternative to AAP) |
-| `bootstrap/servicenow/` | `setup.py` (group + service account) + `dataset.py` (Meridian CMDB from `fleet.yml`) + `setup_change.py` (push Business Rule + gateway-CA trust) |
+| `bootstrap/servicenow/` | numbered by run order: `1_account.py` (group + service account), `2_cmdb.py` (Meridian CMDB from `fleet.yml` + inventory `u_*` cols), `3_push_change.py` (push Business Rule + gateway-CA trust), `4_catalog.py` (self-service restart + onboarding catalog items) |
 | `bootstrap/targets/` | the SSH key the controller uses to reach the fleet (the servers live in `simulator/`) |
 | `simulator/` | **the simulated estate** — Meridian Group: `fleet.yml` (source of truth), real apps (`apps/`, FastAPI + intranet), DB/mail images (`base/`), edge gateway (`apps/edge/`) + Keycloak, `compose.yml`; `sync.sh` (laptop installer) + `deploy.sh` (on the VM) |
 | `playbooks/` | `restart_service.yml` (pull) + `execute_change.yml` (push) — pulled by the controller project |
 | `collections/` | `requirements.yml` — collections AAP installs at project sync (`servicenow.itsm`) |
 | `extensions/eda/rulebooks/` | `pull_incident_remediation.yml` (pull, poll) + `push_change_execution.yml` (push, webhook) |
-| `lib/` | `poc.py` — shared stdlib transport for the Python scripts (`load_dotenv`, `http_json`, auth, SSL); per-API wrappers stay inline |
-| `tests/` | `healthcheck.py` + the three end-to-end tests (see below) — re-runnable validation |
+| `lib/` | shared stdlib modules, layered: `poc.py` (transport — `load_dotenv`, `http_json`, auth, SSL, `env`, `ssh`), `servicenow.py` (the `Snow` Table/Catalog client + Business-Rule builder + gateway-CA trust), `aap.py` (controller/EDA client with job polling). Both `bootstrap/` and `tests/` build on these |
+| `tests/` | `health.py` (read-only dashboard, `--watch`/`--runtime`/`--only`) + `scenarios/` (numbered functional scenarios) — see below |
 | `docs/` | architecture + remediation-flow (pull) + change-flow (push) diagrams (SVG) |
 | `.env.example` | template for `.env` — the single secrets file (copy and fill) |
 
 ### Tests (`tests/`)
 
-All are idempotent and read `.env`. They build on each other from narrow to broad:
+Two natures, kept apart (this distinction also maps the **AWX-portability** seam):
 
-| Test | Scope | What it proves |
+- **`tests/health.py`** — a read-only **health dashboard**: "is every component alive right now?"
+  (ServiceNow, the control plane, the targets, the Meridian apps, Keycloak, **SSO wiring**). Each row
+  shows its run time; safe to loop: `python3 tests/health.py --watch [seconds]`. Filter with
+  `--only <substr>` (e.g. `--only sso` to run just the SSO checks). The control-plane probes are
+  runtime-specific (`--runtime aap|awx`, default `$RUNTIME` or `aap`) — the only part that changes for
+  AWX. Heavy probes (the ad-hoc ping, the full SSO logins) are *deep*: run in one-pass, skipped (⚪)
+  under `--watch` so the dashboard stays snappy; every call is timeout-bounded (≤8s).
+- **`tests/scenarios/`** — real **functional tests**, **numbered in logical run order**. Run them **one at a
+  time** (`python3 tests/scenarios/1_pull_incident_remediation.py`, …); each exposes a `run()` and prints
+  PASS/FAIL. The SSO install checks (a login proves wiring, not behaviour) live in `health.py`
+  (`--only sso`), not here; applying the declarative EDA config is a deploy step (launch the **Configure
+  EDA** job template), after which `health.py` shows the five activations running.
+
+| scenario | Scope | What it proves |
 |---|---|---|
-| `healthcheck.py` | infrastructure | ServiceNow auth, AAP gateway/controller, subscription, targets up, and the EE→target ad-hoc ping |
-| `e2e_controller_restart_direct.py` | controller only (**no EDA**) | breaks httpd, opens an incident, then **launches the job template directly** and checks the service is back + the incident resolved — isolates the playbook + ServiceNow write from the event layer |
-| `e2e_pull_incident_remediation.py` | full **pull** chain | opens an incident and asserts **EDA itself** auto-launches the job (never launched by the test) → resolved |
-| `e2e_push_change_execution.py` | full **push** chain | approves a change and asserts EDA auto-launches the execution job via the Event Stream → deployed + work note |
-
-`e2e_controller_restart_direct.py` is the deliberate "lower layer": if a full-chain test fails, it tells you
-whether the break is in the playbook/ServiceNow side or in the event-driven trigger.
+| `1_pull_incident_remediation.py` | full **pull** chain | opens an incident and asserts **EDA itself** auto-launches the job (never launched by the test) → resolved |
+| `2_push_change_execution.py` | full **push** chain | approves a change and asserts EDA auto-launches the execution job via the Event Stream → deployed + work note |
+| `3_monitor_selfheal.py` | self-driving loop | injects a fault → the **monitor** opens the incident → EDA remediation → resolved (supersets the pull remediation) |
+| `4_selfservice_restart.py` · `5_employee_onboarding.py` · `6_collect_diagnostics.py` · `7_db_admin_lifecycle.py` | the remaining flows | the two catalog flows, diagnostics acknowledgement, and the DB-admin lifecycle |
 
 ## Secrets
 
@@ -222,7 +232,7 @@ either order works — this is the order that tells the cleaner story:
    the realm from `fleet.yml`: `bootstrap/keycloak/configure.py`. The apps get OIDC login; the HR DB
    (`leave_requests`) is filled by the DB playbooks (§4). *SSO is optional — see Limitations.*
 3. **ITSM** — ServiceNow CMDB + service account from the same `fleet.yml`:
-   `bootstrap/servicenow/setup.py` + `dataset.py` (§3).
+   `bootstrap/servicenow/1_account.py` + `2_cmdb.py` (§3).
 4. **Control plane** — install AAP (§2), then config-as-code: controller (§5), DE + EDA (§6), push
    (§7).
 5. **Identity integration** — AAP admin SSO: `bootstrap/aap/configure_sso.py` (Keycloak `aap` client).
@@ -231,7 +241,7 @@ either order works — this is the order that tells the cleaner story:
 
 The same `simulator/fleet.yml` is the single source of truth for **all three** consumers — the
 ServiceNow CMDB, the Keycloak realm, and (indirectly) the controller inventory. The inventory is no
-longer generated from `fleet.yml` directly: `dataset.py` loads the fleet into the CMDB, then the
+longer generated from `fleet.yml` directly: `2_cmdb.py` loads the fleet into the CMDB, then the
 controller's **dynamic inventory** reads the CMDB back (`fleet.yml → CMDB → inventory`), so retiring a
 server CI in ServiceNow drops it from automation on the next sync.
 
@@ -289,12 +299,12 @@ with your Red Hat username/password.
 
 ```bash
 cp .env.example .env                       # fill in your values
-python3 bootstrap/servicenow/setup.py      # Auto-Remediation group + eda.integration account
-python3 bootstrap/servicenow/dataset.py    # the Meridian CMDB from simulator/fleet.yml
+python3 bootstrap/servicenow/1_account.py  # Auto-Remediation group + eda.integration account
+python3 bootstrap/servicenow/2_cmdb.py     # the Meridian CMDB from simulator/fleet.yml
 ```
 
-`setup.py` creates the `Auto-Remediation` group and the `eda.integration` service account
-(+ `itil` role, `active`, `password_needs_reset=false`, timezone `GMT`). `dataset.py` then loads the
+`1_account.py` creates the `Auto-Remediation` group and the `eda.integration` service account
+(+ `itil` role, `active`, `password_needs_reset=false`, timezone `GMT`). `2_cmdb.py` then loads the
 Meridian estate (servers, applications, business services, relationships, people, support groups)
 from `simulator/fleet.yml`. It also adds the custom server columns the **dynamic inventory** reads
 (`u_ssh_port`/`u_service`/`u_role` on `cmdb_ci_linux_server`, via `sys_dictionary`) and populates them
@@ -336,7 +346,7 @@ apps at `https://<FQDN>:9443/` (edge → intranet, `/hr`, `/crm`, `/ged`) and th
 
 ```bash
 python3 bootstrap/aap/controller/configure.py   # credentials, project, job templates + dynamic inventory
-python3 tests/healthcheck.py                     # 6 checks incl. EE -> target ad-hoc ping
+python3 tests/health.py                          # holistic health dashboard (--watch / --runtime)
 ```
 
 `configure.py` creates the `Meridian Fleet` inventory with a **`ServiceNow CMDB` source** (SCM-based,
@@ -362,7 +372,7 @@ ends in **`/api/controller/`**; `eda.integration`'s timezone is **GMT**; event s
 `forward_events: true` or events are captured but not forwarded.
 
 ```bash
-python3 tests/e2e_pull_incident_remediation.py   # break the service -> incident -> EDA auto-launches the job -> resolved
+python3 tests/scenarios/1_pull_incident_remediation.py   # break the service -> incident -> EDA auto-launches the job -> resolved
 ```
 
 ### 7. Push pattern (Change Request → Event Stream)
@@ -371,11 +381,11 @@ The event stream + `push-change-execution` activation are part of the declarativ
 Only the ServiceNow side is separate:
 
 ```bash
-python3 bootstrap/servicenow/setup_change.py # Business Rule + trust the gateway CA in ServiceNow
-python3 tests/e2e_push_change_execution.py   # approve a change -> EDA executes it -> work note
+python3 bootstrap/servicenow/3_push_change.py # Business Rule + trust the gateway CA in ServiceNow
+python3 tests/scenarios/2_push_change_execution.py   # approve a change -> EDA executes it -> work note
 ```
 
-`setup_change.py` creates the Business Rule that POSTs approved changes to the Event Stream endpoint
+`3_push_change.py` creates the Business Rule that POSTs approved changes to the Event Stream endpoint
 (a gateway-managed webhook on `:443`), and uploads the gateway's self-signed CA to ServiceNow's trust
 store so the outbound TLS validates (see Key findings).
 
@@ -406,7 +416,7 @@ store so the outbound TLS validates (see Key findings).
 7. **ServiceNow source timezone** — the `servicenow.itsm.records` source builds its poll-window
    filter with `gs.dateGenerate`, which ServiceNow evaluates in the **querying user's** timezone.
    The rulebook pins `remote_servicenow_timezone: UTC`, so `eda.integration`'s timezone must be
-   **GMT** (`setup.py` sets it) — otherwise the window shifts hours ahead and new incidents are
+   **GMT** (`1_account.py` sets it) — otherwise the window shifts hours ahead and new incidents are
    never matched. A far-past `updated_since` masks this in quick tests; it only bites at "now".
 8. **EDA DE image must be in a registry** — activation workers pull the DE by `image_url` from a
    registry credential; a `localhost/...` image is invisible to them, so `build.sh` pushes the DE
@@ -431,10 +441,10 @@ store so the outbound TLS validates (see Key findings).
 
 **Done — both integration patterns working end-to-end**, each with a passing re-runnable test:
 
-- **Pull** (`tests/e2e_pull_incident_remediation.py`): a ServiceNow incident in `Auto-Remediation` is auto-detected by
+- **Pull** (`tests/scenarios/1_pull_incident_remediation.py`): a ServiceNow incident in `Auto-Remediation` is auto-detected by
   the polling activation, which launches the job; the playbook restarts the service and resolves
   the incident — no manual launch.
-- **Push** (`tests/e2e_push_change_execution.py`): an approved Change Request is pushed via the Event Stream to
+- **Push** (`tests/scenarios/2_push_change_execution.py`): an approved Change Request is pushed via the Event Stream to
   the webhook activation, which launches the job; the playbook deploys the change and writes a work
   note back — no manual launch.
 
@@ -485,7 +495,7 @@ This is a proof of concept — deliberately scoped. Be aware of:
   CA-signed cert and SAML/OIDC config on the PDI, which would take this PoC too far for little gain.
   SSO as a whole is **optional**: the core ServiceNow ↔ AAP patterns work without Keycloak, and AAP
   always keeps its local `admin` login.
-- **Minor.** The e2e tests leave test incidents/changes in the PDI (no cleanup); there is no CI; and
+- **Minor.** The scenario tests leave test incidents/changes in the PDI (no cleanup); there is no CI; and
   the AAP entitlement comes from the trial/UI rather than a downloaded subscription manifest.
 
 ## Lifecycle & cost
