@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 640" width="1600" height="640" role="img" aria-label="Identity and SSO with Keycloak">
+  <defs>
+    <style>
+      text { font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+      .h1 { font-size: 27px; font-weight: 700; fill: #1f2328; }
+      .h2 { font-size: 15px; fill: #57606a; }
+      .boxt { font-size: 16px; font-weight: 700; fill: #1f2328; }
+      .boxs { font-size: 13px; fill: #57606a; }
+      .kc { font-size: 14px; fill: #efe9f7; }
+      .kct { font-size: 18px; font-weight: 700; fill: #ffffff; }
+      .elab { font-size: 12.5px; font-weight: 600; }
+      .card { fill: #ffffff; stroke: #d0d7de; stroke-width: 1.4; }
+      .edge { fill: none; stroke-width: 2.2; }
+    </style>
+    <filter id="sh" x="-8%" y="-8%" width="118%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.12"/></filter>
+    <marker id="a-pur" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6b3fa0"/></marker>
+    <marker id="a-blue" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1f6feb"/></marker>
+    <marker id="a-green" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1c7c54"/></marker>
+    <marker id="a-orange" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#e08e0b"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="640" fill="#ffffff"/>
+  <text class="h1" x="46" y="46">Identity &amp; SSO — Keycloak (optional layer)</text>
+  <text class="h2" x="46" y="74">One corporate IdP for everyone: employees sign in to the apps, IT admins to AAP, and onboarding creates the account. Skip it and the core ServiceNow ↔ AAP patterns still work.</text>
+
+  <!-- Keycloak — the IdP everything points to -->
+  <g filter="url(#sh)">
+    <rect x="1228" y="116" width="330" height="452" rx="12" fill="#6b3fa0"/>
+    <text class="kct" x="1252" y="152">Keycloak — Meridian IdP</text>
+    <text class="kc" x="1252" y="184">realm: meridian</text>
+    <text class="kc" x="1252" y="208">groups = teams + IT-Admins / Employees</text>
+    <text class="kc" x="1252" y="232">15 users (from fleet.yml)</text>
+    <text class="kc" x="1252" y="256">clients: hr-portal · aap · aap-provisioner</text>
+    <text class="kc" x="1252" y="288">reached through the edge at</text>
+    <text class="kc" x="1252" y="310">https://&lt;FQDN&gt;:9443/auth</text>
+    <line x1="1252" y1="334" x2="1536" y2="334" stroke="#9d7fc4"/>
+    <text class="kc" x="1252" y="362">Optional layer:</text>
+    <text class="kc" x="1252" y="384">• AAP keeps a local admin login</text>
+    <text class="kc" x="1252" y="406">• apps run open without OIDC</text>
+    <text class="kc" x="1252" y="428">• ServiceNow keeps native login</text>
+    <text class="kc" x="1252" y="476">config-as-code from fleet.yml:</text>
+    <text class="kc" x="1252" y="498">bootstrap/keycloak/configure.py</text>
+  </g>
+
+  <!-- ========== Row 1 — Employee SSO ========== -->
+  <g filter="url(#sh)"><rect class="card" x="46" y="150" width="150" height="64" rx="9"/>
+    <text class="boxt" x="66" y="180">Employee</text><text class="boxs" x="66" y="200">(browser)</text></g>
+  <g filter="url(#sh)"><rect class="card" x="250" y="140" width="214" height="86" rx="9"/><rect x="250" y="140" width="6" height="86" fill="#1f6feb"/>
+    <text class="boxt" x="270" y="168">Meridian edge</text><text class="boxs" x="270" y="190">Caddy · TLS :9443</text><text class="boxs" x="270" y="210">routes / · /hr · /auth</text></g>
+  <g filter="url(#sh)"><rect class="card" x="520" y="150" width="214" height="64" rx="9"/>
+    <text class="boxt" x="540" y="178">hr-portal</text><text class="boxs" x="540" y="200">OIDC login (FastAPI)</text></g>
+  <g filter="url(#sh)"><rect class="card" x="520" y="262" width="214" height="64" rx="9"/><rect x="520" y="262" width="6" height="64" fill="#1c7c54"/>
+    <text class="boxt" x="540" y="290">PostgreSQL · hr-db-01</text><text class="boxs" x="540" y="312">leave_requests (read-only)</text></g>
+
+  <line class="edge" stroke="#1f6feb" marker-end="url(#a-blue)" x1="196" y1="182" x2="250" y2="182"/>
+  <line class="edge" stroke="#1f6feb" marker-end="url(#a-blue)" x1="464" y1="182" x2="520" y2="182"/>
+  <line class="edge" stroke="#1c7c54" marker-end="url(#a-green)" x1="627" y1="214" x2="627" y2="262"/>
+  <text class="boxs" x="636" y="246" fill="#1c7c54">read leave</text>
+  <path class="edge" stroke="#6b3fa0" marker-end="url(#a-pur)" d="M734,176 L980,176 L980,200 L1228,200"/>
+  <text class="elab" x="1010" y="192" fill="#6b3fa0">① employee SSO — OIDC /auth</text>
+
+  <!-- ========== Row 2 — Admin SSO ========== -->
+  <g filter="url(#sh)"><rect class="card" x="46" y="372" width="150" height="64" rx="9"/>
+    <text class="boxt" x="66" y="402">IT admin</text><text class="boxs" x="66" y="422">(browser)</text></g>
+  <g filter="url(#sh)"><rect class="card" x="250" y="362" width="290" height="86" rx="9"/><rect x="250" y="362" width="6" height="86" fill="#c0392b"/>
+    <text class="boxt" x="270" y="390">AAP Platform Gateway · :443</text><text class="boxs" x="270" y="412">OIDC authenticator</text><text class="boxs" x="270" y="432">IT-Admins → superuser</text></g>
+
+  <line class="edge" stroke="#1f6feb" marker-end="url(#a-blue)" x1="196" y1="404" x2="250" y2="404"/>
+  <path class="edge" stroke="#6b3fa0" marker-end="url(#a-pur)" d="M540,400 L900,400 L900,360 L1228,360"/>
+  <text class="elab" x="1010" y="352" fill="#6b3fa0">② admin SSO — OIDC</text>
+
+  <!-- ========== Row 3 — Onboarding ========== -->
+  <g filter="url(#sh)"><rect class="card" x="46" y="498" width="190" height="86" rx="9"/><rect x="46" y="498" width="6" height="86" fill="#1c7c54"/>
+    <text class="boxt" x="66" y="526">ServiceNow</text><text class="boxs" x="66" y="548">catalog: Arrivée</text><text class="boxs" x="66" y="568">collaborateur</text></g>
+  <g filter="url(#sh)"><rect class="card" x="288" y="498" width="226" height="86" rx="9"/><rect x="288" y="498" width="6" height="86" fill="#0078d4"/>
+    <text class="boxt" x="308" y="526">Event Stream → EDA</text><text class="boxs" x="308" y="548">JT: Provision Employee</text><text class="boxs" x="308" y="568">(push pattern)</text></g>
+  <g filter="url(#sh)"><rect class="card" x="566" y="498" width="234" height="86" rx="9"/><rect x="566" y="498" width="6" height="86" fill="#e08e0b"/>
+    <text class="boxt" x="586" y="526">provision_employee.yml</text><text class="boxs" x="586" y="548">creates the Keycloak user</text><text class="boxs" x="586" y="568">via aap-provisioner (SA)</text></g>
+
+  <line class="edge" stroke="#3a3f45" marker-end="url(#a-orange)" x1="236" y1="541" x2="288" y2="541"/>
+  <line class="edge" stroke="#3a3f45" marker-end="url(#a-orange)" x1="514" y1="541" x2="566" y2="541"/>
+  <path class="edge" stroke="#e08e0b" marker-end="url(#a-orange)" d="M800,530 L1020,530 L1020,520 L1228,520"/>
+  <text class="elab" x="1030" y="512" fill="#e08e0b">③ onboarding — create user</text>
+  <!-- close the ticket -->
+  <path class="edge" stroke="#1c7c54" stroke-dasharray="7 5" marker-end="url(#a-green)" d="M683,584 L683,612 L141,612 L141,584"/>
+  <text class="elab" x="320" y="606" fill="#1c7c54">close the request (RITM → Closed Complete)</text>
+</svg>

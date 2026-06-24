@@ -153,6 +153,38 @@ def main():
         "Credential Keycloak Provisioner",
     )
 
+    # AAP Config credential: lets the "Configure EDA" job template configure AAP from Git (GitOps)
+    # with infra.aap_configuration. Injects the platform connection + ServiceNow secrets as extra
+    # vars the collection / the pull activation's extra_vars read — so nothing comes from a laptop.
+    aapcfg_type = get_or_create(
+        "credential_types", {"name": "AAP Config"},
+        {"name": "AAP Config", "kind": "cloud",
+         "inputs": {"fields": [
+             {"id": "aap_hostname", "label": "AAP URL", "type": "string"},
+             {"id": "aap_username", "label": "AAP user", "type": "string"},
+             {"id": "aap_password", "label": "AAP password", "type": "string", "secret": True},
+             {"id": "sn_instance", "label": "ServiceNow instance", "type": "string"},
+             {"id": "sn_eda_username", "label": "ServiceNow EDA user", "type": "string"},
+             {"id": "sn_eda_password", "label": "ServiceNow EDA password", "type": "string", "secret": True}],
+             "required": ["aap_hostname", "aap_username", "aap_password"]},
+         "injectors": {"extra_vars": {
+             "aap_hostname": "{{ aap_hostname }}", "aap_username": "{{ aap_username }}",
+             "aap_password": "{{ aap_password }}", "sn_instance": "{{ sn_instance }}",
+             "sn_eda_username": "{{ sn_eda_username }}", "sn_eda_password": "{{ sn_eda_password }}"}}},
+        "Credential type AAP Config",
+    )
+    aapcfg_cred = get_or_create(
+        "credentials", {"name": "AAP Config"},
+        {"name": "AAP Config", "organization": org, "credential_type": aapcfg_type["id"],
+         "inputs": {"aap_hostname": f"https://{os.environ['FQDN']}",
+                    "aap_username": os.environ["AAP_ADMIN_USER"],
+                    "aap_password": os.environ["AAP_ADMIN_PASSWORD"],
+                    "sn_instance": os.environ["SN_INSTANCE"],
+                    "sn_eda_username": os.environ["SN_EDA_USERNAME"],
+                    "sn_eda_password": os.environ["SN_EDA_PASSWORD"]}},
+        "Credential AAP Config",
+    )
+
     # Git project (public repo) — the controller pulls the playbooks from here.
     proj = get_or_create(
         "projects", {"name": "snow-ansible-automation"},
@@ -220,7 +252,24 @@ def main():
                 api("POST", f"job_templates/{jt['id']}/credentials/", {"id": cid})
                 print(f"   attached credential id={cid} to '{jt_name}'")
 
+    # GitOps config-as-code: a job template that runs the declarative EDA config (configure.yml)
+    # from this project with infra.aap_configuration (installed into the EE from
+    # collections/requirements.yml). The "AAP Config" credential supplies the connection + secrets.
+    eda_jt = get_or_create(
+        "job_templates", {"name": "Configure EDA"},
+        {"name": "Configure EDA", "job_type": "run", "inventory": inv["id"], "project": proj["id"],
+         "playbook": "bootstrap/aap/eda/configure.yml", "execution_environment": ee},
+        "Job Template Configure EDA",
+    )
+    if eda_jt.get("playbook") != "bootstrap/aap/eda/configure.yml":
+        api("PATCH", f"job_templates/{eda_jt['id']}/", {"playbook": "bootstrap/aap/eda/configure.yml"})
+    have = {c["id"] for c in api("GET", f"job_templates/{eda_jt['id']}/credentials/").get("results", [])}
+    if aapcfg_cred["id"] not in have:
+        api("POST", f"job_templates/{eda_jt['id']}/credentials/", {"id": aapcfg_cred["id"]})
+        print("   attached AAP Config credential to 'Configure EDA'")
+
     print("\n>> Controller configured. Validate: python3 tests/healthcheck.py")
+    print(">> GitOps: launch the 'Configure EDA' job template to apply bootstrap/aap/eda/configure.yml")
 
 
 if __name__ == "__main__":

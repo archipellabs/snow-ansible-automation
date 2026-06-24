@@ -1,0 +1,20 @@
+---
+# Declarative EDA config-as-code: event streams + rulebook activations via infra.aap_configuration.
+# Replaces configure_push/monitor/selfservice/onboarding.py — the data lives in vars/eda.yml.
+#
+# Runs as the **"Configure EDA" job template** (GitOps: AAP configures itself from this Git project).
+# The connection + ServiceNow secrets are injected by the JT's "AAP Config" credential as extra vars
+# (aap_hostname / aap_username / aap_password / sn_*), so nothing is read from disk here. The
+# one-time base (decision environment, credentials, EDA project) is still created by configure.py;
+# the eda_* roles don't reliably support token auth, hence username/password.
+- name: Configure EDA event streams and rulebook activations (declarative)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    aap_validate_certs: false        # the gateway uses a self-signed cert
+  vars_files:
+    - vars/eda.yml
+  roles:
+    - infra.aap_configuration.eda_event_streams
+    - infra.aap_configuration.eda_rulebook_activations

@@ -41,6 +41,11 @@ the same components and adds a gateway-managed **Event Stream**. The runtime flo
 |---|---|
 | Pull — incident remediation | [`docs/remediation-flow.svg`](docs/remediation-flow.svg) |
 | Push — change execution | [`docs/change-flow.svg`](docs/change-flow.svg) |
+| Identity & SSO (optional Keycloak layer) | [`docs/identity-sso.svg`](docs/identity-sso.svg) |
+
+The simulated Meridian estate (fleet, apps, edge gateway, and the optional **Keycloak** IdP) runs in
+its own `simulator/` compose stack behind the edge on `:9443`; `architecture.svg` focuses on the AAP
+control plane, and `identity-sso.svg` covers the SSO/identity layer.
 
 ## How it works — objects & flow
 
@@ -202,6 +207,28 @@ Vendor consoles:
 | Azure portal | https://portal.azure.com |
 
 ---
+
+## Build order (from zero)
+
+If you were standing this up from scratch, the **logical** order is: build the IT estate (including
+its identity) first, then ITSM, then the automation control plane, then wire them together. The
+step-by-step below grew historically (AAP first), but the scripts are idempotent and independent, so
+either order works — this is the order that tells the cleaner story:
+
+1. **Infra** — provision the VM (Bicep): `bootstrap/infra/` (§1).
+2. **IT estate (Meridian)** — bring up the fleet + edge **+ Keycloak**: `./simulator/sync.sh`; build
+   the realm from `fleet.yml`: `bootstrap/keycloak/configure.py`. The apps get OIDC login; the HR DB
+   (`leave_requests`) is filled by the DB playbooks (§4). *SSO is optional — see Limitations.*
+3. **ITSM** — ServiceNow CMDB + service account from the same `fleet.yml`:
+   `bootstrap/servicenow/setup.py` + `dataset.py` (§3).
+4. **Control plane** — install AAP (§2), then config-as-code: controller (§5), DE + EDA (§6), push
+   (§7).
+5. **Identity integration** — AAP admin SSO: `bootstrap/aap/configure_sso.py` (Keycloak `aap` client).
+6. **Flows** — the pull/push/monitor/self-service/onboarding patterns are created by the configure
+   scripts above; validate each with `tests/`.
+
+The same `simulator/fleet.yml` is the single source of truth for **all three** consumers — the
+ServiceNow CMDB, the controller inventory, and the Keycloak realm.
 
 ## Step by step (what we did)
 
