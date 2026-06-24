@@ -6,16 +6,18 @@
 # The one-time base (decision environment, credentials, EDA project) is still created by
 # configure.py. Secrets are NEVER in this file — aap_* and sn_* are injected by the JT's "AAP Config"
 # credential as extra vars. 'source_name' must match the named source inside each rulebook.
+# 'organization' is required by the roles.
 
 # Inbound endpoints (gateway-managed). They reuse the shared ServiceNow event-stream token credential.
 eda_event_streams:
-  - { name: servicenow-chg-stream,        credential_name: "ServiceNow CHG Event Stream cred" }
-  - { name: servicenow-catalog-stream,    credential_name: "ServiceNow CHG Event Stream cred" }
-  - { name: servicenow-onboarding-stream, credential_name: "ServiceNow CHG Event Stream cred" }
+  - { name: servicenow-chg-stream,        organization: Default, credential_name: "ServiceNow CHG Event Stream cred" }
+  - { name: servicenow-catalog-stream,    organization: Default, credential_name: "ServiceNow CHG Event Stream cred" }
+  - { name: servicenow-onboarding-stream, organization: Default, credential_name: "ServiceNow CHG Event Stream cred" }
 
 eda_rulebook_activations:
   # PULL — records source; no event stream; injects SN_* for the records poller.
   - name: pull-incident-remediation
+    organization: Default
     project: snow-ansible-automation
     rulebook: pull_incident_remediation.yml
     decision_environment: snow-eda-de
@@ -28,6 +30,7 @@ eda_rulebook_activations:
 
   # MONITOR — url_check internal source; no event stream.
   - name: monitor-health
+    organization: Default
     project: snow-ansible-automation
     rulebook: monitor_health_open_incident.yml
     decision_environment: snow-eda-de
@@ -36,6 +39,7 @@ eda_rulebook_activations:
 
   # PUSH — webhook sources bound to their event stream (event_stream → source_name).
   - name: push-change-execution
+    organization: Default
     project: snow-ansible-automation
     rulebook: push_change_execution.yml
     decision_environment: snow-eda-de
@@ -45,6 +49,7 @@ eda_rulebook_activations:
       - { event_stream: servicenow-chg-stream, source_name: servicenow_webhook }
 
   - name: push-selfservice-restart
+    organization: Default
     project: snow-ansible-automation
     rulebook: push_selfservice_restart.yml
     decision_environment: snow-eda-de
@@ -54,6 +59,7 @@ eda_rulebook_activations:
       - { event_stream: servicenow-catalog-stream, source_name: servicenow_catalog_webhook }
 
   - name: push-employee-onboarding
+    organization: Default
     project: snow-ansible-automation
     rulebook: push_employee_onboarding.yml
     decision_environment: snow-eda-de

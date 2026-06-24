@@ -199,8 +199,8 @@ def main():
         pass  # 409 if a sync is already running
     print("   waiting for project sync...")
     status = "pending"
-    for _ in range(40):
-        status = api("GET", f"projects/{proj['id']}/")["status"]
+    for _ in range(120):     # the first sync installs collections/requirements.yml (incl. the big
+        status = api("GET", f"projects/{proj['id']}/")["status"]    # infra.aap_configuration) -> slow
         if status in ("successful", "failed", "error"):
             break
         time.sleep(3)
@@ -255,18 +255,20 @@ def main():
     # GitOps config-as-code: a job template that runs the declarative EDA config (configure.yml)
     # from this project with infra.aap_configuration (installed into the EE from
     # collections/requirements.yml). The "AAP Config" credential supplies the connection + secrets.
-    eda_jt = get_or_create(
-        "job_templates", {"name": "Configure EDA"},
-        {"name": "Configure EDA", "job_type": "run", "inventory": inv["id"], "project": proj["id"],
-         "playbook": "bootstrap/aap/eda/configure.yml", "execution_environment": ee},
-        "Job Template Configure EDA",
-    )
-    if eda_jt.get("playbook") != "bootstrap/aap/eda/configure.yml":
-        api("PATCH", f"job_templates/{eda_jt['id']}/", {"playbook": "bootstrap/aap/eda/configure.yml"})
-    have = {c["id"] for c in api("GET", f"job_templates/{eda_jt['id']}/credentials/").get("results", [])}
-    if aapcfg_cred["id"] not in have:
-        api("POST", f"job_templates/{eda_jt['id']}/credentials/", {"id": aapcfg_cred["id"]})
-        print("   attached AAP Config credential to 'Configure EDA'")
+    try:
+        eda_jt = get_or_create(
+            "job_templates", {"name": "Configure EDA"},
+            {"name": "Configure EDA", "job_type": "run", "inventory": inv["id"], "project": proj["id"],
+             "playbook": "bootstrap/aap/eda/configure.yml", "execution_environment": ee},
+            "Job Template Configure EDA",
+        )
+        have = {c["id"] for c in api("GET", f"job_templates/{eda_jt['id']}/credentials/").get("results", [])}
+        if aapcfg_cred["id"] not in have:
+            api("POST", f"job_templates/{eda_jt['id']}/credentials/", {"id": aapcfg_cred["id"]})
+            print("   attached AAP Config credential to 'Configure EDA'")
+    except urllib.error.HTTPError:
+        # Usually means the project hasn't finished syncing the new playbook yet — re-run shortly.
+        print("!  could not create 'Configure EDA' (project playbook not synced yet?) — re-run this script")
 
     print("\n>> Controller configured. Validate: python3 tests/healthcheck.py")
     print(">> GitOps: launch the 'Configure EDA' job template to apply bootstrap/aap/eda/configure.yml")
