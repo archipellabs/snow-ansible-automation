@@ -84,6 +84,17 @@ def api(method, path, body=None):
             return e.code, None
 
 
+def get_until(path):
+    """GET, retrying until non-empty — start-dev (H2) can lag right after a write."""
+    res = None
+    for _ in range(6):
+        _, res = api("GET", path)
+        if res:
+            return res
+        time.sleep(1)
+    return res or []
+
+
 def ensure_realm():
     st, _ = api("GET", f"/{REALM}")
     if st == 200:
@@ -99,7 +110,7 @@ def ensure_group(name):
         if g["name"] == name:
             return g["id"]
     api("POST", f"/{REALM}/groups", {"name": name})
-    st, groups = api("GET", f"/{REALM}/groups?{urllib.parse.urlencode({'search': name})}")
+    groups = get_until(f"/{REALM}/groups?{urllib.parse.urlencode({'search': name})}")
     gid = next(g["id"] for g in groups if g["name"] == name)
     print(f"+ group '{name}'")
     return gid
@@ -148,7 +159,7 @@ def ensure_client(client_id, name, secret, redirect_uris, web_origins, groups_ma
             "directAccessGrantsEnabled": True, "redirectUris": redirect_uris,
             "webOrigins": web_origins,
             "attributes": {"post.logout.redirect.uris": "+"}})
-        st, found = api("GET", f"/{REALM}/clients?{urllib.parse.urlencode({'clientId': client_id})}")
+        found = get_until(f"/{REALM}/clients?{urllib.parse.urlencode({'clientId': client_id})}")
         cid = found[0]["id"]
         print(f"+ client '{client_id}'")
     if groups_mapper:
@@ -179,14 +190,14 @@ def ensure_service_account_client(client_id, secret, mgmt_roles):
             "enabled": True, "publicClient": False, "secret": secret,
             "standardFlowEnabled": False, "directAccessGrantsEnabled": False,
             "serviceAccountsEnabled": True})
-        st, found = api("GET", f"/{REALM}/clients?{q}")
+        found = get_until(f"/{REALM}/clients?{q}")
         cid = found[0]["id"]
         print(f"+ client '{client_id}' (service account)")
     # Grant the realm-management roles to the client's service-account user.
-    st, sa = api("GET", f"/{REALM}/clients/{cid}/service-account-user")
-    st, rm = api("GET", f"/{REALM}/clients?{urllib.parse.urlencode({'clientId': 'realm-management'})}")
+    sa = get_until(f"/{REALM}/clients/{cid}/service-account-user")
+    rm = get_until(f"/{REALM}/clients?{urllib.parse.urlencode({'clientId': 'realm-management'})}")
     rm_id = rm[0]["id"]
-    st, roles = api("GET", f"/{REALM}/clients/{rm_id}/roles")
+    roles = get_until(f"/{REALM}/clients/{rm_id}/roles")
     want = [r for r in (roles or []) if r["name"] in mgmt_roles]
     api("POST", f"/{REALM}/users/{sa['id']}/role-mappings/clients/{rm_id}", want)
     print(f"  + granted {sorted(r['name'] for r in want)} to {client_id}")
