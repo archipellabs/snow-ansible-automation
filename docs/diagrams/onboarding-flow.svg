@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 440" width="1500" height="440" role="img" aria-label="Employee onboarding flow">
+  <defs>
+    <style>
+      text { font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+      .h1 { font-size: 27px; font-weight: 700; fill: #1f2328; }
+      .h2 { font-size: 15px; fill: #57606a; }
+      .st { font-size: 15.5px; font-weight: 700; fill: #ffffff; }
+      .ss { font-size: 12.5px; fill: #57606a; }
+      .badge { font-size: 16px; font-weight: 700; fill: #ffffff; }
+      .card { fill: #ffffff; stroke: #d0d7de; stroke-width: 1.4; }
+      .loop { font-size: 13.5px; font-weight: 700; fill: #1c7c54; }
+    </style>
+    <filter id="sh" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.12"/></filter>
+    <marker id="a-dark" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="13" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3a3f45"/></marker>
+    <marker id="a-green" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="13" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1c7c54"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="1500" height="440" fill="#ffffff"/>
+  <text class="h1" x="40" y="44">Employee onboarding — identity provisioning</text>
+  <text class="h2" x="40" y="72">The catalog request creates the account in Keycloak (an IdP user, not a DB row) and closes the ticket: ServiceNow → EDA → Ansible → Keycloak.</text>
+
+  <!-- 1 catalog request -->
+  <g filter="url(#sh)"><rect class="card" x="40" y="138" width="250" height="190" rx="12"/>
+    <rect x="40" y="138" width="250" height="44" rx="12" fill="#1c7c54"/><rect x="40" y="164" width="250" height="18" fill="#1c7c54"/>
+    <circle cx="66" cy="160" r="15" fill="#155f40"/><text class="badge" x="66" y="166" text-anchor="middle">1</text>
+    <text class="st" x="92" y="166">Catalog request</text>
+    <text class="ss" x="60" y="216">&#8220;Onboard a new</text>
+    <text class="ss" x="60" y="238">employee&#8221;</text>
+    <text class="ss" x="60" y="266">name · email · service</text>
+    <text class="ss" x="60" y="296">→ Business Rule fires</text></g>
+
+  <!-- 2 event stream -->
+  <g filter="url(#sh)"><rect class="card" x="330" y="138" width="250" height="190" rx="12"/>
+    <rect x="330" y="138" width="250" height="44" rx="12" fill="#0078d4"/><rect x="330" y="164" width="250" height="18" fill="#0078d4"/>
+    <circle cx="356" cy="160" r="15" fill="#075aa0"/><text class="badge" x="356" y="166" text-anchor="middle">2</text>
+    <text class="st" x="382" y="166">Event Stream</text>
+    <text class="ss" x="350" y="216">servicenow-onboarding-</text>
+    <text class="ss" x="350" y="238">stream</text>
+    <text class="ss" x="350" y="266">:443 · token auth</text>
+    <text class="ss" x="350" y="296">pushes to EDA</text></g>
+
+  <!-- 3 EDA activation -->
+  <g filter="url(#sh)"><rect class="card" x="620" y="138" width="250" height="190" rx="12"/>
+    <rect x="620" y="138" width="250" height="44" rx="12" fill="#6b3fa0"/><rect x="620" y="164" width="250" height="18" fill="#6b3fa0"/>
+    <circle cx="646" cy="160" r="15" fill="#522e7c"/><text class="badge" x="646" y="166" text-anchor="middle">3</text>
+    <text class="st" x="672" y="166">EDA activation</text>
+    <text class="ss" x="640" y="216">push-employee-</text>
+    <text class="ss" x="640" y="238">onboarding</text>
+    <text class="ss" x="640" y="266">webhook source →</text>
+    <text class="ss" x="640" y="296">Provision Employee JT</text></g>
+
+  <!-- 4 playbook -->
+  <g filter="url(#sh)"><rect class="card" x="910" y="138" width="250" height="190" rx="12"/>
+    <rect x="910" y="138" width="250" height="44" rx="12" fill="#e08e0b"/><rect x="910" y="164" width="250" height="18" fill="#e08e0b"/>
+    <circle cx="936" cy="160" r="15" fill="#b5720a"/><text class="badge" x="936" y="166" text-anchor="middle">4</text>
+    <text class="st" x="962" y="166">Provision Employee</text>
+    <text class="ss" x="930" y="216">provision_employee.yml</text>
+    <text class="ss" x="930" y="244">auth: aap-provisioner</text>
+    <text class="ss" x="930" y="266">service account</text>
+    <text class="ss" x="930" y="296">(client_credentials)</text></g>
+
+  <!-- 5 keycloak user -->
+  <g filter="url(#sh)"><rect class="card" x="1200" y="138" width="250" height="190" rx="12"/>
+    <rect x="1200" y="138" width="250" height="44" rx="12" fill="#6b3fa0"/><rect x="1200" y="164" width="250" height="18" fill="#6b3fa0"/>
+    <circle cx="1226" cy="160" r="15" fill="#522e7c"/><text class="badge" x="1226" y="166" text-anchor="middle">5</text>
+    <text class="st" x="1252" y="166">Keycloak user</text>
+    <text class="ss" x="1220" y="216">created in realm</text>
+    <text class="ss" x="1220" y="238">meridian</text>
+    <text class="ss" x="1220" y="266">+ Employees group</text>
+    <text class="ss" x="1220" y="296">→ ready to sign in</text></g>
+
+  <!-- arrows -->
+  <line x1="290" y1="233" x2="328" y2="233" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <line x1="580" y1="233" x2="618" y2="233" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <line x1="870" y1="233" x2="908" y2="233" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <line x1="1160" y1="233" x2="1198" y2="233" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+
+  <!-- close the ticket: 5 -> 1 -->
+  <path d="M1325,328 L1325,388 L165,388 L165,329" fill="none" stroke="#1c7c54" stroke-width="2.4" stroke-dasharray="8 5" marker-end="url(#a-green)"/>
+  <rect x="560" y="378" width="380" height="20" rx="5" fill="#ffffff"/>
+  <text class="loop" x="750" y="392" text-anchor="middle">close the request (RITM → Closed Complete)</text>
+</svg>

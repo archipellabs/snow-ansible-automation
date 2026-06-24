@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 452" width="1600" height="452" role="img" aria-label="Meridian Group — the organisation">
+  <defs>
+    <style>
+      text { font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+      .h1 { font-size: 28px; font-weight: 700; fill: #1f2328; }
+      .zone { font-size: 12.5px; font-weight: 700; fill: #8b949e; letter-spacing: .8px; }
+      .gt { font-size: 16px; font-weight: 700; }
+      .gd { font-size: 11.5px; fill: #8b949e; }
+      .nm { font-size: 12.5px; font-weight: 600; fill: #1f2328; }
+    </style>
+    <g id="usr"><circle cx="0" cy="0" r="9" fill="currentColor"/><path d="M-13,31 C-13,16 13,16 13,31 Z" fill="currentColor"/></g>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="452" fill="#ffffff"/>
+  <text class="h1" x="40" y="46">Meridian Group — the organisation</text>
+
+  <!-- Zone 1 · teams -->
+  <text class="zone" x="40" y="78">DSI · SUPPORT TEAMS  (run IT — work the incidents)</text>
+  <!-- HR-IT -->
+  <rect x="40" y="90" width="236" height="124" rx="14" fill="#2563eb" fill-opacity="0.08"/>
+  <text class="gt" x="60" y="120" fill="#2563eb">HR-IT</text>
+  <use href="#usr" x="158" y="148" color="#2563eb"/><text class="nm" x="158" y="202" text-anchor="middle">Lea Martin</text>
+  <!-- CRM Team -->
+  <rect x="296" y="90" width="236" height="124" rx="14" fill="#0d9488" fill-opacity="0.08"/>
+  <text class="gt" x="316" y="120" fill="#0d9488">CRM Team</text>
+  <use href="#usr" x="414" y="148" color="#0d9488"/><text class="nm" x="414" y="202" text-anchor="middle">Thomas Petit</text>
+  <!-- Collab -->
+  <rect x="552" y="90" width="236" height="124" rx="14" fill="#ea580c" fill-opacity="0.08"/>
+  <text class="gt" x="572" y="120" fill="#ea580c">Collab</text>
+  <use href="#usr" x="670" y="148" color="#ea580c"/><text class="nm" x="670" y="202" text-anchor="middle">Sophie Garnier</text>
+  <!-- ECM -->
+  <rect x="808" y="90" width="236" height="124" rx="14" fill="#7c3aed" fill-opacity="0.08"/>
+  <text class="gt" x="828" y="120" fill="#7c3aed">ECM</text>
+  <use href="#usr" x="926" y="148" color="#7c3aed"/><text class="nm" x="926" y="202" text-anchor="middle">Marc Lefevre</text>
+  <!-- Infra -->
+  <rect x="1064" y="90" width="236" height="124" rx="14" fill="#475569" fill-opacity="0.08"/>
+  <text class="gt" x="1084" y="120" fill="#475569">Infra</text>
+  <use href="#usr" x="1134" y="148" color="#475569"/><text class="nm" x="1134" y="202" text-anchor="middle">Karim Benali</text>
+  <use href="#usr" x="1230" y="148" color="#475569"/><text class="nm" x="1230" y="202" text-anchor="middle">Sarah Dubois</text>
+  <!-- DBA -->
+  <rect x="1320" y="90" width="236" height="124" rx="14" fill="#be123c" fill-opacity="0.08"/>
+  <text class="gt" x="1340" y="120" fill="#be123c">DBA</text>
+  <use href="#usr" x="1390" y="148" color="#be123c"/><text class="nm" x="1390" y="202" text-anchor="middle">Nadia Haddad</text>
+  <use href="#usr" x="1486" y="148" color="#be123c"/><text class="nm" x="1486" y="202" text-anchor="middle">Paul Girard</text>
+
+  <!-- Zone 2 · business users -->
+  <text class="zone" x="40" y="260">BUSINESS USERS  (use IT — the incident callers)</text>
+  <!-- HR Self-Service -->
+  <rect x="40" y="272" width="360" height="150" rx="14" fill="#2563eb" fill-opacity="0.08"/>
+  <text class="gt" x="60" y="300" fill="#2563eb">HR Self-Service</text><text class="gd" x="194" y="300">served by HR-IT</text>
+  <use href="#usr" x="118" y="332" color="#2563eb"/><text class="nm" x="118" y="386" text-anchor="middle">Camille Roux</text>
+  <use href="#usr" x="220" y="332" color="#2563eb"/><text class="nm" x="220" y="386" text-anchor="middle">Yanis Bernard</text>
+  <use href="#usr" x="322" y="332" color="#2563eb"/><text class="nm" x="322" y="386" text-anchor="middle">Aicha Diallo</text>
+  <!-- Customer Relations -->
+  <rect x="425" y="272" width="360" height="150" rx="14" fill="#0d9488" fill-opacity="0.08"/>
+  <text class="gt" x="445" y="300" fill="#0d9488">Customer Relations</text><text class="gd" x="610" y="300">served by CRM Team</text>
+  <use href="#usr" x="535" y="332" color="#0d9488"/><text class="nm" x="535" y="386" text-anchor="middle">Elodie Fontaine</text>
+  <use href="#usr" x="675" y="332" color="#0d9488"/><text class="nm" x="675" y="386" text-anchor="middle">Hugo Moreau</text>
+  <!-- Intranet -->
+  <rect x="810" y="272" width="360" height="150" rx="14" fill="#ea580c" fill-opacity="0.08"/>
+  <text class="gt" x="830" y="300" fill="#ea580c">Intranet</text><text class="gd" x="920" y="300">served by Collab</text>
+  <use href="#usr" x="990" y="332" color="#ea580c"/><text class="nm" x="990" y="386" text-anchor="middle">Julie Mercier</text>
+  <!-- Document Management -->
+  <rect x="1195" y="272" width="360" height="150" rx="14" fill="#7c3aed" fill-opacity="0.08"/>
+  <text class="gt" x="1215" y="300" fill="#7c3aed">Document Management</text><text class="gd" x="1410" y="300">served by ECM</text>
+  <use href="#usr" x="1375" y="332" color="#7c3aed"/><text class="nm" x="1375" y="386" text-anchor="middle">Antoine Rousseau</text>
+</svg>

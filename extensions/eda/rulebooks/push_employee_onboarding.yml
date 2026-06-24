@@ -1,5 +1,5 @@
 ---
-# PUSH (onboarding): a ServiceNow "Arrivée collaborateur" catalog request triggers Keycloak user
+# PUSH (onboarding): a ServiceNow "Onboard a new employee" catalog request triggers Keycloak user
 # provisioning. A Business Rule on sc_req_item POSTs to an AAP Event Stream; the activation maps it
 # onto the ansible.eda.webhook source below, which launches the "Provision Employee" job template.
 # Mirrors push_selfservice_restart.yml — only the payload fields and the job differ.

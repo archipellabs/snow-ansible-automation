@@ -1,5 +1,5 @@
 """Runtime selector — picks the automation control-plane client by runtime so the tests stay
-portable across control planes. Today only AAP is provisioned (bootstrap/aap/); AWX (bootstrap/awx/)
+portable across control planes. Today only AAP is provisioned (bootstrap/5A_aap/); AWX (bootstrap/5B_awx/)
 is a placeholder, so its client is a clearly-marked stub.
 
 Pick the runtime with the RUNTIME env var or an explicit argument; default 'aap'. To enable AWX later,
@@ -27,4 +27,4 @@ def controller(runtime=None):
     if rt == "aap":
         return Aap()
     # awx: add lib/awx.py with the Aap interface, then `from lib.awx import Awx; return Awx()`.
-    sys.exit("RUNTIME=awx is not available yet — bootstrap/awx/ is a placeholder (see README roadmap)")
+    sys.exit("RUNTIME=awx is not available yet — bootstrap/5B_awx/ is a placeholder (see README roadmap)")

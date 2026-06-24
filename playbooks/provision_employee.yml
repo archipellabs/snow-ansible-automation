@@ -3,7 +3,7 @@
 # closing the ServiceNow request. The identity lives in the IdP (not in the HR app database — that
 # DB holds HR business data like leave requests).
 #
-# Pattern : PUSH (self-service catalog). ServiceNow catalog request "Arrivée collaborateur" ->
+# Pattern : PUSH (self-service catalog). ServiceNow catalog request "Onboard a new employee" ->
 #           Business Rule -> Event Stream -> push-employee-onboarding activation -> "Provision
 #           Employee" job template -> here.
 # Extra vars (from the rulebook):

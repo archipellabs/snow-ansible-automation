@@ -1,7 +1,7 @@
 ---
 # restart_service_selfservice.yml — restart a server's service from a ServiceNow catalog request.
 #
-# Pattern : PUSH (self-service catalog). A Service Catalog item ("Redémarrer un service") lets a user
+# Pattern : PUSH (self-service catalog). A Service Catalog item ("Restart a service") lets a user
 #           pick a server; on request, a Business Rule on sc_req_item POSTs to an AAP Event Stream,
 #           which the push-selfservice-restart activation maps onto the webhook source of
 #           push_selfservice_restart.yml -> the "Restart Service (Self-Service)" job template -> here.

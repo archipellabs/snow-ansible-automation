@@ -1,4 +1,4 @@
-"""Meridian Group — CRM / Relation Client (simulated).
+"""Meridian Group — CRM / Customer Relations (simulated).
 
 A real FastAPI service (runs on crm-web-01 and crm-web-02, behind the CRM business service) with a
 /health endpoint for Event-Driven Ansible monitoring and playbook verification.

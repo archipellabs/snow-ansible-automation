@@ -11,16 +11,15 @@ id_ed25519*
 *.secret
 
 # AAP install (Red Hat binaries + rendered inventory with secrets)
-bootstrap/aap/*.tar.gz
-bootstrap/aap/*.tar
-bootstrap/aap/inventory
+bootstrap/5A_aap/*.tar.gz
+bootstrap/5A_aap/*.tar
+bootstrap/5A_aap/inventory
 
 # Infra params with environment-specific values (copy from main.parameters.example.json)
-bootstrap/infra/main.parameters.json
+bootstrap/1_infra/main.parameters.json
 
-# Target key material (generated; authorized_keys is the public half used at build time)
-bootstrap/targets/keys/
-bootstrap/targets/authorized_keys
+# Target key material (generated; the public half is copied into the simulator build context)
+bootstrap/2_fleet/keys/
 
 # Python
 __pycache__/

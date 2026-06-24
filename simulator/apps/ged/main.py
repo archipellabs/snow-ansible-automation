@@ -1,4 +1,4 @@
-"""Meridian Group — GED / Gestion Documentaire (simulated).
+"""Meridian Group — GED / Document Management (simulated).
 
 A real FastAPI document-management service (runs on ged-01) with a /health endpoint for
 Event-Driven Ansible monitoring and playbook verification.

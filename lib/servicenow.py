@@ -1,5 +1,5 @@
 """ServiceNow layer for the PoC (stdlib only) — the Table/Service-Catalog client and the
-Business-Rule machinery shared by bootstrap/servicenow/ and tests/.
+Business-Rule machinery shared by bootstrap/4_servicenow/ and tests/.
 
 Sits on top of lib.poc (transport). The single `Snow` client replaces the per-script ServiceNow
 wrappers the bootstrap and test code used to each redefine.

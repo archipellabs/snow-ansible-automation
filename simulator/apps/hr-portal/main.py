@@ -3,7 +3,7 @@
 A small but real FastAPI service with a /health endpoint, so Event-Driven Ansible can monitor it
 (ansible.eda.url_check) and the remediation playbooks can verify it for real.
 
-SSO: when the OIDC_* environment is present (see compose + bootstrap/keycloak), the portal requires
+SSO: when the OIDC_* environment is present (see compose + bootstrap/3_keycloak), the portal requires
 a Keycloak login (Authorization Code flow) for the UI and the directory API. /health stays public —
 the EDA monitor probes it without a token, so authenticating it would break the self-healing loop.
 With no OIDC env, the app runs open (auth disabled), so it still works standalone.

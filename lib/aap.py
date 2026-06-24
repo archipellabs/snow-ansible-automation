@@ -1,7 +1,7 @@
 """AAP layer for the PoC (stdlib only) — the controller/EDA client used by the tests to look up,
 launch and poll jobs (and watch EDA-triggered jobs). Sits on top of lib.poc (transport).
 
-The bootstrap controller config (bootstrap/aap/controller/configure.py) keeps its own create-heavy
+The bootstrap controller config (bootstrap/5A_aap/controller/configure.py) keeps its own create-heavy
 `get_or_create` client; this one is the read/launch/poll client the tests share.
 """
 import os
@@ -35,7 +35,7 @@ class Aap:
     def jt_id(self, name):
         res = self.call("job_templates/?" + urllib.parse.urlencode({"name": name}))["results"]
         if not res:
-            sys.exit(f"job template {name!r} not found — run bootstrap/aap/controller/configure.py")
+            sys.exit(f"job template {name!r} not found — run bootstrap/5A_aap/controller/configure.py")
         return res[0]["id"]
 
     def wait_job(self, jid, timeout=160, interval=4):

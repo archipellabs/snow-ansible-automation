@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 168" width="1500" height="168" role="img" aria-label="Build order sequence">
+  <defs>
+    <style>
+      text { font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+      .h1 { font-size: 24px; font-weight: 700; fill: #1f2328; }
+      .h2 { font-size: 14px; fill: #57606a; }
+      .step { font-size: 14.5px; font-weight: 600; fill: #1f2328; }
+      .stepk { font-size: 14.5px; font-weight: 700; fill: #ffffff; }
+      .pill { fill: #ffffff; stroke: #d0d7de; stroke-width: 1.4; }
+    </style>
+    <filter id="sh" x="-12%" y="-12%" width="124%" height="150%"><feDropShadow dx="0" dy="1.5" stdDeviation="2.5" flood-color="#000" flood-opacity="0.12"/></filter>
+    <marker id="a-dark" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3a3f45"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="1500" height="168" fill="#ffffff"/>
+  <text class="h1" x="40" y="40">Build order</text>
+  <text class="h2" x="40" y="66">Keycloak comes up before the apps need it (OIDC) and before AAP federates to it — the two purple steps are the identity touchpoints.</text>
+
+  <!-- pills: x = 40,240,440,640,840,1040,1240 ; w=180 ; y=96 ; h=48 -->
+  <g filter="url(#sh)"><rect class="pill" x="40"   y="96" width="180" height="48" rx="10"/><text class="step"  x="130"  y="125" text-anchor="middle">VM</text></g>
+  <g filter="url(#sh)"><rect x="240" y="96" width="180" height="48" rx="10" fill="#6b3fa0"/><text class="stepk" x="330"  y="125" text-anchor="middle">Keycloak</text></g>
+  <g filter="url(#sh)"><rect class="pill" x="440"  y="96" width="180" height="48" rx="10"/><text class="step"  x="530"  y="125" text-anchor="middle">fleet / apps (OIDC)</text></g>
+  <g filter="url(#sh)"><rect class="pill" x="640"  y="96" width="180" height="48" rx="10"/><text class="step"  x="730"  y="125" text-anchor="middle">ServiceNow</text></g>
+  <g filter="url(#sh)"><rect class="pill" x="840"  y="96" width="180" height="48" rx="10"/><text class="step"  x="930"  y="125" text-anchor="middle">AAP install</text></g>
+  <g filter="url(#sh)"><rect x="1040" y="96" width="180" height="48" rx="10" fill="#6b3fa0"/><text class="stepk" x="1130" y="125" text-anchor="middle">AAP &#8596; Keycloak</text></g>
+  <g filter="url(#sh)"><rect class="pill" x="1240" y="96" width="180" height="48" rx="10"/><text class="step"  x="1330" y="125" text-anchor="middle">automation</text></g>
+
+  <!-- arrows -->
+  <line x1="220"  y1="120" x2="238"  y2="120" stroke="#3a3f45" stroke-width="2.2" marker-end="url(#a-dark)"/>
+  <line x1="420"  y1="120" x2="438"  y2="120" stroke="#3a3f45" stroke-width="2.2" marker-end="url(#a-dark)"/>
+  <line x1="620"  y1="120" x2="638"  y2="120" stroke="#3a3f45" stroke-width="2.2" marker-end="url(#a-dark)"/>
+  <line x1="820"  y1="120" x2="838"  y2="120" stroke="#3a3f45" stroke-width="2.2" marker-end="url(#a-dark)"/>
+  <line x1="1020" y1="120" x2="1038" y2="120" stroke="#3a3f45" stroke-width="2.2" marker-end="url(#a-dark)"/>
+  <line x1="1220" y1="120" x2="1238" y2="120" stroke="#3a3f45" stroke-width="2.2" marker-end="url(#a-dark)"/>
+</svg>

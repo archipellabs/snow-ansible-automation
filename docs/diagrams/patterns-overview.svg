@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1520 600" width="1520" height="600" role="img" aria-label="Two patterns: pull and push — the two directions EDA bridges">
+  <defs>
+    <style>
+      text { font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+      .h1 { font-size: 28px; font-weight: 700; fill: #1f2328; }
+      .h2 { font-size: 15px; fill: #57606a; }
+      .boxt { font-size: 18px; font-weight: 700; fill: #1f2328; }
+      .boxs { font-size: 13px; fill: #57606a; }
+      .card { fill: #ffffff; stroke: #d0d7de; stroke-width: 1.4; }
+      .tag { font-size: 23px; font-weight: 700; fill: #1f2328; }
+      .tagsub { font-size: 12.5px; fill: #57606a; }
+      .elab { font-size: 13px; font-weight: 600; fill: #57606a; }
+      .loop { font-size: 13.5px; font-weight: 600; fill: #1c7c54; }
+    </style>
+    <filter id="sh" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.12"/></filter>
+    <marker id="a-dark" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="13" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3a3f45"/></marker>
+    <marker id="a-green" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="13" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1c7c54"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="1520" height="600" fill="#ffffff"/>
+  <text class="h1" x="40" y="46">Two patterns, two directions</text>
+  <text class="h2" x="40" y="74">Same AAP, same fleet, same playbooks — EDA bridges ServiceNow and Ansible both ways. That symmetry is the whole demo.</text>
+
+  <!-- lane backgrounds -->
+  <rect x="24" y="120" width="1472" height="190" rx="14" fill="#f6f8fa"/>
+  <rect x="24" y="350" width="1472" height="190" rx="14" fill="#f6f8fa"/>
+
+  <!-- ===== Lane 1 — PULL ===== -->
+  <text class="tag" x="44" y="192">① Pull</text>
+  <text class="tagsub" x="44" y="216">EDA reaches out —</text>
+  <text class="tagsub" x="44" y="234">nothing inbound exposed</text>
+
+  <g filter="url(#sh)"><rect class="card" x="300" y="150" width="240" height="96" rx="10"/><rect x="300" y="150" width="6" height="96" rx="3" fill="#1c7c54"/>
+    <text class="boxt" x="324" y="184">ServiceNow</text><text class="boxs" x="324" y="208">incident: service down</text><text class="boxs" x="324" y="230">(Auto-Remediation)</text></g>
+  <g filter="url(#sh)"><rect class="card" x="620" y="150" width="240" height="96" rx="10"/><rect x="620" y="150" width="6" height="96" rx="3" fill="#6b3fa0"/>
+    <text class="boxt" x="644" y="184">EDA</text><text class="boxs" x="644" y="208">polls the incident table</text><text class="boxs" x="644" y="230">every 10s · OAuth</text></g>
+  <g filter="url(#sh)"><rect class="card" x="940" y="150" width="240" height="96" rx="10"/><rect x="940" y="150" width="6" height="96" rx="3" fill="#c0392b"/>
+    <text class="boxt" x="964" y="184">AAP</text><text class="boxs" x="964" y="208">Restart Service job</text><text class="boxs" x="964" y="230">SSH → systemctl restart</text></g>
+
+  <line x1="540" y1="198" x2="617" y2="198" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <text class="elab" x="578" y="190" text-anchor="middle">incident</text>
+  <line x1="860" y1="198" x2="937" y2="198" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <text class="elab" x="898" y="190" text-anchor="middle">run job</text>
+
+  <path d="M1060,246 L1060,288 L420,288 L420,247" fill="none" stroke="#1c7c54" stroke-width="2.4" stroke-dasharray="8 5" marker-end="url(#a-green)"/>
+  <rect x="558" y="278" width="364" height="20" rx="5" fill="#f6f8fa"/>
+  <text class="loop" x="740" y="292" text-anchor="middle">Resolved / Escalated → ServiceNow</text>
+
+  <!-- ===== Lane 2 — PUSH ===== -->
+  <text class="tag" x="44" y="422">② Push</text>
+  <text class="tagsub" x="44" y="446">ServiceNow reaches in —</text>
+  <text class="tagsub" x="44" y="464">via an Event Stream :443</text>
+
+  <g filter="url(#sh)"><rect class="card" x="300" y="380" width="240" height="96" rx="10"/><rect x="300" y="380" width="6" height="96" rx="3" fill="#1c7c54"/>
+    <text class="boxt" x="324" y="414">ServiceNow</text><text class="boxs" x="324" y="438">change request approved</text><text class="boxs" x="324" y="460">(references a CI)</text></g>
+  <g filter="url(#sh)"><rect class="card" x="620" y="380" width="240" height="96" rx="10"/><rect x="620" y="380" width="6" height="96" rx="3" fill="#6b3fa0"/>
+    <text class="boxt" x="644" y="414">EDA</text><text class="boxs" x="644" y="438">webhook activation</text><text class="boxs" x="644" y="460">fed by the Event Stream</text></g>
+  <g filter="url(#sh)"><rect class="card" x="940" y="380" width="240" height="96" rx="10"/><rect x="940" y="380" width="6" height="96" rx="3" fill="#c0392b"/>
+    <text class="boxt" x="964" y="414">AAP</text><text class="boxs" x="964" y="438">Execute Change job</text><text class="boxs" x="964" y="460">deploy + restart</text></g>
+
+  <line x1="540" y1="428" x2="617" y2="428" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <text class="elab" x="578" y="420" text-anchor="middle">Event Stream</text>
+  <line x1="860" y1="428" x2="937" y2="428" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <text class="elab" x="898" y="420" text-anchor="middle">run job</text>
+
+  <path d="M1060,476 L1060,518 L420,518 L420,477" fill="none" stroke="#1c7c54" stroke-width="2.4" stroke-dasharray="8 5" marker-end="url(#a-green)"/>
+  <rect x="600" y="508" width="280" height="20" rx="5" fill="#f6f8fa"/>
+  <text class="loop" x="740" y="522" text-anchor="middle">work note → ServiceNow</text>
+</svg>

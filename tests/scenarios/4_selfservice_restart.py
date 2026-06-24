@@ -3,7 +3,7 @@
 
   python3 tests/scenarios/4_selfservice_restart.py
 
-Stops hr-portal on hr-web-01, then ORDERS the "Redémarrer un service" Service Catalog item with the
+Stops hr-portal on hr-web-01, then ORDERS the "Restart a service" Service Catalog item with the
 server variable set to hr-web-01 (Service Catalog API, order_now). The catalog Business Rule POSTs
 to the AAP Event Stream -> push-selfservice-restart activation -> "Restart Service (Self-Service)"
 job template -> restart_service_selfservice.yml restarts the service and closes the request item.
@@ -23,7 +23,7 @@ from lib.servicenow import Snow  # noqa: E402
 
 TARGET = "hr-web-01"
 SERVICE = "hr-portal"
-ITEM_NAME = "Redémarrer un service"
+ITEM_NAME = "Restart a service"
 RECOVER_TIMEOUT = 150       # seconds to wait for the whole push chain to restart the service
 
 
@@ -34,7 +34,7 @@ def run():
     q = urllib.parse.urlencode({"sysparm_query": f"name={ITEM_NAME}", "sysparm_fields": "sys_id", "sysparm_limit": "1"})
     item = snow.call(f"table/sc_cat_item?{q}")["result"]
     if not item:
-        sys.exit(f"catalog item '{ITEM_NAME}' not found — run bootstrap/servicenow/4_catalog.py first")
+        sys.exit(f"catalog item '{ITEM_NAME}' not found — run bootstrap/4_servicenow/4_catalog.py first")
     item_sid = item[0]["sys_id"]
 
     print(f">> Breaking {SERVICE} on {TARGET}")

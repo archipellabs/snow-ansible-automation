@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 580" width="1280" height="580" role="img" aria-label="The self-driving monitor loop">
+  <defs>
+    <style>
+      text { font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+      .h1 { font-size: 28px; font-weight: 700; fill: #1f2328; }
+      .h2 { font-size: 15px; fill: #57606a; }
+      .st { font-size: 16px; font-weight: 700; fill: #ffffff; }
+      .ss { font-size: 13px; fill: #57606a; }
+      .badge { font-size: 17px; font-weight: 700; fill: #ffffff; }
+      .card { fill: #ffffff; stroke: #d0d7de; stroke-width: 1.4; }
+      .loop { font-size: 14px; font-weight: 700; fill: #1c7c54; }
+    </style>
+    <filter id="sh" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.12"/></filter>
+    <marker id="a-dark" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="13" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#3a3f45"/></marker>
+    <marker id="a-green" markerUnits="userSpaceOnUse" markerWidth="13" markerHeight="13" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1c7c54"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="1280" height="580" fill="#ffffff"/>
+  <text class="h1" x="40" y="46">The self-driving monitor loop</text>
+  <text class="h2" x="40" y="74">EDA watches each app's /health, opens the incident itself, and the remediation loop resolves it — outage to fix, with no human in the loop.</text>
+
+  <!-- ===== top row (1 → 2 → 3) ===== -->
+  <g filter="url(#sh)"><rect class="card" x="40" y="150" width="300" height="150" rx="12"/>
+    <rect x="40" y="150" width="300" height="44" rx="12" fill="#6b3fa0"/><rect x="40" y="176" width="300" height="18" fill="#6b3fa0"/>
+    <circle cx="66" cy="172" r="15" fill="#522e7c"/><text class="badge" x="66" y="178" text-anchor="middle">1</text>
+    <text class="st" x="92" y="178">monitor-health</text>
+    <text class="ss" x="60" y="228">ansible.eda.url_check</text>
+    <text class="ss" x="60" y="250">probes each app's /health</text>
+    <text class="ss" x="60" y="272">(the 908x host ports)</text></g>
+
+  <g filter="url(#sh)"><rect class="card" x="490" y="150" width="300" height="150" rx="12"/>
+    <rect x="490" y="150" width="300" height="44" rx="12" fill="#c0392b"/><rect x="490" y="176" width="300" height="18" fill="#c0392b"/>
+    <circle cx="516" cy="172" r="15" fill="#962c21"/><text class="badge" x="516" y="178" text-anchor="middle">2</text>
+    <text class="st" x="542" y="178">Open Incident</text>
+    <text class="ss" x="510" y="228">a /health check fails →</text>
+    <text class="ss" x="510" y="250">the Open Incident job</text>
+    <text class="ss" x="510" y="272">template fires</text></g>
+
+  <g filter="url(#sh)"><rect class="card" x="940" y="150" width="300" height="150" rx="12"/>
+    <rect x="940" y="150" width="300" height="44" rx="12" fill="#1c7c54"/><rect x="940" y="176" width="300" height="18" fill="#1c7c54"/>
+    <circle cx="966" cy="172" r="15" fill="#155f40"/><text class="badge" x="966" y="178" text-anchor="middle">3</text>
+    <text class="st" x="992" y="178">Incident opened</text>
+    <text class="ss" x="960" y="228">ServiceNow incident in</text>
+    <text class="ss" x="960" y="250">the Auto-Remediation</text>
+    <text class="ss" x="960" y="272">group · state New</text></g>
+
+  <!-- ===== bottom row (4 → 5 → 6) ===== -->
+  <g filter="url(#sh)"><rect class="card" x="940" y="380" width="300" height="150" rx="12"/>
+    <rect x="940" y="380" width="300" height="44" rx="12" fill="#6b3fa0"/><rect x="940" y="406" width="300" height="18" fill="#6b3fa0"/>
+    <circle cx="966" cy="402" r="15" fill="#522e7c"/><text class="badge" x="966" y="408" text-anchor="middle">4</text>
+    <text class="st" x="992" y="408">pull-remediation</text>
+    <text class="ss" x="960" y="458">the polling activation</text>
+    <text class="ss" x="960" y="480">detects the incident and</text>
+    <text class="ss" x="960" y="502">launches the job</text></g>
+
+  <g filter="url(#sh)"><rect class="card" x="490" y="380" width="300" height="150" rx="12"/>
+    <rect x="490" y="380" width="300" height="44" rx="12" fill="#e08e0b"/><rect x="490" y="406" width="300" height="18" fill="#e08e0b"/>
+    <circle cx="516" cy="402" r="15" fill="#b5720a"/><text class="badge" x="516" y="408" text-anchor="middle">5</text>
+    <text class="st" x="542" y="408">Restart Service</text>
+    <text class="ss" x="510" y="458">SSH to the target,</text>
+    <text class="ss" x="510" y="480">restart the service,</text>
+    <text class="ss" x="510" y="502">re-check /health</text></g>
+
+  <g filter="url(#sh)"><rect class="card" x="40" y="380" width="300" height="150" rx="12"/>
+    <rect x="40" y="380" width="300" height="44" rx="12" fill="#1c7c54"/><rect x="40" y="406" width="300" height="18" fill="#1c7c54"/>
+    <circle cx="66" cy="402" r="15" fill="#155f40"/><text class="badge" x="66" y="408" text-anchor="middle">6</text>
+    <text class="st" x="92" y="408">Resolved</text>
+    <text class="ss" x="60" y="458">service back up →</text>
+    <text class="ss" x="60" y="480">incident Resolved</text>
+    <text class="ss" x="60" y="502">(else Escalated)</text></g>
+
+  <!-- arrows -->
+  <line x1="340" y1="225" x2="488" y2="225" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <line x1="790" y1="225" x2="938" y2="225" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <line x1="1090" y1="300" x2="1090" y2="378" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <line x1="940" y1="455" x2="792" y2="455" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <line x1="490" y1="455" x2="342" y2="455" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
+  <!-- close the loop: 6 -> 1 -->
+  <line x1="190" y1="380" x2="190" y2="302" stroke="#1c7c54" stroke-width="2.4" stroke-dasharray="8 5" marker-end="url(#a-green)"/>
+
+  <!-- center caption -->
+  <rect x="430" y="328" width="420" height="34" rx="17" fill="#eafaf2" stroke="#1c7c54" stroke-width="1.2"/>
+  <text class="loop" x="640" y="350" text-anchor="middle">self-driving — nobody opens or closes the ticket</text>
+</svg>

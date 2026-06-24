@@ -3,7 +3,7 @@
 
   python3 tests/scenarios/5_employee_onboarding.py
 
-Orders the "Arrivée collaborateur" Service Catalog item for a fresh test joiner, then waits for the
+Orders the "Onboard a new employee" Service Catalog item for a fresh test joiner, then waits for the
 push chain to provision the person's identity in Keycloak and close the request:
   catalog request -> Business Rule -> Event Stream -> push-employee-onboarding -> "Provision
   Employee" JT -> provision_employee.yml (creates the Keycloak user, closes the RITM).
@@ -25,10 +25,10 @@ from lib.poc import env, insecure_ctx  # noqa: E402
 from lib.servicenow import Snow  # noqa: E402
 
 CTX = insecure_ctx()
-ITEM_NAME = "Arrivée collaborateur"
+ITEM_NAME = "Onboard a new employee"
 EMP_NAME = "Sofia Marchetti"
 EMP_EMAIL = "sofia.marchetti@meridian.example"
-EMP_SERVICE = "RH Self-Service"
+EMP_SERVICE = "HR Self-Service"
 USERNAME = EMP_EMAIL.split("@")[0]
 TIMEOUT = 150
 
@@ -68,7 +68,7 @@ def run():
     item = snow.call("table/sc_cat_item?" + urllib.parse.urlencode(
         {"sysparm_query": f"name={ITEM_NAME}", "sysparm_fields": "sys_id", "sysparm_limit": "1"}))["result"]
     if not item:
-        sys.exit(f"catalog item '{ITEM_NAME}' not found — run bootstrap/servicenow/4_catalog.py first")
+        sys.exit(f"catalog item '{ITEM_NAME}' not found — run bootstrap/4_servicenow/4_catalog.py first")
     item_sid = item[0]["sys_id"]
 
     print(f">> Ordering '{ITEM_NAME}' for {EMP_NAME} <{EMP_EMAIL}> ({EMP_SERVICE})")

@@ -137,7 +137,7 @@ def c_aap_ee_path():
     inv = ctl.call("inventories/?name=Meridian%20Fleet", timeout=PROBE_TIMEOUT)
     cred = ctl.call("credentials/?name=Target%20SSH", timeout=PROBE_TIMEOUT)
     if not inv.get("count") or not cred.get("count"):
-        return None, "SKIP (run bootstrap/aap/controller/configure.py first)"
+        return None, "SKIP (run bootstrap/5A_aap/controller/configure.py first)"
     cmd = ctl.call("ad_hoc_commands/", {"inventory": inv["results"][0]["id"], "credential": cred["results"][0]["id"],
                                         "module_name": "ping", "module_args": ""}, timeout=PROBE_TIMEOUT)
     cid, status = cmd["id"], "pending"
@@ -150,7 +150,7 @@ def c_aap_ee_path():
 
 
 def c_awx_stub():
-    return None, "SKIP — AWX runtime not provisioned (bootstrap/awx/ is a placeholder)"
+    return None, "SKIP — AWX runtime not provisioned (bootstrap/5B_awx/ is a placeholder)"
 
 
 # --- SSO install checks (a login proves wiring, not automation) ---------------------------------
@@ -165,7 +165,7 @@ def _gw_oidc():
 
 def c_aap_sso_offered():
     sso = _gw_oidc()
-    return bool(sso), "OIDC button present" if sso else "no OIDC button — run bootstrap/aap/configure_sso.py"
+    return bool(sso), "OIDC button present" if sso else "no OIDC button — run bootstrap/5A_aap/configure_sso.py"
 
 
 def c_aap_sso_login():   # deep
