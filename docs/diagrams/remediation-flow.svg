@@ -23,8 +23,8 @@
 
   <!-- Step cards: x positions 30,290,550,810,1070,1330 ; width 235 ; y 150 ; height 200 -->
   <!-- 1 target -->
-  <g filter="url(#sh)">
-    <rect class="card" x="30" y="150" width="235" height="200" rx="12"/>
+  <g>
+    <rect filter="url(#sh)" class="card" x="30" y="150" width="235" height="200" rx="12"/>
     <rect x="30" y="150" width="235" height="46" rx="12" fill="#2a7d7d"/>
     <rect x="30" y="178" width="235" height="18" fill="#2a7d7d"/>
     <circle cx="58" cy="173" r="16" fill="#1f5e5e"/>
@@ -36,8 +36,8 @@
     <text class="ss" x="50" y="308">mapped to a CMDB CI)</text>
   </g>
   <!-- 2 incident -->
-  <g filter="url(#sh)">
-    <rect class="card" x="290" y="150" width="235" height="200" rx="12"/>
+  <g>
+    <rect filter="url(#sh)" class="card" x="290" y="150" width="235" height="200" rx="12"/>
     <rect x="290" y="150" width="235" height="46" rx="12" fill="#1c7c54"/>
     <rect x="290" y="178" width="235" height="18" fill="#1c7c54"/>
     <circle cx="318" cy="173" r="16" fill="#155f40"/>
@@ -50,8 +50,8 @@
     <text class="ss" x="310" y="330">or the e2e test)</text>
   </g>
   <!-- 3 EDA detect -->
-  <g filter="url(#sh)">
-    <rect class="card" x="550" y="150" width="235" height="200" rx="12"/>
+  <g>
+    <rect filter="url(#sh)" class="card" x="550" y="150" width="235" height="200" rx="12"/>
     <rect x="550" y="150" width="235" height="46" rx="12" fill="#6b3fa0"/>
     <rect x="550" y="178" width="235" height="18" fill="#6b3fa0"/>
     <circle cx="578" cy="173" r="16" fill="#522e7c"/>
@@ -64,8 +64,8 @@
     <text class="ss" x="570" y="330">(user TZ = GMT)</text>
   </g>
   <!-- 4 job launched -->
-  <g filter="url(#sh)">
-    <rect class="card" x="810" y="150" width="235" height="200" rx="12"/>
+  <g>
+    <rect filter="url(#sh)" class="card" x="810" y="150" width="235" height="200" rx="12"/>
     <rect x="810" y="150" width="235" height="46" rx="12" fill="#c0392b"/>
     <rect x="810" y="178" width="235" height="18" fill="#c0392b"/>
     <circle cx="838" cy="173" r="16" fill="#962c21"/>
@@ -78,8 +78,8 @@
     <text class="ss" x="830" y="330">Restart Service</text>
   </g>
   <!-- 5 remediate -->
-  <g filter="url(#sh)">
-    <rect class="card" x="1070" y="150" width="235" height="200" rx="12"/>
+  <g>
+    <rect filter="url(#sh)" class="card" x="1070" y="150" width="235" height="200" rx="12"/>
     <rect x="1070" y="150" width="235" height="46" rx="12" fill="#e08e0b"/>
     <rect x="1070" y="178" width="235" height="18" fill="#e08e0b"/>
     <circle cx="1098" cy="173" r="16" fill="#b5720a"/>
@@ -91,8 +91,8 @@
     <text class="ss" x="1090" y="308">on hr-web-01</text>
   </g>
   <!-- 6 resolve -->
-  <g filter="url(#sh)">
-    <rect class="card" x="1330" y="150" width="235" height="200" rx="12"/>
+  <g>
+    <rect filter="url(#sh)" class="card" x="1330" y="150" width="235" height="200" rx="12"/>
     <rect x="1330" y="150" width="235" height="46" rx="12" fill="#1c7c54"/>
     <rect x="1330" y="178" width="235" height="18" fill="#1c7c54"/>
     <circle cx="1358" cy="173" r="16" fill="#155f40"/>

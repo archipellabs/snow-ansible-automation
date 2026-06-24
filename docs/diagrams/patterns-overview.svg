@@ -30,11 +30,11 @@
   <text class="tagsub" x="44" y="216">EDA reaches out —</text>
   <text class="tagsub" x="44" y="234">nothing inbound exposed</text>
 
-  <g filter="url(#sh)"><rect class="card" x="300" y="150" width="240" height="96" rx="10"/><rect x="300" y="150" width="6" height="96" rx="3" fill="#1c7c54"/>
+  <g><rect filter="url(#sh)" class="card" x="300" y="150" width="240" height="96" rx="10"/><rect x="300" y="150" width="6" height="96" rx="3" fill="#1c7c54"/>
     <text class="boxt" x="324" y="184">ServiceNow</text><text class="boxs" x="324" y="208">incident: service down</text><text class="boxs" x="324" y="230">(Auto-Remediation)</text></g>
-  <g filter="url(#sh)"><rect class="card" x="620" y="150" width="240" height="96" rx="10"/><rect x="620" y="150" width="6" height="96" rx="3" fill="#6b3fa0"/>
+  <g><rect filter="url(#sh)" class="card" x="620" y="150" width="240" height="96" rx="10"/><rect x="620" y="150" width="6" height="96" rx="3" fill="#6b3fa0"/>
     <text class="boxt" x="644" y="184">EDA</text><text class="boxs" x="644" y="208">polls the incident table</text><text class="boxs" x="644" y="230">every 10s · OAuth</text></g>
-  <g filter="url(#sh)"><rect class="card" x="940" y="150" width="240" height="96" rx="10"/><rect x="940" y="150" width="6" height="96" rx="3" fill="#c0392b"/>
+  <g><rect filter="url(#sh)" class="card" x="940" y="150" width="240" height="96" rx="10"/><rect x="940" y="150" width="6" height="96" rx="3" fill="#c0392b"/>
     <text class="boxt" x="964" y="184">AAP</text><text class="boxs" x="964" y="208">Restart Service job</text><text class="boxs" x="964" y="230">SSH → systemctl restart</text></g>
 
   <line x1="540" y1="198" x2="617" y2="198" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
@@ -51,11 +51,11 @@
   <text class="tagsub" x="44" y="446">ServiceNow reaches in —</text>
   <text class="tagsub" x="44" y="464">via an Event Stream :443</text>
 
-  <g filter="url(#sh)"><rect class="card" x="300" y="380" width="240" height="96" rx="10"/><rect x="300" y="380" width="6" height="96" rx="3" fill="#1c7c54"/>
+  <g><rect filter="url(#sh)" class="card" x="300" y="380" width="240" height="96" rx="10"/><rect x="300" y="380" width="6" height="96" rx="3" fill="#1c7c54"/>
     <text class="boxt" x="324" y="414">ServiceNow</text><text class="boxs" x="324" y="438">change request approved</text><text class="boxs" x="324" y="460">(references a CI)</text></g>
-  <g filter="url(#sh)"><rect class="card" x="620" y="380" width="240" height="96" rx="10"/><rect x="620" y="380" width="6" height="96" rx="3" fill="#6b3fa0"/>
+  <g><rect filter="url(#sh)" class="card" x="620" y="380" width="240" height="96" rx="10"/><rect x="620" y="380" width="6" height="96" rx="3" fill="#6b3fa0"/>
     <text class="boxt" x="644" y="414">EDA</text><text class="boxs" x="644" y="438">webhook activation</text><text class="boxs" x="644" y="460">fed by the Event Stream</text></g>
-  <g filter="url(#sh)"><rect class="card" x="940" y="380" width="240" height="96" rx="10"/><rect x="940" y="380" width="6" height="96" rx="3" fill="#c0392b"/>
+  <g><rect filter="url(#sh)" class="card" x="940" y="380" width="240" height="96" rx="10"/><rect x="940" y="380" width="6" height="96" rx="3" fill="#c0392b"/>
     <text class="boxt" x="964" y="414">AAP</text><text class="boxs" x="964" y="438">Execute Change job</text><text class="boxs" x="964" y="460">deploy + restart</text></g>
 
   <line x1="540" y1="428" x2="617" y2="428" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>

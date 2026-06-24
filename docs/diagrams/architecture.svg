@@ -33,14 +33,14 @@
   <text class="h2" x="46" y="76">EDA polls ServiceNow for incidents (pull) and ServiceNow pushes approved changes through a gateway Event Stream (push). Everything except ServiceNow runs as rootless podman containers on one VM.</text>
 
   <!-- ===================== SUPPLY (top-left) ===================== -->
-  <g filter="url(#shadow)"><rect class="card" x="46" y="98" width="300" height="80" rx="10"/><rect x="46" y="98" width="6" height="80" rx="3" fill="#cc4400"/>
+  <g><rect filter="url(#shadow)" class="card" x="46" y="98" width="300" height="80" rx="10"/><rect x="46" y="98" width="6" height="80" rx="3" fill="#cc4400"/>
     <text class="boxt" x="66" y="128">registry.redhat.io</text><text class="boxs" x="66" y="154">AAP base images (de-minimal · ee)</text></g>
-  <g filter="url(#shadow)"><rect class="card" x="362" y="98" width="300" height="80" rx="10"/><rect x="362" y="98" width="6" height="80" rx="3" fill="#24292f"/>
+  <g><rect filter="url(#shadow)" class="card" x="362" y="98" width="300" height="80" rx="10"/><rect x="362" y="98" width="6" height="80" rx="3" fill="#24292f"/>
     <text class="boxt" x="382" y="128">GitHub · config-as-code</text><text class="boxs" x="382" y="154">playbooks · rulebooks · EDA vars</text></g>
 
   <!-- ===================== SERVICENOW (top-right) ===================== -->
-  <g filter="url(#shadow)" transform="translate(140,0)">
-    <rect class="card" x="1240" y="98" width="540" height="294" rx="10"/>
+  <g transform="translate(140,0)">
+    <rect filter="url(#shadow)" class="card" x="1240" y="98" width="540" height="294" rx="10"/>
     <rect x="1240" y="98" width="6" height="294" rx="3" fill="#1c7c54"/>
     <text class="boxt" x="1262" y="128">ServiceNow PDI · SaaS</text>
     <text class="boxs" x="1262" y="150">system of record — ITSM + CMDB</text>
@@ -61,14 +61,14 @@
     <text class="vms" x="72" y="306">AAP 2.7 containerized (~24 containers) · NSG inbound 22 / 80 / 443</text>
 
     <!-- Platform Gateway -->
-    <g filter="url(#shadow)"><rect class="card" x="72" y="330" width="1052" height="86" rx="10"/><rect x="72" y="330" width="6" height="86" rx="3" fill="#0078d4"/>
+    <g><rect filter="url(#shadow)" class="card" x="72" y="330" width="1052" height="86" rx="10"/><rect x="72" y="330" width="6" height="86" rx="3" fill="#0078d4"/>
       <text class="boxt" x="92" y="360">Platform Gateway · TLS :443</text>
       <g><rect x="92" y="372" width="142" height="27" rx="6" fill="#e7f1fb" stroke="#0078d4" stroke-width="1.1"/><text class="chip" x="104" y="390">/api/controller/</text></g>
       <g><rect x="246" y="372" width="92" height="27" rx="6" fill="#e7f1fb" stroke="#0078d4" stroke-width="1.1"/><text class="chip" x="258" y="390">/api/eda/</text></g>
       <g><rect x="350" y="372" width="158" height="27" rx="6" fill="#e7f1fb" stroke="#0078d4" stroke-width="1.1"/><text class="chip" x="362" y="390">Event Streams (push)</text></g></g>
 
     <!-- EDA Controller -->
-    <g filter="url(#shadow)"><rect class="card" x="72" y="436" width="524" height="200" rx="10"/><rect x="72" y="436" width="6" height="200" rx="3" fill="#c0392b"/>
+    <g><rect filter="url(#shadow)" class="card" x="72" y="436" width="524" height="200" rx="10"/><rect x="72" y="436" width="6" height="200" rx="3" fill="#c0392b"/>
       <text class="boxt" x="92" y="464">EDA Controller</text>
       <text class="sub" x="92" y="484">ACTIVATIONS</text>
       <g><rect x="92" y="490" width="208" height="27" rx="6" fill="#fbeae8" stroke="#c0392b" stroke-width="1.1"/><text class="chip" x="104" y="508">pull-incident-remediation</text></g>
@@ -78,14 +78,14 @@
       <text class="boxs" x="92" y="586">rulebooks ← Git · sources → gateway</text></g>
 
     <!-- Decision Environment (transient) -->
-    <g filter="url(#shadow)"><rect x="612" y="436" width="512" height="200" rx="10" fill="#faf7ff" stroke="#6b3fa0" stroke-width="1.6" stroke-dasharray="8 5"/><rect x="612" y="436" width="6" height="200" rx="3" fill="#6b3fa0"/>
+    <g><rect filter="url(#shadow)" x="612" y="436" width="512" height="200" rx="10" fill="#faf7ff" stroke="#6b3fa0" stroke-width="1.6" stroke-dasharray="8 5"/><rect x="612" y="436" width="6" height="200" rx="3" fill="#6b3fa0"/>
       <text class="boxt" x="632" y="464">Decision Environment · transient</text>
       <g><rect x="632" y="476" width="146" height="27" rx="6" fill="#f1ebfa" stroke="#6b3fa0" stroke-width="1.1"/><text class="chip" x="644" y="494">image: snow-eda-de</text></g>
       <text class="boxs" x="632" y="530">de-minimal + servicenow.itsm</text>
       <text class="boxs" x="632" y="558">PULL: poll SN (10s) · PUSH: webhook</text></g>
 
     <!-- Automation Controller -->
-    <g filter="url(#shadow)"><rect class="card" x="72" y="676" width="524" height="200" rx="10"/><rect x="72" y="676" width="6" height="200" rx="3" fill="#c0392b"/>
+    <g><rect filter="url(#shadow)" class="card" x="72" y="676" width="524" height="200" rx="10"/><rect x="72" y="676" width="6" height="200" rx="3" fill="#c0392b"/>
       <text class="boxt" x="92" y="704">Automation Controller</text>
       <g><rect x="92" y="716" width="118" height="27" rx="6" fill="#fbeae8" stroke="#c0392b" stroke-width="1.1"/><text class="chip" x="104" y="734">Project ← Git</text></g>
       <g><rect x="220" y="716" width="148" height="27" rx="6" fill="#fbeae8" stroke="#c0392b" stroke-width="1.1"/><text class="chip" x="232" y="734">Inventory ← CMDB</text></g>
@@ -97,7 +97,7 @@
       <text class="boxs" x="92" y="828">spawns Execution Environments →</text></g>
 
     <!-- Execution Environment (transient) -->
-    <g filter="url(#shadow)"><rect x="612" y="676" width="512" height="200" rx="10" fill="#faf7ff" stroke="#6b3fa0" stroke-width="1.6" stroke-dasharray="8 5"/><rect x="612" y="676" width="6" height="200" rx="3" fill="#6b3fa0"/>
+    <g><rect filter="url(#shadow)" x="612" y="676" width="512" height="200" rx="10" fill="#faf7ff" stroke="#6b3fa0" stroke-width="1.6" stroke-dasharray="8 5"/><rect x="612" y="676" width="6" height="200" rx="3" fill="#6b3fa0"/>
       <text class="boxt" x="632" y="704">Execution Environment · transient</text>
       <g><rect x="632" y="716" width="162" height="27" rx="6" fill="#f1ebfa" stroke="#6b3fa0" stroke-width="1.1"/><text class="chip" x="644" y="734">restart_service.yml</text></g>
       <g><rect x="804" y="716" width="158" height="27" rx="6" fill="#f1ebfa" stroke="#6b3fa0" stroke-width="1.1"/><text class="chip" x="816" y="734">execute_change.yml</text></g>
@@ -105,9 +105,9 @@
       <text class="boxs" x="632" y="800">restart + re-check · writes back to SN</text></g>
 
     <!-- Automation Hub + Platform services -->
-    <g filter="url(#shadow)"><rect class="card" x="72" y="908" width="524" height="58" rx="10"/><rect x="72" y="908" width="6" height="58" rx="3" fill="#6b7280"/>
+    <g><rect filter="url(#shadow)" class="card" x="72" y="908" width="524" height="58" rx="10"/><rect x="72" y="908" width="6" height="58" rx="3" fill="#6b7280"/>
       <text class="boxt" x="92" y="934">Automation Hub</text><text class="boxs" x="92" y="954">private registry · snow-eda-de:latest</text></g>
-    <g filter="url(#shadow)"><rect class="card" x="612" y="908" width="512" height="58" rx="10"/><rect x="612" y="908" width="6" height="58" rx="3" fill="#6b7280"/>
+    <g><rect filter="url(#shadow)" class="card" x="612" y="908" width="512" height="58" rx="10"/><rect x="612" y="908" width="6" height="58" rx="3" fill="#6b7280"/>
       <text class="boxt" x="632" y="932">Platform services</text>
       <g><rect x="632" y="938" width="96" height="22" rx="6" fill="#eef0f2" stroke="#6b7280" stroke-width="1.1"/><text class="chip" x="642" y="954">PostgreSQL</text></g>
       <g><rect x="738" y="938" width="58" height="22" rx="6" fill="#eef0f2" stroke="#6b7280" stroke-width="1.1"/><text class="chip" x="748" y="954">Redis</text></g>
@@ -119,13 +119,13 @@
   <rect x="1240" y="452" width="540" height="530" rx="14" fill="#f3fbfa" stroke="#2a7d7d" stroke-width="1.8"/>
   <text class="esth" x="1262" y="484">Meridian estate · simulator compose</text>
   <text class="ests" x="1262" y="504">fleet targets + identity · behind the edge :9443</text>
-  <g filter="url(#shadow)"><rect class="card" x="1262" y="518" width="496" height="84" rx="10"/><rect x="1262" y="518" width="6" height="84" rx="3" fill="#2a7d7d"/>
+  <g><rect filter="url(#shadow)" class="card" x="1262" y="518" width="496" height="84" rx="10"/><rect x="1262" y="518" width="6" height="84" rx="3" fill="#2a7d7d"/>
     <text class="boxt" x="1282" y="552">hr-web-01 · fleet server</text><text class="boxs" x="1282" y="578">hr-portal + /health · sshd :2211</text></g>
-  <g filter="url(#shadow)"><rect class="card" x="1262" y="616" width="496" height="80" rx="10"/><rect x="1262" y="616" width="6" height="80" rx="3" fill="#2a7d7d"/>
+  <g><rect filter="url(#shadow)" class="card" x="1262" y="616" width="496" height="80" rx="10"/><rect x="1262" y="616" width="6" height="80" rx="3" fill="#2a7d7d"/>
     <text class="boxt" x="1282" y="648">… 8 more fleet servers</text><text class="boxs" x="1282" y="674">crm·ged·intranet·mail·db · sshd :2212–2219</text></g>
-  <g filter="url(#shadow)"><rect class="card" x="1262" y="710" width="496" height="68" rx="10"/><rect x="1262" y="710" width="6" height="68" rx="3" fill="#1f6feb"/>
+  <g><rect filter="url(#shadow)" class="card" x="1262" y="710" width="496" height="68" rx="10"/><rect x="1262" y="710" width="6" height="68" rx="3" fill="#1f6feb"/>
     <text class="boxt" x="1282" y="738">Edge · Caddy · TLS :9443</text><text class="boxs" x="1282" y="762">apps / /hr /crm /ged · routes /auth → Keycloak</text></g>
-  <g filter="url(#shadow)"><rect class="card" x="1262" y="792" width="496" height="118" rx="10"/><rect x="1262" y="792" width="6" height="118" rx="3" fill="#6b3fa0"/>
+  <g><rect filter="url(#shadow)" class="card" x="1262" y="792" width="496" height="118" rx="10"/><rect x="1262" y="792" width="6" height="118" rx="3" fill="#6b3fa0"/>
     <text class="boxt" x="1282" y="820">Keycloak · Meridian IdP</text>
     <g><rect x="1282" y="832" width="132" height="27" rx="6" fill="#f1ebfa" stroke="#6b3fa0" stroke-width="1.1"/><text class="chip" x="1294" y="850">realm: meridian</text></g>
     <g><rect x="1426" y="832" width="172" height="27" rx="6" fill="#f1ebfa" stroke="#6b3fa0" stroke-width="1.1"/><text class="chip" x="1438" y="850">OIDC: hr-portal · aap</text></g>
@@ -169,7 +169,7 @@
   <g><rect x="530" y="836" width="116" height="20" rx="4" fill="#ffffff"/><text class="num" x="538" y="851" fill="#e08e0b">③ spawn EE</text></g>
 
   <!-- ===================== LEGEND (bottom, full width) ===================== -->
-  <g filter="url(#shadow)"><rect class="card" x="46" y="994" width="1868" height="54" rx="10"/>
+  <g><rect filter="url(#shadow)" class="card" x="46" y="994" width="1868" height="54" rx="10"/>
     <text class="legt" x="66" y="1027">Legend</text>
     <line x1="160" y1="1021" x2="198" y2="1021" class="edge" stroke="#1c7c54" marker-end="url(#ah-green)"/><text class="leg" x="206" y="1027">① ServiceNow REST · poll / update</text>
     <line x1="486" y1="1021" x2="524" y2="1021" class="edge" stroke="#c0392b" marker-end="url(#ah-red)"/><text class="leg" x="532" y="1027">② run_job → Controller</text>

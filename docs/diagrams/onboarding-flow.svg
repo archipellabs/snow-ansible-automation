@@ -20,7 +20,7 @@
   <text class="h2" x="40" y="72">The catalog request creates the account in Keycloak (an IdP user, not a DB row) and closes the ticket: ServiceNow → EDA → Ansible → Keycloak.</text>
 
   <!-- 1 catalog request -->
-  <g filter="url(#sh)"><rect class="card" x="40" y="138" width="250" height="190" rx="12"/>
+  <g><rect filter="url(#sh)" class="card" x="40" y="138" width="250" height="190" rx="12"/>
     <rect x="40" y="138" width="250" height="44" rx="12" fill="#1c7c54"/><rect x="40" y="164" width="250" height="18" fill="#1c7c54"/>
     <circle cx="66" cy="160" r="15" fill="#155f40"/><text class="badge" x="66" y="166" text-anchor="middle">1</text>
     <text class="st" x="92" y="166">Catalog request</text>
@@ -30,7 +30,7 @@
     <text class="ss" x="60" y="296">→ Business Rule fires</text></g>
 
   <!-- 2 event stream -->
-  <g filter="url(#sh)"><rect class="card" x="330" y="138" width="250" height="190" rx="12"/>
+  <g><rect filter="url(#sh)" class="card" x="330" y="138" width="250" height="190" rx="12"/>
     <rect x="330" y="138" width="250" height="44" rx="12" fill="#0078d4"/><rect x="330" y="164" width="250" height="18" fill="#0078d4"/>
     <circle cx="356" cy="160" r="15" fill="#075aa0"/><text class="badge" x="356" y="166" text-anchor="middle">2</text>
     <text class="st" x="382" y="166">Event Stream</text>
@@ -40,7 +40,7 @@
     <text class="ss" x="350" y="296">pushes to EDA</text></g>
 
   <!-- 3 EDA activation -->
-  <g filter="url(#sh)"><rect class="card" x="620" y="138" width="250" height="190" rx="12"/>
+  <g><rect filter="url(#sh)" class="card" x="620" y="138" width="250" height="190" rx="12"/>
     <rect x="620" y="138" width="250" height="44" rx="12" fill="#6b3fa0"/><rect x="620" y="164" width="250" height="18" fill="#6b3fa0"/>
     <circle cx="646" cy="160" r="15" fill="#522e7c"/><text class="badge" x="646" y="166" text-anchor="middle">3</text>
     <text class="st" x="672" y="166">EDA activation</text>
@@ -50,7 +50,7 @@
     <text class="ss" x="640" y="296">Provision Employee JT</text></g>
 
   <!-- 4 playbook -->
-  <g filter="url(#sh)"><rect class="card" x="910" y="138" width="250" height="190" rx="12"/>
+  <g><rect filter="url(#sh)" class="card" x="910" y="138" width="250" height="190" rx="12"/>
     <rect x="910" y="138" width="250" height="44" rx="12" fill="#e08e0b"/><rect x="910" y="164" width="250" height="18" fill="#e08e0b"/>
     <circle cx="936" cy="160" r="15" fill="#b5720a"/><text class="badge" x="936" y="166" text-anchor="middle">4</text>
     <text class="st" x="962" y="166">Provision Employee</text>
@@ -60,7 +60,7 @@
     <text class="ss" x="930" y="296">(client_credentials)</text></g>
 
   <!-- 5 keycloak user -->
-  <g filter="url(#sh)"><rect class="card" x="1200" y="138" width="250" height="190" rx="12"/>
+  <g><rect filter="url(#sh)" class="card" x="1200" y="138" width="250" height="190" rx="12"/>
     <rect x="1200" y="138" width="250" height="44" rx="12" fill="#6b3fa0"/><rect x="1200" y="164" width="250" height="18" fill="#6b3fa0"/>
     <circle cx="1226" cy="160" r="15" fill="#522e7c"/><text class="badge" x="1226" y="166" text-anchor="middle">5</text>
     <text class="st" x="1252" y="166">Keycloak user</text>

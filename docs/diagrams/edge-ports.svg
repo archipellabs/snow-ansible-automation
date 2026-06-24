@@ -20,27 +20,27 @@
   <text class="h2" x="40" y="72">AAP owns :443, so the Meridian edge terminates TLS on :9443 and reverse-proxies the apps and Keycloak under one FQDN.</text>
 
   <!-- port :443 -->
-  <g filter="url(#sh)"><rect x="50" y="118" width="150" height="56" rx="10" fill="#c0392b"/><text class="port" x="125" y="154" text-anchor="middle">:443</text></g>
-  <g filter="url(#sh)"><rect class="card" x="360" y="110" width="320" height="72" rx="10"/><rect x="360" y="110" width="6" height="72" rx="3" fill="#c0392b"/>
+  <g><rect filter="url(#sh)" x="50" y="118" width="150" height="56" rx="10" fill="#c0392b"/><text class="port" x="125" y="154" text-anchor="middle">:443</text></g>
+  <g><rect filter="url(#sh)" class="card" x="360" y="110" width="320" height="72" rx="10"/><rect x="360" y="110" width="6" height="72" rx="3" fill="#c0392b"/>
     <text class="boxt" x="384" y="142">AAP Platform Gateway</text><text class="boxs" x="384" y="164">Envoy · existing</text></g>
   <line x1="200" y1="146" x2="358" y2="146" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
 
   <!-- port :9443 -->
-  <g filter="url(#sh)"><rect x="50" y="238" width="150" height="56" rx="10" fill="#1f6feb"/><text class="port" x="125" y="274" text-anchor="middle">:9443</text></g>
-  <g filter="url(#sh)"><rect class="card" x="360" y="230" width="320" height="72" rx="10"/><rect x="360" y="230" width="6" height="72" rx="3" fill="#1f6feb"/>
+  <g><rect filter="url(#sh)" x="50" y="238" width="150" height="56" rx="10" fill="#1f6feb"/><text class="port" x="125" y="274" text-anchor="middle">:9443</text></g>
+  <g><rect filter="url(#sh)" class="card" x="360" y="230" width="320" height="72" rx="10"/><rect x="360" y="230" width="6" height="72" rx="3" fill="#1f6feb"/>
     <text class="boxt" x="384" y="262">Meridian edge — Caddy</text><text class="boxs" x="384" y="284">terminates TLS (internal CA)</text></g>
   <line x1="200" y1="266" x2="358" y2="266" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
 
   <!-- edge → apps + keycloak -->
-  <g filter="url(#sh)"><rect class="card" x="800" y="188" width="280" height="68" rx="10"/><rect x="800" y="188" width="6" height="68" rx="3" fill="#2a7d7d"/>
+  <g><rect filter="url(#sh)" class="card" x="800" y="188" width="280" height="68" rx="10"/><rect x="800" y="188" width="6" height="68" rx="3" fill="#2a7d7d"/>
     <text class="boxt" x="824" y="218">Apps</text><text class="boxs" x="824" y="240">/ · /hr · /crm · /ged</text></g>
-  <g filter="url(#sh)"><rect class="card" x="800" y="288" width="280" height="68" rx="10"/><rect x="800" y="288" width="6" height="68" rx="3" fill="#6b3fa0"/>
+  <g><rect filter="url(#sh)" class="card" x="800" y="288" width="280" height="68" rx="10"/><rect x="800" y="288" width="6" height="68" rx="3" fill="#6b3fa0"/>
     <text class="boxt" x="824" y="318">Keycloak</text><text class="boxs" x="824" y="340">/auth</text></g>
   <path d="M680,258 L740,258 L740,222 L798,222" fill="none" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
   <path d="M680,274 L740,274 L740,322 L798,322" fill="none" stroke="#3a3f45" stroke-width="2.4" marker-end="url(#a-dark)"/>
 
   <!-- port :80 redirect -->
-  <g filter="url(#sh)"><rect x="50" y="350" width="150" height="56" rx="10" fill="#6e7781"/><text class="port" x="125" y="386" text-anchor="middle">:80</text></g>
+  <g><rect filter="url(#sh)" x="50" y="350" width="150" height="56" rx="10" fill="#6e7781"/><text class="port" x="125" y="386" text-anchor="middle">:80</text></g>
   <path d="M125,350 L125,296" fill="none" stroke="#6e7781" stroke-width="2.2" stroke-dasharray="7 5" marker-end="url(#a-gray)"/>
   <text class="elab" x="142" y="332" fill="#6e7781">redirect → :9443</text>
 </svg>

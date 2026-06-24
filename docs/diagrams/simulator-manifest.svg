@@ -25,8 +25,8 @@
   <text class="h1" x="40" y="46">Meridian Group — one manifest, many consumers</text>
 
   <!-- source of truth -->
-  <g filter="url(#sh)">
-    <rect x="48" y="96" width="330" height="280" rx="14" fill="#1f2937"/>
+  <g>
+    <rect filter="url(#sh)" x="48" y="96" width="330" height="280" rx="14" fill="#1f2937"/>
     <use href="#doc" x="92" y="146" color="#ffffff"/>
     <text class="src" x="120" y="142">simulator/fleet.yml</text>
     <text class="srcs" x="120" y="162">single source of truth</text>
@@ -46,19 +46,19 @@
   <text class="lab" x="420" y="332">keycloak/configure.py</text>
 
   <!-- Containers -->
-  <g filter="url(#sh)"><rect class="card" x="560" y="116" width="430" height="72" rx="12"/>
+  <g><rect filter="url(#sh)" class="card" x="560" y="116" width="430" height="72" rx="12"/>
     <use href="#srv" x="600" y="153" color="#475569"/>
     <text class="nm" x="630" y="148" fill="#475569">Containers — the running fleet</text>
     <text class="sub" x="630" y="170">10 containers: apps · databases · edge · mail</text></g>
 
   <!-- ServiceNow CMDB -->
-  <g filter="url(#sh)"><rect class="card" x="560" y="210" width="430" height="72" rx="12"/>
+  <g><rect filter="url(#sh)" class="card" x="560" y="210" width="430" height="72" rx="12"/>
     <use href="#db" x="600" y="252" color="#1c7c54"/>
     <text class="nm" x="630" y="242" fill="#1c7c54">ServiceNow CMDB</text>
     <text class="sub" x="630" y="264">server CIs · apps · services · relations · people · teams</text></g>
 
   <!-- Keycloak -->
-  <g filter="url(#sh)"><rect class="card" x="560" y="304" width="430" height="72" rx="12"/>
+  <g><rect filter="url(#sh)" class="card" x="560" y="304" width="430" height="72" rx="12"/>
     <use href="#lock" x="602" y="345" color="#4338ca"/>
     <text class="nm" x="630" y="336" fill="#4338ca">Keycloak realm</text>
     <text class="sub" x="630" y="358">groups (teams) · users (people) · clients</text></g>
@@ -66,7 +66,7 @@
   <!-- CMDB -> dynamic inventory (downstream) -->
   <path d="M990,246 L1062,246" fill="none" stroke="#475569" stroke-width="2.2" marker-end="url(#ar)"/>
   <text class="lab" x="1000" y="238">servicenow.itsm.now</text>
-  <g filter="url(#sh)"><rect class="card" x="1066" y="210" width="470" height="72" rx="12"/>
+  <g><rect filter="url(#sh)" class="card" x="1066" y="210" width="470" height="72" rx="12"/>
     <use href="#list" x="1106" y="251" color="#c0392b"/>
     <text class="nm" x="1136" y="242" fill="#c0392b">Controller dynamic inventory</text>
     <text class="sub" x="1136" y="264">9 hosts + host vars (port · role · service · team) — read from the CMDB</text></g>

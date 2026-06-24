@@ -17,13 +17,13 @@
   <text class="h2" x="40" y="66">Keycloak comes up before the apps need it (OIDC) and before AAP federates to it — the two purple steps are the identity touchpoints.</text>
 
   <!-- pills: x = 40,240,440,640,840,1040,1240 ; w=180 ; y=96 ; h=48 -->
-  <g filter="url(#sh)"><rect class="pill" x="40"   y="96" width="180" height="48" rx="10"/><text class="step"  x="130"  y="125" text-anchor="middle">VM</text></g>
-  <g filter="url(#sh)"><rect x="240" y="96" width="180" height="48" rx="10" fill="#6b3fa0"/><text class="stepk" x="330"  y="125" text-anchor="middle">Keycloak</text></g>
-  <g filter="url(#sh)"><rect class="pill" x="440"  y="96" width="180" height="48" rx="10"/><text class="step"  x="530"  y="125" text-anchor="middle">fleet / apps (OIDC)</text></g>
-  <g filter="url(#sh)"><rect class="pill" x="640"  y="96" width="180" height="48" rx="10"/><text class="step"  x="730"  y="125" text-anchor="middle">ServiceNow</text></g>
-  <g filter="url(#sh)"><rect class="pill" x="840"  y="96" width="180" height="48" rx="10"/><text class="step"  x="930"  y="125" text-anchor="middle">AAP install</text></g>
-  <g filter="url(#sh)"><rect x="1040" y="96" width="180" height="48" rx="10" fill="#6b3fa0"/><text class="stepk" x="1130" y="125" text-anchor="middle">AAP &#8596; Keycloak</text></g>
-  <g filter="url(#sh)"><rect class="pill" x="1240" y="96" width="180" height="48" rx="10"/><text class="step"  x="1330" y="125" text-anchor="middle">automation</text></g>
+  <g><rect filter="url(#sh)" class="pill" x="40"   y="96" width="180" height="48" rx="10"/><text class="step"  x="130"  y="125" text-anchor="middle">VM</text></g>
+  <g><rect filter="url(#sh)" x="240" y="96" width="180" height="48" rx="10" fill="#6b3fa0"/><text class="stepk" x="330"  y="125" text-anchor="middle">Keycloak</text></g>
+  <g><rect filter="url(#sh)" class="pill" x="440"  y="96" width="180" height="48" rx="10"/><text class="step"  x="530"  y="125" text-anchor="middle">fleet / apps (OIDC)</text></g>
+  <g><rect filter="url(#sh)" class="pill" x="640"  y="96" width="180" height="48" rx="10"/><text class="step"  x="730"  y="125" text-anchor="middle">ServiceNow</text></g>
+  <g><rect filter="url(#sh)" class="pill" x="840"  y="96" width="180" height="48" rx="10"/><text class="step"  x="930"  y="125" text-anchor="middle">AAP install</text></g>
+  <g><rect filter="url(#sh)" x="1040" y="96" width="180" height="48" rx="10" fill="#6b3fa0"/><text class="stepk" x="1130" y="125" text-anchor="middle">AAP &#8596; Keycloak</text></g>
+  <g><rect filter="url(#sh)" class="pill" x="1240" y="96" width="180" height="48" rx="10"/><text class="step"  x="1330" y="125" text-anchor="middle">automation</text></g>
 
   <!-- arrows -->
   <line x1="220"  y1="120" x2="238"  y2="120" stroke="#3a3f45" stroke-width="2.2" marker-end="url(#a-dark)"/>
