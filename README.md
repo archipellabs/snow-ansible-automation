@@ -99,7 +99,7 @@ control plane, and `identity-sso.svg` covers the SSO/identity layer.
 |---|---|
 | Credential `Target SSH` (machine) | SSH key to reach the targets (user `ansible`) |
 | Credential `ServiceNow PDI` (custom type) | injects `SN_HOST`/`SN_USERNAME`/`SN_PASSWORD` for `servicenow.itsm` |
-| Inventory `Meridian Fleet` + source `ServiceNow CMDB` | **dynamic inventory** from the ServiceNow CMDB (`inventory.now.yml`, `servicenow.itsm.now`): the server CIs become hosts, the custom `u_*` columns become host vars (`ansible_port`/`service`/`role`/`support_group`), `keyed_groups` build `role_*` / `team_*` groups |
+| Inventory `Meridian Fleet` + source `ServiceNow CMDB` | **dynamic inventory** from the ServiceNow CMDB (`inventory.now.yml`, `servicenow.itsm.now`): the server CIs become hosts, the `u_*` columns + standard `support_group` become host vars (`ansible_port`/`service`/`role`/`support_group`), `keyed_groups` build `role_*` / `team_*` groups |
 | Project `snow-ansible-automation` | pulls the playbooks from this Git repo |
 | Job template `Restart Service` (pull) / `Execute Change Request` (push) | run the two core playbooks |
 | Job templates `Collect Diagnostics` · `Free Disk` · `Open Incident` · `DB Create Role` · `DB Apply Migration` · `DB Status` · `DB Backup` | the helper / DB-admin playbooks (see [playbooks/README](playbooks/README.md)) |
@@ -297,8 +297,9 @@ python3 bootstrap/servicenow/dataset.py    # the Meridian CMDB from simulator/fl
 (+ `itil` role, `active`, `password_needs_reset=false`, timezone `GMT`). `dataset.py` then loads the
 Meridian estate (servers, applications, business services, relationships, people, support groups)
 from `simulator/fleet.yml`. It also adds the custom server columns the **dynamic inventory** reads
-(`u_ssh_port`/`u_service`/`u_role`/`u_support_group` on `cmdb_ci_linux_server`, via `sys_dictionary`)
-and populates them — so the CMDB becomes the source of truth for the controller inventory (§5).
+(`u_ssh_port`/`u_service`/`u_role` on `cmdb_ci_linux_server`, via `sys_dictionary`) and populates them
+— so the CMDB becomes the source of truth for the controller inventory (§5). The support team comes
+from the standard `support_group` reference field (no custom copy needed).
 
 > **Gotcha**: ServiceNow silently ignores `user_password` writes via the Table API. Set
 > `eda.integration`'s password **once in the UI** (open the user → *Set Password*) and store it
@@ -468,8 +469,12 @@ This is a proof of concept — deliberately scoped. Be aware of:
   artifacts** stored as custom `u_*` columns: every host resolves to `host.containers.internal` (not a
   per-CI IP) and connects on a published `u_ssh_port` (221x) instead of `:22`. A real estate would
   drop `u_ssh_port` and compute `ansible_host` from the CI's real IP/FQDN — the plugin config
-  (`inventory.now.yml`) would shrink accordingly. The `u_role`/`u_service`/`u_support_group` columns
-  are legitimate CMDB attributes and would stay.
+  (`inventory.now.yml`) would shrink accordingly. The `u_role`/`u_service` columns and the standard
+  `support_group` reference field are legitimate CMDB attributes and would stay. Two ServiceNow quirks
+  are handled in `inventory.now.yml`: the plugin reads **display values**, so Integer fields come back
+  with a thousands separator (`u_ssh_port` → `"2,211"`) and are stripped before casting `ansible_port`;
+  and the PDI ships ~6 sample Linux servers, so a `query: u_role ISNOTEMPTY` scopes the sync to the
+  Meridian fleet.
 - **The push pattern is more simplified than the pull one.** It needed more workarounds: trust the
   gateway CA in ServiceNow, trigger on the writable `approval` field (the change state model rejects
   arbitrary Table-API transitions), and write a **work note** rather than driving the change through

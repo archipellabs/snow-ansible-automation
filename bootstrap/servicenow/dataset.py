@@ -97,12 +97,12 @@ def main():
     print("Servers:")
     # Custom columns the dynamic inventory (servicenow.itsm.now) reads as host vars. u_ssh_port is a
     # simulator artifact (real servers use SSH :22 on a real IP); u_service/u_role drive role-aware
-    # playbooks. See bootstrap/aap/controller/inventory.now.yml.
+    # playbooks (u_role also scopes the inventory to our fleet). The support group comes from the
+    # standard 'support_group' reference field — no custom copy needed (the plugin reads display
+    # values, so it returns the group name). See bootstrap/aap/controller/inventory.now.yml.
     ensure_field("cmdb_ci_linux_server", "u_ssh_port", "SSH port", "integer")
     ensure_field("cmdb_ci_linux_server", "u_service", "Systemd service", "string")
     ensure_field("cmdb_ci_linux_server", "u_role", "Server role", "string")
-    # plain copy of the support group name (the reference field reads back as a sys_id in the inventory)
-    ensure_field("cmdb_ci_linux_server", "u_support_group", "Support group (name)", "string")
     srv = {}
     for s in FLEET["servers"]:
         sid = ensure(
@@ -112,8 +112,7 @@ def main():
             s["name"], display=True)
         # Upsert the inventory attributes (also updates CIs created before these fields existed).
         http_json(f"{BASE}/cmdb_ci_linux_server/{sid}", method="PATCH", headers=HEADERS,
-                  body={"u_ssh_port": s["ssh_port"], "u_service": s["service"], "u_role": s["role"],
-                        "u_support_group": s["support_group"]})
+                  body={"u_ssh_port": s["ssh_port"], "u_service": s["service"], "u_role": s["role"]})
         srv[s["name"]] = sid
 
     print("Relationships:")
