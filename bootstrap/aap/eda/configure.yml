@@ -1,6 +1,6 @@
 ---
 # Declarative EDA config-as-code: event streams + rulebook activations via infra.aap_configuration.
-# Replaces configure_push/monitor/selfservice/onboarding.py — the data lives in vars/eda.yml.
+# Replaces the former per-pattern Python configure scripts — the data now lives in vars/eda.yml.
 #
 # Runs as the **"Configure EDA" job template** (GitOps: AAP configures itself from this Git project).
 # The connection + ServiceNow secrets are injected by the JT's "AAP Config" credential as extra vars

@@ -1,7 +1,7 @@
 ---
 # Declarative EDA config — the data behind infra.aap_configuration (see ../configure.yml).
-# Replaces the per-pattern configure_push/monitor/selfservice/onboarding.py scripts: each event
-# stream and activation is now a row here, not a near-duplicate Python file.
+# Replaces the former per-pattern Python configure scripts: each event stream and activation is now
+# a row here, not a near-duplicate Python file.
 #
 # The one-time base (decision environment, credentials, EDA project) is still created by
 # configure.py. Secrets are NEVER in this file — aap_* and sn_* are injected by the JT's "AAP Config"

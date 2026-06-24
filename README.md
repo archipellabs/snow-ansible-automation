@@ -99,7 +99,7 @@ control plane, and `identity-sso.svg` covers the SSO/identity layer.
 |---|---|
 | Credential `Target SSH` (machine) | SSH key to reach the targets (user `ansible`) |
 | Credential `ServiceNow PDI` (custom type) | injects `SN_HOST`/`SN_USERNAME`/`SN_PASSWORD` for `servicenow.itsm` |
-| Inventory `Meridian Fleet` | the 9 fleet servers at `host.containers.internal:221x`, with host vars `service`/`role`/`app`/… — generated from `simulator/fleet.yml` |
+| Inventory `Meridian Fleet` + source `ServiceNow CMDB` | **dynamic inventory** from the ServiceNow CMDB (`inventory.now.yml`, `servicenow.itsm.now`): the server CIs become hosts, the custom `u_*` columns become host vars (`ansible_port`/`service`/`role`/`support_group`), `keyed_groups` build `role_*` / `team_*` groups |
 | Project `snow-ansible-automation` | pulls the playbooks from this Git repo |
 | Job template `Restart Service` (pull) / `Execute Change Request` (push) | run the two core playbooks |
 | Job templates `Collect Diagnostics` · `Free Disk` · `Open Incident` · `DB Create Role` · `DB Apply Migration` · `DB Status` · `DB Backup` | the helper / DB-admin playbooks (see [playbooks/README](playbooks/README.md)) |
@@ -230,7 +230,10 @@ either order works — this is the order that tells the cleaner story:
    scripts above; validate each with `tests/`.
 
 The same `simulator/fleet.yml` is the single source of truth for **all three** consumers — the
-ServiceNow CMDB, the controller inventory, and the Keycloak realm.
+ServiceNow CMDB, the Keycloak realm, and (indirectly) the controller inventory. The inventory is no
+longer generated from `fleet.yml` directly: `dataset.py` loads the fleet into the CMDB, then the
+controller's **dynamic inventory** reads the CMDB back (`fleet.yml → CMDB → inventory`), so retiring a
+server CI in ServiceNow drops it from automation on the next sync.
 
 ## Step by step (what we did)
 
@@ -293,7 +296,9 @@ python3 bootstrap/servicenow/dataset.py    # the Meridian CMDB from simulator/fl
 `setup.py` creates the `Auto-Remediation` group and the `eda.integration` service account
 (+ `itil` role, `active`, `password_needs_reset=false`, timezone `GMT`). `dataset.py` then loads the
 Meridian estate (servers, applications, business services, relationships, people, support groups)
-from `simulator/fleet.yml`.
+from `simulator/fleet.yml`. It also adds the custom server columns the **dynamic inventory** reads
+(`u_ssh_port`/`u_service`/`u_role`/`u_support_group` on `cmdb_ci_linux_server`, via `sys_dictionary`)
+and populates them — so the CMDB becomes the source of truth for the controller inventory (§5).
 
 > **Gotcha**: ServiceNow silently ignores `user_password` writes via the Table API. Set
 > `eda.integration`'s password **once in the UI** (open the user → *Set Password*) and store it
@@ -329,9 +334,14 @@ apps at `https://<FQDN>:9443/` (edge → intranet, `/hr`, `/crm`, `/ged`) and th
 ### 5. Controller config-as-code
 
 ```bash
-python3 bootstrap/aap/controller/configure.py   # credentials, inventory, project, job templates
+python3 bootstrap/aap/controller/configure.py   # credentials, project, job templates + dynamic inventory
 python3 tests/healthcheck.py                     # 6 checks incl. EE -> target ad-hoc ping
 ```
+
+`configure.py` creates the `Meridian Fleet` inventory with a **`ServiceNow CMDB` source** (SCM-based,
+`servicenow.itsm.now` reading `bootstrap/aap/controller/inventory.now.yml` from this project) and
+triggers a sync — so the hosts come from the CMDB (§3), not a static list. The `ServiceNow PDI`
+credential injects the `SN_*` env the plugin authenticates with.
 
 ### 6. Event-Driven Ansible
 
@@ -375,9 +385,9 @@ store so the outbound TLS validates (see Key findings).
 1. **EE → target networking** — the controller spawns execution environments with **pasta**
    networking, where `host.containers.internal` resolves to the host *and* can reach its
    rootless-published ports. So the fleet servers (SSH published on the host at `221x`) are reached
-   from the EE via **`host.containers.internal:<ssh_port>`** — the inventory sets
-   `ansible_host=host.containers.internal` + `ansible_port` (not `127.0.0.1`, which is the EE's
-   own loopback).
+   from the EE via **`host.containers.internal:<ssh_port>`** — the dynamic inventory's `compose`
+   sets `ansible_host=host.containers.internal` + `ansible_port` from the CMDB's `u_ssh_port` (not
+   `127.0.0.1`, which is the EE's own loopback).
 2. **Disk** — the RHEL LVM Azure image partitions only ~62 GB and ships tiny LVs (`/home` = 1 GB);
    the AAP images need ~25 GB → `install.sh` grows the partition + LVs.
 3. **ServiceNow password** — not settable via the Table API; set it once in the UI and clear
@@ -452,6 +462,14 @@ This is a proof of concept — deliberately scoped. Be aware of:
   **delete-then-create** — every apply briefly recreates them; (c) the roles `no_log` their tasks, so
   debugging needs `aap_configuration_secure_logging: false`; (d) the collection adds install time to
   the EE on the first run.
+- **The dynamic inventory carries simulator plumbing in the CMDB.** The controller reads its hosts
+  from the CMDB (`servicenow.itsm.now`), which is the standard, source-of-truth approach. But because
+  the "servers" are really rootless containers behind the host, two host vars are **simulator
+  artifacts** stored as custom `u_*` columns: every host resolves to `host.containers.internal` (not a
+  per-CI IP) and connects on a published `u_ssh_port` (221x) instead of `:22`. A real estate would
+  drop `u_ssh_port` and compute `ansible_host` from the CI's real IP/FQDN — the plugin config
+  (`inventory.now.yml`) would shrink accordingly. The `u_role`/`u_service`/`u_support_group` columns
+  are legitimate CMDB attributes and would stay.
 - **The push pattern is more simplified than the pull one.** It needed more workarounds: trust the
   gateway CA in ServiceNow, trigger on the writable `approval` field (the change state model rejects
   arbitrary Table-API transitions), and write a **work note** rather than driving the change through

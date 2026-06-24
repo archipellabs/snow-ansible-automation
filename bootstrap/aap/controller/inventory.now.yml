@@ -1,0 +1,24 @@
+# Dynamic inventory of the Meridian fleet, sourced from the ServiceNow CMDB (servicenow.itsm.now).
+# The CMDB is the source of truth: add/retire a server CI in ServiceNow and it appears/leaves here on
+# the next sync. Auth: the inventory source's ServiceNow credential injects SN_HOST/SN_USERNAME/
+# SN_PASSWORD, which this plugin reads. The custom u_* columns are written by bootstrap/servicenow/
+# dataset.py (u_ssh_port is a simulator artifact — real servers would use the CI's real IP + SSH :22).
+plugin: servicenow.itsm.now
+table: cmdb_ci_linux_server
+inventory_hostname_source: name
+columns:
+  - name
+  - u_ssh_port
+  - u_service
+  - u_role
+  - u_support_group
+compose:
+  # The EE reaches the fleet containers via the host's published SSH ports (see Key findings).
+  ansible_host: "'host.containers.internal'"
+  ansible_port: u_ssh_port
+  service: u_service
+  role: u_role
+  support_group: u_support_group
+keyed_groups:
+  - { key: u_role, prefix: role }            # role_web / role_db / role_app / role_mail
+  - { key: u_support_group, prefix: team }   # team_HR-IT / team_DBA / ...

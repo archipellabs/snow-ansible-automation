@@ -17,8 +17,6 @@ import time
 import urllib.error
 import urllib.parse
 
-import yaml
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, ROOT)
@@ -31,7 +29,6 @@ BASE = f"https://{os.environ['FQDN']}/api/controller/v2"
 HEADERS = {"Authorization": basic_auth(os.environ["AAP_ADMIN_USER"], os.environ["AAP_ADMIN_PASSWORD"])}
 CTX = insecure_ctx()
 KEY_PATH = os.path.join(ROOT, "bootstrap", "targets", "keys", "target_key")
-FLEET = yaml.safe_load(open(os.path.join(ROOT, "simulator", "fleet.yml")))
 
 
 def api(method, path, body=None):
@@ -83,26 +80,14 @@ def main():
         "Credential Target SSH",
     )
 
-    # Inventory generated from the fleet manifest (simulator/fleet.yml). The EE uses pasta
-    # networking: host.containers.internal resolves to the host and reaches its rootless-published
-    # SSH ports (221x). The per-host vars (service/role/app/...) make the playbooks role-aware.
+    # "Meridian Fleet" inventory. Its hosts come from the ServiceNow CMDB via a dynamic inventory
+    # source (created below, after the project + ServiceNow credential it needs) — not a static list.
+    # ansible_user is an inventory-wide var; the per-host connection/role vars come from the CMDB.
     inv = get_or_create(
         "inventories", {"name": "Meridian Fleet"},
         {"name": "Meridian Fleet", "organization": org, "variables": "ansible_user: ansible"},
         "Inventory Meridian Fleet",
     )
-    for s in FLEET["servers"]:
-        hvars = yaml.safe_dump(
-            {"ansible_host": "host.containers.internal", "ansible_port": s["ssh_port"],
-             "service": s["service"], "role": s["role"], "app": s["app"],
-             "business_service": s["business_service"], "support_group": s["support_group"]},
-            default_flow_style=False)
-        res = api("GET", f"hosts/?{urllib.parse.urlencode({'name': s['name'], 'inventory': inv['id']})}")
-        if res.get("count"):
-            api("PATCH", f"hosts/{res['results'][0]['id']}/", {"variables": hvars})
-        else:
-            api("POST", "hosts/", {"name": s["name"], "inventory": inv["id"], "enabled": True, "variables": hvars})
-    print(f"= Inventory Meridian Fleet: {len(FLEET['servers'])} hosts upserted")
 
     # ServiceNow credential: custom type injecting SN_HOST/USERNAME/PASSWORD as env vars
     # (read by the servicenow.itsm collection in the playbook).
@@ -205,6 +190,33 @@ def main():
             break
         time.sleep(3)
     print(f"   project status: {status}")
+
+    # Dynamic inventory source: the "Meridian Fleet" hosts come from the ServiceNow CMDB
+    # (bootstrap/aap/controller/inventory.now.yml, servicenow.itsm.now). The ServiceNow credential
+    # injects SN_* so the plugin can authenticate. Replaces the old static host list from fleet.yml.
+    src = get_or_create(
+        "inventory_sources", {"name": "ServiceNow CMDB"},
+        {"name": "ServiceNow CMDB", "inventory": inv["id"], "source": "scm",
+         "source_project": proj["id"], "source_path": "bootstrap/aap/controller/inventory.now.yml",
+         "credential": sn_cred["id"], "overwrite": True, "overwrite_vars": True},
+        "Inventory source ServiceNow CMDB",
+    )
+    api("PATCH", f"inventory_sources/{src['id']}/",   # reconcile path/project/credential on re-run
+        {"source_project": proj["id"], "source_path": "bootstrap/aap/controller/inventory.now.yml",
+         "credential": sn_cred["id"], "overwrite": True, "overwrite_vars": True})
+    try:
+        api("POST", f"inventory_sources/{src['id']}/update/")
+    except urllib.error.HTTPError:
+        pass
+    print("   syncing inventory from the ServiceNow CMDB...")
+    isrc = {}
+    for _ in range(40):
+        isrc = api("GET", f"inventory_sources/{src['id']}/")
+        if isrc.get("status") in ("successful", "failed", "error"):
+            break
+        time.sleep(3)
+    hosts = api("GET", f"inventories/{inv['id']}/").get("total_hosts")
+    print(f"   inventory sync: {isrc.get('status')} — {hosts} hosts from the CMDB")
 
     # Job templates: role-aware playbooks against the "Meridian Fleet" inventory. The two core
     # patterns are EDA-triggered; the incident-helper (P1) and db-admin (P2) templates run

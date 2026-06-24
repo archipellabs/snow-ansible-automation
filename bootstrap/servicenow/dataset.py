@@ -56,6 +56,16 @@ def ensure_rel(parent, child, type_sid, label):
     print(f"  + rel {label}")
 
 
+def ensure_field(table, element, label, internal_type="string"):
+    """Idempotently add a custom column (sys_dictionary) so the dynamic inventory can read it."""
+    if find("sys_dictionary", f"name={table}^element={element}"):
+        return
+    http_json(f"{BASE}/sys_dictionary", method="POST", headers=HEADERS,
+              body={"name": table, "element": element, "column_label": label,
+                    "internal_type": internal_type})
+    print(f"  + field {table}.{element}")
+
+
 def main():
     print("Groups:")
     group = {t["name"]: ensure("sys_user_group", f"name={t['name']}",
@@ -85,13 +95,26 @@ def main():
            for n, a in FLEET["apps"].items()}
 
     print("Servers:")
+    # Custom columns the dynamic inventory (servicenow.itsm.now) reads as host vars. u_ssh_port is a
+    # simulator artifact (real servers use SSH :22 on a real IP); u_service/u_role drive role-aware
+    # playbooks. See bootstrap/aap/controller/inventory.now.yml.
+    ensure_field("cmdb_ci_linux_server", "u_ssh_port", "SSH port", "integer")
+    ensure_field("cmdb_ci_linux_server", "u_service", "Systemd service", "string")
+    ensure_field("cmdb_ci_linux_server", "u_role", "Server role", "string")
+    # plain copy of the support group name (the reference field reads back as a sys_id in the inventory)
+    ensure_field("cmdb_ci_linux_server", "u_support_group", "Support group (name)", "string")
     srv = {}
     for s in FLEET["servers"]:
-        srv[s["name"]] = ensure(
+        sid = ensure(
             "cmdb_ci_linux_server", f"name={s['name']}",
             {"name": s["name"], "os": s["os"], "support_group": s["support_group"],
              "short_description": f"{s['role']} server for {s['business_service']} ({s['env']})"},
             s["name"], display=True)
+        # Upsert the inventory attributes (also updates CIs created before these fields existed).
+        http_json(f"{BASE}/cmdb_ci_linux_server/{sid}", method="PATCH", headers=HEADERS,
+                  body={"u_ssh_port": s["ssh_port"], "u_service": s["service"], "u_role": s["role"],
+                        "u_support_group": s["support_group"]})
+        srv[s["name"]] = sid
 
     print("Relationships:")
     runs_on = find("cmdb_rel_type", "name=Runs on::Runs")
