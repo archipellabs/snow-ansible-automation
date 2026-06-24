@@ -89,6 +89,24 @@ python3 tests/e2e_aap_sso.py                # headless OIDC login -> asserts an 
 Browser: open `https://<FQDN>/` → **Sign in with Keycloak (Meridian)** → e.g. `nadia.haddad` /
 demo password → lands in AAP as a superuser.
 
+## Employee onboarding (identity provisioning)
+
+A new-joiner flow that **creates the identity in Keycloak** (onboarding = an IdP account, not a row
+in the HR app DB — that DB holds HR business data). ServiceNow → EDA → Ansible → Keycloak → ticket
+closed:
+
+```
+ServiceNow catalog "Arrivée collaborateur" (name, email, service)
+   → Business Rule → Event Stream (servicenow-onboarding-stream)
+   → push-employee-onboarding activation → "Provision Employee" JT
+   → provision_employee.yml: create the Keycloak user (+ Employees group) → close the RITM
+```
+
+The playbook authenticates to Keycloak with the **`aap-provisioner`** service-account client
+(`manage-users`, `client_credentials`) — least privilege, no master admin in AAP. Wire it with
+`bootstrap/aap/eda/configure_onboarding.py` + `bootstrap/servicenow/setup_onboarding.py`; validate
+with `python3 tests/e2e_employee_onboarding.py`.
+
 ## Build order
 
 Keycloak comes up **before** the apps need it and **before** AAP federates to it:

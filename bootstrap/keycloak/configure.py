@@ -31,7 +31,8 @@ sys.path.insert(0, ROOT)
 from lib.poc import load_dotenv, insecure_ctx  # noqa: E402
 
 load_dotenv(ROOT, required=("FQDN", "KEYCLOAK_ADMIN_PASSWORD", "KC_DEMO_PASSWORD",
-                            "KC_HRPORTAL_CLIENT_SECRET", "KC_AAP_CLIENT_SECRET"))
+                            "KC_HRPORTAL_CLIENT_SECRET", "KC_AAP_CLIENT_SECRET",
+                            "KC_PROVISIONER_SECRET"))
 
 FQDN = os.environ["FQDN"]
 EXT = f"https://{FQDN}:9443"            # browser-facing base (through the edge)
@@ -164,6 +165,34 @@ def ensure_client(client_id, name, secret, redirect_uris, web_origins, groups_ma
     return cid
 
 
+def ensure_service_account_client(client_id, secret, mgmt_roles):
+    """A confidential client with a service account (client_credentials), granted realm-management
+    roles so a backend (the onboarding playbook) can create users. No browser flow."""
+    q = urllib.parse.urlencode({"clientId": client_id})
+    st, found = api("GET", f"/{REALM}/clients?{q}")
+    if found:
+        cid = found[0]["id"]
+        print(f"= client '{client_id}' exists")
+    else:
+        api("POST", f"/{REALM}/clients", {
+            "clientId": client_id, "name": "AAP user provisioner", "protocol": "openid-connect",
+            "enabled": True, "publicClient": False, "secret": secret,
+            "standardFlowEnabled": False, "directAccessGrantsEnabled": False,
+            "serviceAccountsEnabled": True})
+        st, found = api("GET", f"/{REALM}/clients?{q}")
+        cid = found[0]["id"]
+        print(f"+ client '{client_id}' (service account)")
+    # Grant the realm-management roles to the client's service-account user.
+    st, sa = api("GET", f"/{REALM}/clients/{cid}/service-account-user")
+    st, rm = api("GET", f"/{REALM}/clients?{urllib.parse.urlencode({'clientId': 'realm-management'})}")
+    rm_id = rm[0]["id"]
+    st, roles = api("GET", f"/{REALM}/clients/{rm_id}/roles")
+    want = [r for r in (roles or []) if r["name"] in mgmt_roles]
+    api("POST", f"/{REALM}/users/{sa['id']}/role-mappings/clients/{rm_id}", want)
+    print(f"  + granted {sorted(r['name'] for r in want)} to {client_id}")
+    return cid
+
+
 def main():
     global TOK
     TOK = get_token()
@@ -190,9 +219,12 @@ def main():
                   [f"{EXT}/hr/*"], [EXT], groups_mapper=True)
     ensure_client("aap", "Ansible Automation Platform", os.environ["KC_AAP_CLIENT_SECRET"],
                   [f"https://{FQDN}/*"], [f"https://{FQDN}"], groups_mapper=True)
+    # Backend client the onboarding playbook uses to create users (client_credentials).
+    ensure_service_account_client("aap-provisioner", os.environ["KC_PROVISIONER_SECRET"],
+                                  ["manage-users", "view-users", "query-users"])
 
     print(f"\n= realm '{REALM}': {len(FLEET['teams']) + 2} groups, {staff + others} users "
-          f"({staff} IT-Admins, {others} Employees), clients hr-portal + aap")
+          f"({staff} IT-Admins, {others} Employees), clients hr-portal + aap + aap-provisioner")
     print(f">> Admin console : {BASE}/admin/  (master realm, user 'admin')")
     print(f">> Account portal: {BASE}/realms/{REALM}/account  (any user, demo password from .env)")
     print(">> Next (Étape 2): wire hr-portal to this 'hr-portal' client; (Étape 3) AAP gateway -> 'aap' client.")

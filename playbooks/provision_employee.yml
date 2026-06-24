@@ -1,0 +1,122 @@
+---
+# provision_employee.yml — onboard a new employee by creating their IDENTITY in Keycloak, then
+# closing the ServiceNow request. The identity lives in the IdP (not in the HR app database — that
+# DB holds HR business data like leave requests).
+#
+# Pattern : PUSH (self-service catalog). ServiceNow catalog request "Arrivée collaborateur" ->
+#           Business Rule -> Event Stream -> push-employee-onboarding activation -> "Provision
+#           Employee" job template -> here.
+# Extra vars (from the rulebook):
+#   employee_name    : full name
+#   employee_email   : email (the Keycloak username is its local part)
+#   employee_service : business service / department (informational)
+#   request_number   : RITM number (for messages)
+#   request_sysid    : RITM sys_id (to close)
+# Keycloak access: the 'aap-provisioner' confidential service-account client (manage-users) via the
+# client_credentials grant. The "Keycloak Provisioner" credential injects KC_URL / KC_REALM /
+# KC_PROVISIONER_CLIENT / KC_PROVISIONER_SECRET. ServiceNow creds come from the ServiceNow PDI cred.
+# Runs on the EE (reaches Keycloak through the edge at KC_URL).
+- name: Provision a new employee (Keycloak identity)
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    kc_url: "{{ lookup('env', 'KC_URL') }}"
+    kc_realm: "{{ lookup('env', 'KC_REALM') }}"
+    kc_client: "{{ lookup('env', 'KC_PROVISIONER_CLIENT') }}"
+    kc_secret: "{{ lookup('env', 'KC_PROVISIONER_SECRET') }}"
+    temp_password: "{{ employee_temp_password | default('Welcome-2026!') }}"
+    username: "{{ employee_email.split('@')[0] }}"
+    realm_base: "{{ kc_url }}/realms/{{ kc_realm }}"
+    admin_base: "{{ kc_url }}/admin/realms/{{ kc_realm }}"
+  tasks:
+    - name: Validate inputs
+      ansible.builtin.assert:
+        that:
+          - employee_email is defined and ('@' in employee_email)
+          - employee_name is defined and (employee_name | length) > 0
+        fail_msg: "provision_employee requires employee_name and employee_email."
+
+    - name: Get a Keycloak token (client_credentials)
+      ansible.builtin.uri:
+        url: "{{ realm_base }}/protocol/openid-connect/token"
+        method: POST
+        body_format: form-urlencoded
+        body:
+          grant_type: client_credentials
+          client_id: "{{ kc_client }}"
+          client_secret: "{{ kc_secret }}"
+        validate_certs: false
+      register: kctok
+      no_log: true
+
+    - name: Look up the user
+      ansible.builtin.uri:
+        url: "{{ admin_base }}/users?username={{ username }}&exact=true"
+        headers: { Authorization: "Bearer {{ kctok.json.access_token }}" }
+        validate_certs: false
+      register: existing
+
+    - name: Create the user if missing (temp password, must change at first login)
+      ansible.builtin.uri:
+        url: "{{ admin_base }}/users"
+        method: POST
+        headers: { Authorization: "Bearer {{ kctok.json.access_token }}" }
+        body_format: json
+        body:
+          username: "{{ username }}"
+          email: "{{ employee_email }}"
+          firstName: "{{ employee_name.split(' ')[0] }}"
+          lastName: "{{ employee_name.split(' ')[1:] | join(' ') or employee_name.split(' ')[0] }}"
+          enabled: true
+          emailVerified: false
+          requiredActions: ["UPDATE_PASSWORD"]
+          credentials:
+            - {type: password, value: "{{ temp_password }}", temporary: true}
+        status_code: [201]
+        validate_certs: false
+      when: (existing.json | length) == 0
+      no_log: true
+
+    - name: Re-read the user id
+      ansible.builtin.uri:
+        url: "{{ admin_base }}/users?username={{ username }}&exact=true"
+        headers: { Authorization: "Bearer {{ kctok.json.access_token }}" }
+        validate_certs: false
+      register: user
+      until: (user.json | length) > 0
+      retries: 5
+      delay: 1
+
+    - name: Find the Employees group
+      ansible.builtin.uri:
+        url: "{{ admin_base }}/groups?search=Employees"
+        headers: { Authorization: "Bearer {{ kctok.json.access_token }}" }
+        validate_certs: false
+      register: grp
+
+    - name: Add the user to the Employees group
+      ansible.builtin.uri:
+        url: "{{ admin_base }}/users/{{ user.json[0].id }}/groups/{{ (grp.json | selectattr('name', 'equalto', 'Employees') | first).id }}"
+        method: PUT
+        headers: { Authorization: "Bearer {{ kctok.json.access_token }}" }
+        status_code: [200, 201, 204]
+        validate_certs: false
+
+    - name: Report
+      ansible.builtin.debug:
+        msg: "Keycloak account '{{ username }}' provisioned for {{ employee_name }} ({{ employee_service | default('—') }})."
+
+    - name: Close the request item
+      delegate_to: localhost
+      run_once: true
+      servicenow.itsm.api:
+        resource: sc_req_item
+        action: patch
+        sys_id: "{{ request_sysid }}"
+        data:
+          state: "3"
+          work_notes: >-
+            Onboarding {{ request_number | default('(on-demand)') }} fulfilled by AAP: Keycloak
+            account '{{ username }}' created (group Employees; must set a password at first login).
+      when: request_sysid is defined

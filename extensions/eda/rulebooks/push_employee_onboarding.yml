@@ -1,0 +1,26 @@
+---
+# PUSH (onboarding): a ServiceNow "Arrivée collaborateur" catalog request triggers Keycloak user
+# provisioning. A Business Rule on sc_req_item POSTs to an AAP Event Stream; the activation maps it
+# onto the ansible.eda.webhook source below, which launches the "Provision Employee" job template.
+# Mirrors push_selfservice_restart.yml — only the payload fields and the job differ.
+- name: Provision a new employee from a ServiceNow onboarding request (push via Event Stream)
+  hosts: all
+  sources:
+    - name: servicenow_onboarding_webhook
+      ansible.eda.webhook:
+        host: 0.0.0.0
+        port: 5000
+  rules:
+    - name: Onboarding request -> provision the employee
+      condition: event.payload.employee_email is defined
+      action:
+        run_job_template:
+          name: "Provision Employee"
+          organization: "Default"
+          job_args:
+            extra_vars:
+              employee_name: "{{ event.payload.employee_name }}"
+              employee_email: "{{ event.payload.employee_email }}"
+              employee_service: "{{ event.payload.employee_service }}"
+              request_number: "{{ event.payload.request_number }}"
+              request_sysid: "{{ event.payload.request_sysid }}"

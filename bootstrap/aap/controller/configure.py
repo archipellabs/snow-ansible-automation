@@ -127,6 +127,32 @@ def main():
         "Credential ServiceNow PDI",
     )
 
+    # Keycloak Provisioner credential: injects the 'aap-provisioner' service-account client details
+    # for the onboarding playbook (creates Keycloak users). SSO is optional, so this is created with
+    # whatever KC_PROVISIONER_SECRET is in .env — the Provision Employee JT works once it is set.
+    kc_type = get_or_create(
+        "credential_types", {"name": "Keycloak Provisioner"},
+        {"name": "Keycloak Provisioner", "kind": "cloud",
+         "inputs": {"fields": [
+             {"id": "kc_url", "label": "Keycloak base URL", "type": "string"},
+             {"id": "kc_realm", "label": "Realm", "type": "string"},
+             {"id": "kc_client", "label": "Client ID", "type": "string"},
+             {"id": "kc_secret", "label": "Client secret", "type": "string", "secret": True}],
+             "required": ["kc_url", "kc_realm", "kc_client", "kc_secret"]},
+         "injectors": {"env": {"KC_URL": "{{ kc_url }}", "KC_REALM": "{{ kc_realm }}",
+                               "KC_PROVISIONER_CLIENT": "{{ kc_client }}",
+                               "KC_PROVISIONER_SECRET": "{{ kc_secret }}"}}},
+        "Credential type Keycloak Provisioner",
+    )
+    kc_cred = get_or_create(
+        "credentials", {"name": "Keycloak Provisioner"},
+        {"name": "Keycloak Provisioner", "organization": org, "credential_type": kc_type["id"],
+         "inputs": {"kc_url": f"https://{os.environ['FQDN']}:9443/auth", "kc_realm": "meridian",
+                    "kc_client": "aap-provisioner",
+                    "kc_secret": os.environ.get("KC_PROVISIONER_SECRET", "")}},
+        "Credential Keycloak Provisioner",
+    )
+
     # Git project (public repo) — the controller pulls the playbooks from here.
     proj = get_or_create(
         "projects", {"name": "snow-ansible-automation"},
@@ -159,7 +185,9 @@ def main():
     #   self  -> "Restart Service (Self-Service)" runs restart_service_selfservice.yml (catalog)
     #   ops   -> "Patch OS" / "Housekeeping" (change / scheduled maintenance)
     #   db    -> "DB Create Role" / "DB Apply Migration" / "DB Status" / "DB Backup"
-    # All share the inventory/project/EE and the machine + ServiceNow credentials.
+    #   hr    -> "Provision Employee"      runs provision_employee.yml (Keycloak onboarding)
+    # All share the inventory/project/EE and the machine + ServiceNow credentials; "Provision
+    # Employee" also gets the Keycloak Provisioner credential.
     for jt_name, pb in (("Restart Service", "playbooks/restart_service.yml"),
                         ("Execute Change Request", "playbooks/execute_change.yml"),
                         ("Collect Diagnostics", "playbooks/collect_diagnostics.yml"),
@@ -171,7 +199,8 @@ def main():
                         ("DB Create Role", "playbooks/db_create_role.yml"),
                         ("DB Apply Migration", "playbooks/db_apply_migration.yml"),
                         ("DB Status", "playbooks/db_status.yml"),
-                        ("DB Backup", "playbooks/db_backup.yml")):
+                        ("DB Backup", "playbooks/db_backup.yml"),
+                        ("Provision Employee", "playbooks/provision_employee.yml")):
         jt = get_or_create(
             "job_templates", {"name": jt_name},
             {"name": jt_name, "job_type": "run", "inventory": inv["id"],
@@ -183,7 +212,10 @@ def main():
             api("PATCH", f"job_templates/{jt['id']}/", {"playbook": pb, "inventory": inv["id"]})
             print(f"   reconciled '{jt_name}' (playbook + inventory)")
         have = {c["id"] for c in api("GET", f"job_templates/{jt['id']}/credentials/").get("results", [])}
-        for cid in (cred["id"], sn_cred["id"]):
+        want = [cred["id"], sn_cred["id"]]
+        if jt_name == "Provision Employee":
+            want.append(kc_cred["id"])     # onboarding needs the Keycloak Provisioner credential
+        for cid in want:
             if cid not in have:
                 api("POST", f"job_templates/{jt['id']}/credentials/", {"id": cid})
                 print(f"   attached credential id={cid} to '{jt_name}'")
