@@ -35,16 +35,21 @@
       <h2>Welcome to your HR portal</h2>
       <p class="muted">Manage leave, payslips, and personal information.</p>
       <div class="tiles">
-        <div class="tile"><b>Leave requests</b><a href="#">Submit / track →</a></div>
+        <div class="tile"><b>Leave requests</b><a href="api/leave">View (API) →</a></div>
         <div class="tile"><b>Payslips</b><a href="#">Download →</a></div>
-        <div class="tile"><b>Directory</b><a href="api/employees">View employees (API) →</a></div>
         <div class="tile"><b>Service health</b><a href="health">/health →</a></div>
       </div>
     </div>
     <div class="card">
+      <h2>Demandes de congés</h2>
+      <p class="muted">Leave requests, read live from the HR database (hr-db-01).</p>
+      __LEAVE__
+    </div>
+    <div class="card">
       <h2>About this instance</h2>
       <p class="muted">This is a simulated application for the ServiceNow + AAP + EDA proof of
-        concept. Liveness is exposed at <code>/health</code> and monitored by Event-Driven Ansible.</p>
+        concept. Liveness is exposed at <code>/health</code> and monitored by Event-Driven Ansible.
+        Sign-in is via Keycloak (SSO); leave data comes from PostgreSQL on hr-db-01.</p>
     </div>
   </main>
   <footer>Meridian Group — internal application (simulated) · *.meridian.example</footer>

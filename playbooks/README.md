@@ -62,3 +62,9 @@ Priority: **P0** = built (core); **P1–P4** = planned, from most useful to nice
 > The controller exposes them as the `DB Create Role` / `DB Apply Migration` / `DB Status` /
 > `DB Backup` job templates (`bootstrap/aap/controller/configure.py`). Smoke-test the lifecycle
 > against `hr-db-01` with `python3 tests/db_admin_lifecycle.py`.
+>
+> The `hr` database holds HR **business data** — `001_leave_requests.sql` provisions a
+> `leave_requests` table (demandes de congés) + a read-only `hr_app` role that the **HR Portal reads
+> live** (employee *identity* lives in Keycloak, not here). The app connects over TCP with `trust`
+> auth scoped to the `hr` db + `hr_app` role on the (unexposed) container network — a PoC
+> simplification baked into `simulator/base/db.Containerfile`.

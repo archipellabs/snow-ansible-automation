@@ -43,11 +43,33 @@ _SSL = ssl.create_default_context()
 _SSL.check_hostname = False
 _SSL.verify_mode = ssl.CERT_NONE
 
-EMPLOYEES = [
-    {"id": "E-1024", "name": "Camille Roux", "department": "Finance"},
-    {"id": "E-2087", "name": "Yanis Bernard", "department": "Logistics"},
-    {"id": "E-3310", "name": "Aicha Diallo", "department": "Human Resources"},
-]
+# --- HR business data (Postgres on hr-db-01) -------------------------------------------------
+# Read-only display of leave requests. Employee IDENTITY is in Keycloak; this DB holds HR business
+# data. Connects as 'hr_app' with no password (pg_hba trusts it on the 'hr' db, container network).
+HR_DB_HOST = os.environ.get("HR_DB_HOST")           # e.g. hr-db-01 (unset -> DB display disabled)
+HR_DB_PORT = os.environ.get("HR_DB_PORT", "5432")
+HR_DB_NAME = os.environ.get("HR_DB_NAME", "hr")
+HR_DB_USER = os.environ.get("HR_DB_USER", "hr_app")
+try:
+    import psycopg
+except Exception:  # noqa: BLE001 - the app still runs (DB display just disabled) without the driver
+    psycopg = None
+
+
+def leave_requests():
+    """Return the leave requests from Postgres, or None if the DB is unreachable / not wired."""
+    if not (HR_DB_HOST and psycopg):
+        return None
+    try:
+        with psycopg.connect(host=HR_DB_HOST, port=HR_DB_PORT, dbname=HR_DB_NAME,
+                             user=HR_DB_USER, connect_timeout=3) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT employee_name, leave_type, start_date, end_date, status "
+                            "FROM leave_requests ORDER BY start_date")
+                return [{"employee": r[0], "type": r[1], "start": str(r[2]),
+                         "end": str(r[3]), "status": r[4]} for r in cur.fetchall()]
+    except Exception:  # noqa: BLE001 - DB down should not break the portal
+        return None
 
 app = FastAPI(title=f"Meridian Group — {APP_NAME}")
 app.add_middleware(SessionMiddleware,
@@ -82,7 +104,20 @@ def _page(user) -> str:
                   f'<a href="logout" style="color:#fff;text-decoration:underline">Sign out</a>')
     else:
         banner = "auth disabled"
-    return html.replace("__USER__", banner)
+    rows = leave_requests()
+    if rows is None:
+        leave_html = '<p class="muted">Leave data unavailable (HR database unreachable).</p>'
+    elif not rows:
+        leave_html = '<p class="muted">No leave requests on file.</p>'
+    else:
+        body = "".join(
+            f"<tr><td>{r['employee']}</td><td>{r['type']}</td>"
+            f"<td>{r['start']} → {r['end']}</td><td>{r['status']}</td></tr>" for r in rows)
+        leave_html = (
+            "<table style='width:100%;border-collapse:collapse;font-size:14px'>"
+            "<tr style='text-align:left;color:#57606a'><th>Employee</th><th>Type</th>"
+            "<th>Dates</th><th>Status</th></tr>" + body + "</table>")
+    return html.replace("__USER__", banner).replace("__LEAVE__", leave_html)
 
 
 def _login_page() -> str:
@@ -146,16 +181,20 @@ def home(request: Request):
     return _page(request.session.get("user") if OIDC_ENABLED else None)
 
 
-@app.get("/api/employees")
-def employees(request: Request):
+@app.get("/api/leave")
+def leave(request: Request):
     if OIDC_ENABLED and not request.session.get("user"):
         return JSONResponse({"detail": "authentication required"}, status_code=401)
-    return {"count": len(EMPLOYEES), "employees": EMPLOYEES}
+    rows = leave_requests()
+    if rows is None:
+        return JSONResponse({"detail": "HR database unreachable"}, status_code=503)
+    return {"count": len(rows), "leave_requests": rows}
 
 
 @app.get("/health")
 def health(response: Response):
-    # Always public — the EDA monitor (url_check) probes this without a token.
+    # Always public — the EDA monitor (url_check) probes this without a token. Liveness is the
+    # service itself (the degraded flag); the DB is reported for info only, it does NOT flip 503.
     degraded = os.path.exists(HEALTH_FLAG)
     response.status_code = 503 if degraded else 200
     return {
@@ -164,6 +203,7 @@ def health(response: Response):
         "server": SERVER,
         "status": "degraded" if degraded else "ok",
         "sso": "enabled" if OIDC_ENABLED else "disabled",
+        "db": "ok" if leave_requests() is not None else "unreachable",
         "uptime_seconds": int((datetime.now(timezone.utc) - STARTED).total_seconds()),
         "time": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }

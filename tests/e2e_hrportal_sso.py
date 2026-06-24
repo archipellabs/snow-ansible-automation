@@ -80,9 +80,9 @@ def main():
     print(f"  /hr/health           -> {st}, sso={hj.get('sso')}: {c2}")
     ok &= c2
 
-    st, _, _ = get("/hr/api/employees")
+    st, _, _ = get("/hr/api/leave")
     c3 = st == 401
-    print(f"  /hr/api/employees    -> {st} (expect 401 unauthenticated): {c3}")
+    print(f"  /hr/api/leave        -> {st} (expect 401 unauthenticated): {c3}")
     ok &= c3
 
     try:

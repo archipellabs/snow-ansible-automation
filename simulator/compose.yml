@@ -23,6 +23,10 @@ services:
       OIDC_REDIRECT_URI: https://${FQDN}:9443/hr/callback
       APP_BASE_URL: https://${FQDN}:9443/hr
       SESSION_SECRET: ${HRPORTAL_SESSION_SECRET:-change-me-session}
+      # HR business data (read-only) from Postgres on hr-db-01 — trust auth for the hr_app role.
+      HR_DB_HOST: hr-db-01
+      HR_DB_NAME: hr
+      HR_DB_USER: hr_app
 
   hr-db-01:
     <<: *server

@@ -20,5 +20,14 @@ RUN mkdir -p /var/lib/pgsql/${PG}/data \
     && ln -sf /usr/lib/systemd/system/postgresql-${PG}.service /etc/systemd/system/multi-user.target.wants/postgresql-${PG}.service \
     && ln -sf /usr/lib/systemd/system/postgresql-${PG}.service /etc/systemd/system/postgresql.service
 
+# Accept TCP so an app can read the DB from another container, but stay tight: listen on all
+# interfaces (the port is NOT host-published, only on the compose network) and trust ONLY the
+# read-only 'hr_app' role on the 'hr' database. Everything else keeps the default local peer auth.
+# (PoC simplification — a real setup would use scram-sha-256 passwords.)
+RUN data=/var/lib/pgsql/${PG}/data \
+    && echo "listen_addresses = '*'" >> "$data/postgresql.conf" \
+    && echo "host    hr    hr_app    all    trust" >> "$data/pg_hba.conf" \
+    && chown postgres:postgres "$data/postgresql.conf" "$data/pg_hba.conf"
+
 EXPOSE 5432
 CMD ["/sbin/init"]

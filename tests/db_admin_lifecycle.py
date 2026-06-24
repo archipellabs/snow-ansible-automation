@@ -19,9 +19,9 @@ import subprocess
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 TARGET = "hr-db-01"        # a Meridian Fleet db server
 DB = "hr"
-ROLE = "hr_app"
-ROLE_PW = "Demo_hr_app_pw_2026"
-MIGRATION = "001_init_hr_schema.sql"
+ROLE = "reporting"         # a demo role created by db_create_role (distinct from the app's hr_app)
+ROLE_PW = "Demo_reporting_pw_2026"
+MIGRATION = "001_leave_requests.sql"
 PSQL = "/usr/pgsql-16/bin/psql"
 sys.path.insert(0, ROOT)
 from lib.poc import load_dotenv, insecure_ctx, basic_auth, http_json  # noqa: E402
@@ -79,18 +79,18 @@ def main():
     print("\n>> Verifying PostgreSQL state on " + TARGET)
     db_present = psql(f"SELECT 1 FROM pg_database WHERE datname='{DB}'") == "1"
     role_present = psql(f"SELECT 1 FROM pg_roles WHERE rolname='{ROLE}'") == "1"
-    employees = psql("SELECT count(*) FROM employees", db=DB)
+    leave = psql("SELECT count(*) FROM leave_requests", db=DB)
     migration_recorded = psql(f"SELECT 1 FROM meridian_schema_migrations WHERE filename='{MIGRATION}'", db=DB) == "1"
     dumps = ssh(f"podman exec {TARGET} bash -lc 'ls /var/backups/postgresql/{DB}-*.dump 2>/dev/null | wc -l'")
 
     print()
-    print(f"  jobs all successful : {jobs_ok}")
+    print(f"  jobs all successful   : {jobs_ok}")
     print(f"  database '{DB}' exists : {db_present}")
     print(f"  role '{ROLE}' exists   : {role_present}")
-    print(f"  employees seeded (3)  : {employees == '3'} ({employees})")
+    print(f"  leave_requests seeded : {leave == '3'} ({leave})")
     print(f"  migration recorded    : {migration_recorded}")
     print(f"  backup dump present   : {dumps not in ('', '0')} ({dumps} file[s])")
-    ok = jobs_ok and db_present and role_present and employees == "3" and migration_recorded and dumps not in ("", "0")
+    ok = jobs_ok and db_present and role_present and leave == "3" and migration_recorded and dumps not in ("", "0")
     print("\n>> " + ("DB LIFECYCLE PASSED" if ok else "DB LIFECYCLE FAILED"))
     sys.exit(0 if ok else 1)
 
