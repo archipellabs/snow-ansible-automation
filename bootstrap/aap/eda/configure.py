@@ -1,28 +1,26 @@
 #!/usr/bin/env python3
-"""Configure Event-Driven Ansible for the PoC (idempotent, API, stdlib only).
+"""Configure the EDA *base* objects for the PoC (idempotent, API, stdlib only).
 
-Creates, in the EDA controller:
-  - the registry credential used to pull the custom decision environment from the
-    private Automation Hub;
+Creates the one-time pieces the declarative config (the "Configure EDA" job template running
+bootstrap/aap/eda/configure.yml) builds on:
+  - the registry credential used to pull the custom decision environment from the private hub;
   - the decision environment `snow-eda-de` (the image built/pushed by build.sh);
-  - the "AAP Controller" credential the rulebook uses to launch the job template
+  - the "AAP Controller" credential the rulebooks use to launch job templates
     -- its host MUST be `https://<FQDN>/api/controller/` (see note below);
-  - the EDA project (this Git repo) and the rulebook activation that wires it all
-    together, injecting SN_HOST/SN_USERNAME/SN_PASSWORD for the records source.
+  - the shared "ServiceNow CHG Event Stream cred" (token) the event streams authenticate with;
+  - the EDA project (this Git repo).
 
-Run AFTER bootstrap/aap/eda/build.sh (the DE image must be in the hub) and AFTER the
-controller is configured (the "Restart Service" job template must exist).
-Run from the repo root:
+The event streams + rulebook activations themselves are NOT created here anymore — they are declared
+in bootstrap/aap/eda/vars/eda.yml and applied by the "Configure EDA" job template
+(infra.aap_configuration). Run this once first, then launch that job template.
+
+Run AFTER bootstrap/aap/eda/build.sh (the DE image must be in the hub). From the repo root:
   python3 bootstrap/aap/eda/configure.py
 
-Two non-obvious requirements this script encodes (both cost real debugging time):
-  1. ansible-rulebook picks the controller API path from the credential host: a host
-     with a path (".../api/controller/") selects the AAP 2.5+ gateway slugs; a bare
-     host selects the legacy "/api/v2/" slugs, which 404 behind the gateway.
-  2. The records source builds its time filter with `gs.dateGenerate`, evaluated in the
-     ServiceNow *user's* timezone. The rulebook pins `remote_servicenow_timezone: UTC`,
-     so eda.integration's ServiceNow timezone must be GMT (set by bootstrap/servicenow
-     /setup.py) or new incidents fall outside the poll window and never trigger.
+Non-obvious requirement encoded here (cost real debugging time): ansible-rulebook picks the
+controller API path from the credential host — a host with a path (".../api/controller/") selects
+the AAP 2.5+ gateway slugs; a bare host selects the legacy "/api/v2/" slugs, which 404 behind the
+gateway. (The GMT-timezone requirement for the records source lives in bootstrap/servicenow/setup.py.)
 """
 import os
 import sys
@@ -36,16 +34,16 @@ DE_NAME = "snow-eda-de"
 DE_IMAGE_TAG = "snow-eda-de:latest"          # pushed to <FQDN>/<this> by build.sh
 HUB_CRED_NAME = "Hub Decision Environment Container Registry"
 CONTROLLER_CRED_NAME = "AAP Controller"
+ES_CRED_NAME = "ServiceNow CHG Event Stream cred"
+ES_CRED_TYPE = "ServiceNow Event Stream"
 PROJECT_NAME = "snow-ansible-automation"
-RULEBOOK_NAME = "pull_incident_remediation.yml"
-ACTIVATION_NAME = "pull-incident-remediation"
 
 
 sys.path.insert(0, ROOT)
 from lib.poc import load_dotenv, insecure_ctx, basic_auth, http_json  # noqa: E402
 
 load_dotenv(ROOT, required=("FQDN", "AAP_ADMIN_USER", "AAP_ADMIN_PASSWORD",
-                            "SN_INSTANCE", "SN_EDA_USERNAME", "SN_EDA_PASSWORD", "GIT_REPO_URL"))
+                            "GIT_REPO_URL", "SN_EVENTSTREAM_TOKEN"))
 
 FQDN = os.environ["FQDN"]
 BASE = f"https://{FQDN}/api/eda/v1"
@@ -83,33 +81,41 @@ def cred_type_id(name):
 
 def main():
     org = (api("GET", "organizations/?name=Default").get("results") or [{"id": 1}])[0]["id"]
-    registry_type = cred_type_id("Container Registry")
-    controller_type = cred_type_id("Red Hat Ansible Automation Platform")
 
-    # Registry credential to pull the custom DE from the private hub. The AAP installer
-    # usually creates this already (it mirrors the default DE there); reuse if present.
+    # Registry credential to pull the custom DE from the private hub (installer usually made it).
     hub_cred = get_or_create(
         "eda-credentials", HUB_CRED_NAME,
-        {"name": HUB_CRED_NAME, "credential_type_id": registry_type, "organization_id": org,
+        {"name": HUB_CRED_NAME, "credential_type_id": cred_type_id("Container Registry"),
+         "organization_id": org,
          "inputs": {"host": FQDN, "username": os.environ["AAP_ADMIN_USER"],
                     "password": os.environ["AAP_ADMIN_PASSWORD"], "verify_ssl": True}},
         "Hub registry credential",
     )
 
-    # Controller credential for run_job_template. The "/api/controller/" path is required
-    # so ansible-rulebook uses the gateway API slugs (a bare host -> legacy /api/v2 -> 404).
+    # Controller credential for run_job_template. The "/api/controller/" path is required so
+    # ansible-rulebook uses the gateway API slugs (a bare host -> legacy /api/v2 -> 404).
     get_or_create(
         "eda-credentials", CONTROLLER_CRED_NAME,
-        {"name": CONTROLLER_CRED_NAME, "credential_type_id": controller_type, "organization_id": org,
+        {"name": CONTROLLER_CRED_NAME, "credential_type_id": cred_type_id("Red Hat Ansible Automation Platform"),
+         "organization_id": org,
          "inputs": {"host": f"https://{FQDN}/api/controller/",
                     "username": os.environ["AAP_ADMIN_USER"],
                     "password": os.environ["AAP_ADMIN_PASSWORD"],
                     "verify_ssl": False, "request_timeout": "40"}},
         "AAP Controller credential",
     )
-    controller_cred = find("eda-credentials", CONTROLLER_CRED_NAME)
 
-    de = get_or_create(
+    # Shared inbound token credential the event streams authenticate with (ServiceNow sends it in
+    # the Authorization header). The streams themselves are declared in vars/eda.yml.
+    get_or_create(
+        "eda-credentials", ES_CRED_NAME,
+        {"name": ES_CRED_NAME, "credential_type_id": cred_type_id(ES_CRED_TYPE), "organization_id": org,
+         "inputs": {"auth_type": "token", "token": os.environ["SN_EVENTSTREAM_TOKEN"],
+                    "http_header_key": "Authorization"}},
+        "Event Stream credential",
+    )
+
+    get_or_create(
         "decision-environments", DE_NAME,
         {"name": DE_NAME, "image_url": f"{FQDN}/{DE_IMAGE_TAG}",
          "eda_credential_id": hub_cred["id"], "organization_id": org},
@@ -130,36 +136,8 @@ def main():
         time.sleep(3)
     print(f"   project import_state: {state}")
 
-    rb = find("rulebooks", RULEBOOK_NAME)
-    if not rb:
-        sys.exit(f"rulebook '{RULEBOOK_NAME}' not found in the project "
-                 f"(expected under extensions/eda/rulebooks/)")
-    print(f"= rulebook {RULEBOOK_NAME} (id={rb['id']})")
-
-    # SN_* are consumed by the records source in the rulebook (Jinja vars).
-    extra = (f"SN_HOST: https://{os.environ['SN_INSTANCE']}\n"
-             f"SN_USERNAME: {os.environ['SN_EDA_USERNAME']}\n"
-             f"SN_PASSWORD: {os.environ['SN_EDA_PASSWORD']}\n")
-
-    act = find("activations", ACTIVATION_NAME)
-    if act:
-        print(f"= Activation exists (id={act['id']}). To re-apply changes, delete it first:")
-        print(f"    DELETE {BASE}/activations/{act['id']}/")
-        return
-
-    body = {"name": ACTIVATION_NAME, "decision_environment_id": de["id"],
-            "rulebook_id": rb["id"], "organization_id": org,
-            "eda_credentials": [controller_cred["id"]],
-            "restart_policy": "on-failure", "log_level": "info", "is_enabled": True}
-    # extra_vars: newer EDA wants an extra-vars object id; fall back to an inline string.
-    try:
-        ev = api("POST", "extra-vars/", {"extra_var": extra})
-        body["extra_var_id"] = ev["id"]
-    except urllib.error.HTTPError:
-        body["extra_var"] = extra
-    act = api("POST", "activations/", body)
-    print(f"+ Activation created (id={act['id']})")
-    print("\n>> EDA configured. Validate end-to-end: python3 tests/e2e_pull_incident_remediation.py")
+    print("\n>> EDA base ready. Apply the activations declaratively: launch the 'Configure EDA' job")
+    print("   template (bootstrap/aap/eda/configure.yml via infra.aap_configuration).")
 
 
 if __name__ == "__main__":

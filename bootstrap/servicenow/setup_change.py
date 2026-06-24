@@ -10,7 +10,7 @@ Trigger note: ServiceNow's change state model rejects arbitrary state jumps via 
 API, so we key off the freely-writable `approval` field (approved) rather than a state, and
 the playbook records its result as a work note rather than transitioning the change.
 
-Run AFTER bootstrap/aap/eda/configure_push.py (the event stream must exist). From the repo root:
+Run AFTER the 'Configure EDA' job template (the event stream must exist). From the repo root:
   python3 bootstrap/servicenow/setup_change.py
 
 Note: ServiceNow validates TLS on outbound REST. If the AAP gateway uses a self-signed
@@ -51,7 +51,7 @@ def eda_stream_url():
     headers = {"Authorization": basic_auth(os.environ["AAP_ADMIN_USER"], os.environ["AAP_ADMIN_PASSWORD"])}
     res = http_json(url, headers=headers, ctx=CTX).get("results") or []
     if not res:
-        sys.exit(f"event stream '{STREAM_NAME}' not found — run bootstrap/aap/eda/configure_push.py first")
+        sys.exit(f"event stream '{STREAM_NAME}' not found — run the 'Configure EDA' job template first")
     return res[0]["url"]
 
 

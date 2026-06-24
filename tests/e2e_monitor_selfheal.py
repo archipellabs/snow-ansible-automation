@@ -11,8 +11,8 @@ to run with NO ticket created by the test:
 Asserts that an Auto-Remediation incident was opened for hr-web-01 and then resolved, and that the
 app is healthy again. Exit 0 if all pass.
 
-Requires both activations enabled: monitor-health (configure_monitor.py) and
-pull-incident-remediation (configure.py).
+Requires both activations enabled (created declaratively by the "Configure EDA" job template):
+monitor-health and pull-incident-remediation.
 """
 import os
 import sys

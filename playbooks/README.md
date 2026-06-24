@@ -29,7 +29,7 @@ app /health down  ──url_check──▶  Open Incident  ──▶  ServiceNow
         incident resolved  ◀──Restart Service──◀  pull-incident-remediation
 ```
 
-Wire it with `bootstrap/aap/eda/configure_monitor.py`; validate with
+Wire it via the declarative EDA config (the **Configure EDA** job template); validate with
 `python3 tests/e2e_monitor_selfheal.py` (it only injects the fault — the monitor opens the ticket).
 
 ## Catalogue

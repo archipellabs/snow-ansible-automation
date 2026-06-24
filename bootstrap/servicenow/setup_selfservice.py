@@ -11,7 +11,7 @@ Builds a Service Catalog item that lets a user pick a fleet server and request a
     activation then launches the "Restart Service (Self-Service)" job template.
 
 The event stream URL is read live from the EDA API; the shared token is SN_EVENTSTREAM_TOKEN.
-Run AFTER bootstrap/aap/eda/configure_selfservice.py (the stream must exist). From the repo root:
+Run AFTER the 'Configure EDA' job template (the stream must exist). From the repo root:
   python3 bootstrap/servicenow/setup_selfservice.py
 
 TLS note: ServiceNow validates TLS on the outbound POST. The AAP gateway's self-signed CA must be
@@ -78,7 +78,7 @@ def eda_stream_url():
     headers = {"Authorization": basic_auth(os.environ["AAP_ADMIN_USER"], os.environ["AAP_ADMIN_PASSWORD"])}
     res = http_json(url, headers=headers, ctx=CTX).get("results") or []
     if not res:
-        sys.exit(f"event stream '{STREAM_NAME}' not found — run bootstrap/aap/eda/configure_selfservice.py first")
+        sys.exit(f"event stream '{STREAM_NAME}' not found — run the 'Configure EDA' job template first")
     return res[0]["url"]
 
 

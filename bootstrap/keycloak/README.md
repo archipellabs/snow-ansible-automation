@@ -104,7 +104,7 @@ ServiceNow catalog "Arrivée collaborateur" (name, email, service)
 
 The playbook authenticates to Keycloak with the **`aap-provisioner`** service-account client
 (`manage-users`, `client_credentials`) — least privilege, no master admin in AAP. Wire it with
-`bootstrap/aap/eda/configure_onboarding.py` + `bootstrap/servicenow/setup_onboarding.py`; validate
+the **Configure EDA** job template (declarative) + `bootstrap/servicenow/setup_onboarding.py`; validate
 with `python3 tests/e2e_employee_onboarding.py`.
 
 ## Build order

@@ -81,7 +81,7 @@ control plane, and `identity-sso.svg` covers the SSO/identity layer.
 3. The stream feeds the `ansible.eda.webhook` source of the `push-selfservice-restart` activation,
    which triggers the `Restart Service (Self-Service)` **job template**.
 4. `restart_service_selfservice.yml` restarts that server's service and **closes the request item**.
-   Set up with `bootstrap/aap/eda/configure_selfservice.py` + `bootstrap/servicenow/setup_selfservice.py`.
+   Set up declaratively (the **Configure EDA** job template) + `bootstrap/servicenow/setup_selfservice.py`.
 
 ### Objects provisioned by the scripts
 
@@ -104,7 +104,9 @@ control plane, and `identity-sso.svg` covers the SSO/identity layer.
 | Job template `Restart Service` (pull) / `Execute Change Request` (push) | run the two core playbooks |
 | Job templates `Collect Diagnostics` · `Free Disk` · `Open Incident` · `DB Create Role` · `DB Apply Migration` · `DB Status` · `DB Backup` | the helper / DB-admin playbooks (see [playbooks/README](playbooks/README.md)) |
 
-**EDA** — `configure.py` (pull) + `configure_push.py` (change) + `configure_monitor.py` (monitoring) + `configure_selfservice.py` (catalog)
+**EDA** — base (DE, credentials, project) via `eda/configure.py`; the **event streams + all 5
+activations are declarative** — `eda/vars/eda.yml` applied by the **Configure EDA** job template
+(`eda/configure.yml`, `infra.aap_configuration` — GitOps: AAP configures itself from this repo).
 | Object | Pattern | Role |
 |---|---|---|
 | Decision environment `snow-eda-de` | all | DE image (`de-minimal` + `servicenow.itsm`), pulled from the hub |
@@ -128,7 +130,7 @@ content the AAP controller and EDA pull from this Git repo (the SCM project).
 | Path | Purpose |
 |---|---|
 | `bootstrap/infra/` | Azure VM as **Bicep** (`main.bicep` + `resources.bicep` + `cloud-init.yaml`); copy `main.parameters.example.json` → `main.parameters.json` (gitignored) |
-| `bootstrap/aap/` | AAP install (`install.sh` + inventory + `sync.sh`) **and** AAP config-as-code: `controller/configure.py`, `eda/configure.py` + `configure_push.py`, and the DE build (`eda/execution-environment.yml` + `build.sh`) |
+| `bootstrap/aap/` | AAP install (`install.sh` + inventory + `sync.sh`) **and** AAP config-as-code: `controller/configure.py` + `eda/configure.py` (base, Python), the **declarative** EDA config (`eda/configure.yml` + `eda/vars/eda.yml`, run by the Configure EDA job template), and the DE build (`eda/execution-environment.yml` + `build.sh`) |
 | `bootstrap/awx/` | placeholder for a future AWX install (open-source alternative to AAP) |
 | `bootstrap/servicenow/` | `setup.py` (group + service account) + `dataset.py` (Meridian CMDB from `fleet.yml`) + `setup_change.py` (push Business Rule + gateway-CA trust) |
 | `bootstrap/targets/` | the SSH key the controller uses to reach the fleet (the servers live in `simulator/`) |
@@ -336,33 +338,35 @@ python3 tests/healthcheck.py                     # 6 checks incl. EE -> target a
 ```bash
 # build the custom DE and push it to the hub (run ON the VM; sync.sh already put it in ~/aap/eda/)
 ssh -i ~/.ssh/snow-aap-poc azureuser@<FQDN> '~/aap/eda/build.sh'
-# then, from your machine: DE, credentials, EDA project, rulebook activation
+# base objects (DE, hub + AAP Controller + Event Stream credentials, EDA project) — stdlib Python:
 python3 bootstrap/aap/eda/configure.py
+# event streams + all 5 activations — DECLARATIVE: launch the "Configure EDA" job template
+# (created by step 5; GitOps — AAP applies eda/configure.yml + eda/vars/eda.yml from this repo).
 ```
 
-`configure.py` creates the decision environment, the hub registry + `AAP Controller` credentials,
-the EDA project, and the rulebook activation (`log_level: info`). Two settings are load-bearing
-(see Key findings): the controller credential host ends in **`/api/controller/`**, and
-`eda.integration`'s ServiceNow timezone is **GMT**.
+`eda/configure.py` creates the **base** only. The event streams and all activations are declared in
+`eda/vars/eda.yml` and applied by the **Configure EDA** job template (`eda/configure.yml`,
+`infra.aap_configuration`). Load-bearing settings (see Key findings): the controller credential host
+ends in **`/api/controller/`**; `eda.integration`'s timezone is **GMT**; event streams need
+`forward_events: true` or events are captured but not forwarded.
 
 ```bash
-python3 tests/e2e_pull_incident_remediation.py   # break httpd -> open incident -> EDA auto-launches the job -> resolved
+python3 tests/e2e_pull_incident_remediation.py   # break the service -> incident -> EDA auto-launches the job -> resolved
 ```
 
 ### 7. Push pattern (Change Request → Event Stream)
 
+The event stream + `push-change-execution` activation are part of the declarative EDA config (step 6).
+Only the ServiceNow side is separate:
+
 ```bash
-python3 bootstrap/aap/eda/configure_push.py  # event stream (token) + webhook activation
 python3 bootstrap/servicenow/setup_change.py # Business Rule + trust the gateway CA in ServiceNow
-python3 tests/e2e_push_change_execution.py                  # approve a change -> EDA executes it -> work note
+python3 tests/e2e_push_change_execution.py   # approve a change -> EDA executes it -> work note
 ```
 
-`configure_push.py` reuses the same decision environment and `AAP Controller` credential, adds a
-`ServiceNow Event Stream` credential (token = `SN_EVENTSTREAM_TOKEN`), creates the **Event Stream**
-(a webhook endpoint on the gateway), and the `push-change-execution` activation whose
-`ansible.eda.webhook` source is **mapped to the stream** (`source_mappings`). `setup_change.py`
-creates the Business Rule that POSTs approved changes to that endpoint, and uploads the gateway's
-self-signed CA to ServiceNow's trust store so the outbound TLS validates (see Key findings).
+`setup_change.py` creates the Business Rule that POSTs approved changes to the Event Stream endpoint
+(a gateway-managed webhook on `:443`), and uploads the gateway's self-signed CA to ServiceNow's trust
+store so the outbound TLS validates (see Key findings).
 
 ---
 
@@ -437,17 +441,21 @@ This is a proof of concept — deliberately scoped. Be aware of:
   certificate** (ServiceNow trusts it via an uploaded trust-store cert — production should use a
   CA-signed cert); the targets are throwaway containers; the "change" the push playbook applies is a
   demo content deploy, not a real change.
-- **Config-as-code is bespoke (stdlib Python over the REST APIs), not the official tooling.** It is
-  written from scratch for transparency and zero dependencies. A production setup would likely use
-  Red Hat's supported collections (`infra.aap_configuration`, `ansible.controller`, `ansible.eda`) —
-  declarative playbooks instead of `urllib` scripts.
+- **Config-as-code is hybrid.** The **EDA layer is declarative** (`infra.aap_configuration` via the
+  GitOps "Configure EDA" job template); the controller, ServiceNow and Keycloak config are still
+  **bespoke stdlib Python** over the REST APIs (transparent, zero-dependency). A fully-standard setup
+  would move those to collections too (`infra.aap_configuration` controller roles, `servicenow.itsm`,
+  `community.general.keycloak_*`).
+- **The declarative EDA layer has rough edges** (EDA is young): (a) the `eda_*` roles don't reliably
+  accept token auth → we pass username/password; (b) **EDA can't update a running activation** ("not
+  in disabled mode and in stopped status"), so the playbook reconciles activations by
+  **delete-then-create** — every apply briefly recreates them; (c) the roles `no_log` their tasks, so
+  debugging needs `aap_configuration_secure_logging: false`; (d) the collection adds install time to
+  the EE on the first run.
 - **The push pattern is more simplified than the pull one.** It needed more workarounds: trust the
   gateway CA in ServiceNow, trigger on the writable `approval` field (the change state model rejects
   arbitrary Table-API transitions), and write a **work note** rather than driving the change through
   its ServiceNow lifecycle.
-- **Reconciliation is partial.** `configure.py` re-syncs the project and reconciles job-template
-  playbook paths, but the **EDA activations are not updated in place** — changing one means deleting
-  and re-creating it (the scripts print the `DELETE` to run).
 - **SSO covers the apps and AAP, not ServiceNow.** Keycloak gives single sign-on to the simulated
   apps (employees, Étape 2) and AAP admins (Étape 3), but **ServiceNow keeps its native login** —
   federating a SaaS PDI to a Keycloak on a private VM would need the IdP publicly reachable with a
