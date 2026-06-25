@@ -44,6 +44,14 @@
     anti-storm dedup (`open_incident.yml`) keys on the **open states** (`stateIN1,2,3`), *not* `active` —
     otherwise a recurrence after a fix would be deduped against the still-active Resolved ticket and never
     re-remediated. The remediation **resolves**; ServiceNow auto-closes; each outage gets its own incident.
+14. **AWX runtime — reaching the fleet + rootless sshd** — on the AWX VM the controller runs jobs as
+    **k3s pods** (not pasta EEs), so `host.containers.internal` doesn't resolve there. The fleet is reached
+    at the **k3s node gateway `10.42.0.1`** + the published port, set as the `Meridian Fleet` inventory's
+    `ansible_host` (per runtime — see [Limitations](#limitations)). And because the fleet runs **rootless
+    podman**, the setuid `unix_chkpwd` can't read `/etc/shadow` in the user namespace, so PAM's *account*
+    phase denies key-auth'd SSH **and** sudo (`Access denied by PAM account configuration`). The base image
+    makes the account phase permissive (`account sufficient pam_permit.so` in the `sshd`/`sudo` PAM stacks)
+    — auth stays key-only, and it works rootless on either host (RHEL or Ubuntu).
 
 ## Status
 

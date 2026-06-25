@@ -22,5 +22,11 @@ RUN chown -R ansible:ansible /home/ansible/.ssh \
     && chmod 600 /home/ansible/.ssh/authorized_keys \
     && systemctl enable sshd
 
+# Rootless podman: the setuid `unix_chkpwd` can't read /etc/shadow in the user namespace, so PAM's
+# account phase (pam_unix) denies key-authenticated SSH logins AND sudo ("Access denied by PAM account
+# configuration"). Auth here is key-only, so make the account phase permissive — this works rootless on
+# any host (the AAP RHEL VM and the AWX Ubuntu VM both run the fleet rootless).
+RUN sed -i '1i account sufficient pam_permit.so' /etc/pam.d/sshd /etc/pam.d/sudo
+
 EXPOSE 22
 CMD ["/sbin/init"]
