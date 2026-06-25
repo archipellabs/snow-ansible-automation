@@ -13,7 +13,9 @@
           password: "{{ SN_PASSWORD }}"
         table: incident
         # Trigger filter (see bootstrap/4_servicenow/1_account.py): dedicated group + New state.
-        sysparm_query: "assignment_group.name=Auto-Remediation^state=1"
+        # {{ remediation_group }} defaults to the shared group; set it per activation (e.g.
+        # Auto-Remediation-AWX) to keep parallel AAP/AWX runtimes from racing on the same incident.
+        sysparm_query: "assignment_group.name={{ remediation_group | default('Auto-Remediation') }}^state=1"
         interval: 10
         # The source builds its poll-window filter with gs.dateGenerate, which ServiceNow
         # evaluates in the querying user's timezone. Pinning UTC here only works because
