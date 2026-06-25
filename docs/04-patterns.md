@@ -36,22 +36,22 @@ incident → remediation → resolved.
 4. The job runs `execute_change.yml`: deploy the change to the target, restart the service, and write
    the result back to the change as a **work note**.
 
-## Push — self-service catalog
+## Pull — self-service catalog
 
 1. A user orders the **Service Catalog** item "Restart a service" and picks a server.
-2. A **Business Rule** on the request item (`sc_req_item`) POSTs the chosen server to a second AAP
-   **Event Stream** (`servicenow-catalog-stream`, same `:443` token endpoint).
-3. The stream feeds the `ansible.eda.webhook` source of the `push-selfservice-restart` activation,
-   which triggers the `Restart Service (Self-Service)` **job template**.
+2. The `servicenow.itsm.records` source of the `pull-selfservice-restart` activation polls `sc_req_item`
+   for new (Open) requests of that item — **no Business Rule, no event stream**.
+3. It triggers the `Restart Service (Self-Service)` **job template**; the job's playbook fetches the
+   chosen server from the request's catalog variables (by `request_sysid`).
 4. `restart_service_selfservice.yml` restarts that server's service and **closes the request item**.
 
-## Push — employee onboarding
+## Pull — employee onboarding
 
 The same catalog mechanism, but the request creates an **identity** instead of restarting a service:
-ordering "Onboard a new employee" pushes to the `servicenow-onboarding-stream`, the
-`push-employee-onboarding` activation runs the `Provision Employee` job template →
-[`provision_employee.yml`](../playbooks/provision_employee.yml) creates the Keycloak user (in the
-*Employees* group) and closes the request. See [05 · Identity](05-identity.md).
+ordering "Onboard a new employee" is polled by the `pull-onboarding` activation, which runs the
+`Provision Employee` job template → [`provision_employee.yml`](../playbooks/provision_employee.yml)
+fetches the form's variables, creates the Keycloak user (in the *Employees* group) and closes the
+request. See [05 · Identity](05-identity.md).
 
 ---
 

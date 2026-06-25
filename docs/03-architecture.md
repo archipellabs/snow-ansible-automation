@@ -48,9 +48,9 @@ activations are declarative** — `eda/vars/eda.yml` applied by the **Configure 
 | EDA project `snow-ansible-automation` | all | rulebooks under `extensions/eda/rulebooks/` |
 | Activation `pull-incident-remediation` | pull | polls ServiceNow → launches the job (injects `SN_*`) |
 | Activation `monitor-health` | monitor | `ansible.eda.url_check` on each `/health` → `Open Incident` (self-driving pull) |
-| `ServiceNow …Event Stream` credential + Event Streams (`…-chg-stream`, `…-catalog-stream`) | push | authenticated inbound endpoints on the gateway |
+| `ServiceNow …Event Stream` credential + Event Stream (`…-chg-stream`) | push | the one authenticated inbound endpoint on the gateway (change only) |
 | Activation `push-change-execution` | push | webhook source mapped to the change stream → launches the job |
-| Activation `push-selfservice-restart` | push | webhook source mapped to the catalog stream → launches the job |
+| Activations `pull-selfservice-restart` · `pull-onboarding` | pull | poll `sc_req_item` for catalog requests → launch the job (the playbook fetches the form vars) |
 
 > `configure.py` (controller) also removes the installer's `Demo *` objects; the `Ansible Galaxy`
 > credential is a system default and is kept.

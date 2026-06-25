@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""Scenario — self-service catalog restart (push path), re-runnable. Run from repo root:
+"""Scenario — self-service catalog restart (pull path), re-runnable. Run from repo root:
 
   python3 tests/scenarios/4_selfservice_restart.py
 
 Stops hr-portal on hr-web-01, then ORDERS the "Restart a service" Service Catalog item with the
-server variable set to hr-web-01 (Service Catalog API, order_now). The catalog Business Rule POSTs
-to the AAP Event Stream -> push-selfservice-restart activation -> "Restart Service (Self-Service)"
-job template -> restart_service_selfservice.yml restarts the service and closes the request item.
-Asserts the service is active again (and reports the request item state).
+server variable set to hr-web-01 (Service Catalog API, order_now). The pull-selfservice-restart
+activation's records source polls sc_req_item, launches the "Restart Service (Self-Service)" job
+template -> restart_service_selfservice.yml fetches the chosen server, restarts the service and
+closes the request item. Asserts the service is active again (and reports the request item state).
 
 Run standalone; run() returns (ok, detail) and the __main__ wrapper prints PASS/FAIL.
 """

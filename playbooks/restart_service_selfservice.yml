@@ -1,23 +1,55 @@
 ---
 # restart_service_selfservice.yml — restart a server's service from a ServiceNow catalog request.
 #
-# Pattern : PUSH (self-service catalog). A Service Catalog item ("Restart a service") lets a user
-#           pick a server; on request, a Business Rule on sc_req_item POSTs to an AAP Event Stream,
-#           which the push-selfservice-restart activation maps onto the webhook source of
-#           push_selfservice_restart.yml -> the "Restart Service (Self-Service)" job template -> here.
+# Pattern : PULL (self-service catalog). servicenow.itsm.records polls sc_req_item for "Restart a
+#           service" requests -> pull-selfservice-restart activation -> "Restart Service
+#           (Self-Service)" job template -> here. (Was push via an Event Stream; moved to pull.)
 # Extra vars (from the rulebook):
-#   target_host    : the chosen server (an inventory host)
-#   request_number : the requested-item (RITM) number, for messages
-#   request_sysid  : the requested-item sys_id, to annotate / close
+#   request_sysid  : RITM sys_id — play 1 fetches the chosen 'server' catalog variable from it; the
+#                    playbook then annotates / closes the request
+#   request_number : RITM number, for messages
 # Host vars (inventory): service (the role-aware systemd unit to restart).
 #
-# Same engine as restart_service.yml; it differs only in its trigger and in annotating/closing a
-# catalog request item (sc_req_item) instead of resolving an incident.
-- name: Restart a service from a self-service catalog request
-  hosts: "{{ target_host }}"
+# Two plays because `hosts:` is resolved before any task runs: play 1 (localhost) resolves the target
+# server from the request's catalog variables; play 2 restarts the service on it. Same engine as
+# restart_service.yml; it differs only in its trigger and in annotating a catalog request (sc_req_item)
+# instead of an incident. `target_host` may also be passed explicitly for a manual launch.
+- name: Resolve the self-service request's target server
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    sn_host: "{{ lookup('env', 'SN_HOST') }}"
+    sn_auth: "Basic {{ (lookup('env', 'SN_USERNAME') ~ ':' ~ lookup('env', 'SN_PASSWORD')) | b64encode }}"
+  tasks:
+    - name: Fetch the request's catalog variables
+      ansible.builtin.uri:
+        url: "{{ sn_host }}/api/now/table/sc_item_option_mtom?sysparm_query=request_item={{ request_sysid }}&sysparm_fields=sc_item_option.item_option_new.name,sc_item_option.value&sysparm_display_value=true"
+        headers:
+          Accept: application/json
+          Authorization: "{{ sn_auth }}"
+        validate_certs: false
+      register: _ritm_vars
+      when:
+        - request_sysid is defined
+        - target_host is not defined
+    - name: Resolve the target server (explicit extra var wins; else the request's 'server' variable)
+      ansible.builtin.set_fact:
+        sv_target: >-
+          {{ target_host | default(
+             (_ritm_vars.json.result | items2dict(key_name='sc_item_option.item_option_new.name',
+                                                  value_name='sc_item_option.value')).server) }}
+    - name: Fail if no target server could be resolved
+      ansible.builtin.assert:
+        that: sv_target | length > 0
+        fail_msg: "self-service restart: pass target_host, or the request must carry a 'server' variable."
+
+- name: Restart the requested service
+  hosts: "{{ hostvars['localhost']['sv_target'] }}"
   gather_facts: false
   vars:
     recheck_delay: 6
+    target_host: "{{ hostvars['localhost']['sv_target'] }}"
   tasks:
     - name: Restart the requested service
       become: true
@@ -53,7 +85,7 @@
         data:
           state: "3"            # Closed Complete
           work_notes: >-
-            Self-service request {{ request_number }} fulfilled by AAP: restarted {{ service }}
+            Self-service request {{ request_number }} fulfilled by automation: restarted {{ service }}
             on {{ target_host }} (now active).
       when:
         - request_sysid is defined
