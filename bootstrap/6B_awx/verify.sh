@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Quick smoke test — run ON the VM (called at the end of install.sh, re-runnable any time).
 # AWX (pods/ingress/API/password) + the in-cluster registry + the eda-server namespace.
-#   FQDN=<fqdn> ~/5B_awx/verify.sh
+#   FQDN=<fqdn> ~/6B_awx/verify.sh
 set -uo pipefail
 FQDN="${FQDN:-${1:-}}"
 [ -n "$FQDN" ] || { echo "set FQDN (env var or arg1)" >&2; exit 1; }

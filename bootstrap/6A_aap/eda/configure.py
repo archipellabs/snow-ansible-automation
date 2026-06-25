@@ -2,7 +2,7 @@
 """Configure the EDA *base* objects for the PoC (idempotent, API, stdlib only).
 
 Creates the one-time pieces the declarative config (the "Configure EDA" job template running
-bootstrap/5A_aap/eda/configure.yml) builds on:
+bootstrap/6A_aap/eda/configure.yml) builds on:
   - the registry credential used to pull the custom decision environment from the private hub;
   - the decision environment `snow-eda-de` (the image built/pushed by build.sh);
   - the "AAP Controller" credential the rulebooks use to launch job templates
@@ -11,16 +11,16 @@ bootstrap/5A_aap/eda/configure.yml) builds on:
   - the EDA project (this Git repo).
 
 The event streams + rulebook activations themselves are NOT created here anymore — they are declared
-in bootstrap/5A_aap/eda/vars/eda.yml and applied by the "Configure EDA" job template
+in bootstrap/6A_aap/eda/vars/eda.yml and applied by the "Configure EDA" job template
 (infra.aap_configuration). Run this once first, then launch that job template.
 
-Run AFTER bootstrap/5A_aap/eda/build.sh (the DE image must be in the hub). From the repo root:
-  python3 bootstrap/5A_aap/eda/configure.py
+Run AFTER bootstrap/6A_aap/eda/build.sh (the DE image must be in the hub). From the repo root:
+  python3 bootstrap/6A_aap/eda/configure.py
 
 Non-obvious requirement encoded here (cost real debugging time): ansible-rulebook picks the
 controller API path from the credential host — a host with a path (".../api/controller/") selects
 the AAP 2.5+ gateway slugs; a bare host selects the legacy "/api/v2/" slugs, which 404 behind the
-gateway. (The GMT-timezone requirement for the records source lives in bootstrap/4_servicenow/1_account.py.)
+gateway. (The GMT-timezone requirement for the records source lives in bootstrap/5_servicenow/1_account.py.)
 """
 import os
 import sys
@@ -137,7 +137,7 @@ def main():
     print(f"   project import_state: {state}")
 
     print("\n>> EDA base ready. Apply the activations declaratively: launch the 'Configure EDA' job")
-    print("   template (bootstrap/5A_aap/eda/configure.yml via infra.aap_configuration).")
+    print("   template (bootstrap/6A_aap/eda/configure.yml via infra.aap_configuration).")
 
 
 if __name__ == "__main__":

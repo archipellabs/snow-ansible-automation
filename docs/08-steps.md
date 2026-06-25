@@ -12,7 +12,7 @@ All commands run **from the repo root** unless noted. Steps are idempotent — r
 
 - **Red Hat:** activate the **AAP 60-day trial**; create a **registry service account**
   (→ `REGISTRY_USERNAME` / `REGISTRY_PASSWORD`). Download the **AAP 2.7 Containerized Setup** tarball
-  and drop it in `bootstrap/5A_aap/` (gitignored).
+  and drop it in `bootstrap/6A_aap/` (gitignored).
 - **ServiceNow:** provision a **PDI** (→ `SN_INSTANCE`, admin `SN_USER` / `SN_PASS`).
 - **Two SSH keys**, then fill `.env`:
 
@@ -59,7 +59,7 @@ user `admin`). *(SSO is an optional layer — see [05 · Identity](05-identity.m
 ### 3. ServiceNow — CMDB + integration account
 
 ```bash
-python3 bootstrap/4_servicenow/1_account.py  # Auto-Remediation group + eda.integration (itil role, timezone GMT)
+python3 bootstrap/5_servicenow/1_account.py  # Auto-Remediation group + eda.integration (itil role, timezone GMT)
 ```
 
 > **🔶 Manual — set the account password.** ServiceNow ignores `user_password` writes via the Table
@@ -68,7 +68,7 @@ python3 bootstrap/4_servicenow/1_account.py  # Auto-Remediation group + eda.inte
 > it; see [10 · Notes](10-notes.md).)
 
 ```bash
-python3 bootstrap/4_servicenow/2_cmdb.py     # load the Meridian CMDB from simulator/fleet.yml
+python3 bootstrap/5_servicenow/2_cmdb.py     # load the Meridian CMDB from simulator/fleet.yml
 ```
 
 `2_cmdb.py` loads the servers/apps/business-services/relations/people **and** adds the custom server
@@ -80,7 +80,7 @@ is `active` with `time_zone = GMT`.
 ### 4. Install AAP 2.7 (containerized)
 
 ```bash
-./bootstrap/5A_aap/sync.sh                                   # push assets + .env to the VM
+./bootstrap/6A_aap/sync.sh                                   # push assets + .env to the VM
 ssh -i ~/.ssh/snow-aap-poc azureuser@<FQDN> '~/aap/install.sh'
 ```
 
@@ -98,7 +98,7 @@ containers). It **prints the AAP admin password** (also in `~/aap/inventory`).
 ### 5. Controller config-as-code
 
 ```bash
-python3 bootstrap/5A_aap/controller/configure.py   # credentials, dynamic inventory, project, job templates
+python3 bootstrap/6A_aap/controller/configure.py   # credentials, dynamic inventory, project, job templates
 python3 tests/health.py                          # holistic health dashboard
 ```
 
@@ -116,7 +116,7 @@ the installer's `Demo *` objects.
 
 ```bash
 ssh -i ~/.ssh/snow-aap-poc azureuser@<FQDN> '~/aap/eda/build.sh'   # build + push the custom DE to the hub
-python3 bootstrap/5A_aap/eda/configure.py                            # DE object, AAP Controller cred, event-stream cred, EDA project
+python3 bootstrap/6A_aap/eda/configure.py                            # DE object, AAP Controller cred, event-stream cred, EDA project
 ```
 
 `build.sh` builds the decision environment (`de-minimal` + `servicenow.itsm`) and pushes it to the
@@ -135,8 +135,8 @@ and the EDA project.
 ### 7. Push wiring (ServiceNow side)
 
 ```bash
-python3 bootstrap/4_servicenow/3_catalog.py            # 'Restart a service' + 'Onboard a new employee' catalog items
-python3 bootstrap/4_servicenow/4_push_change_aap.py    # Business Rule (approved change → event stream) + trust the gateway CA
+python3 bootstrap/5_servicenow/3_catalog.py            # 'Restart a service' + 'Onboard a new employee' catalog items
+python3 bootstrap/5_servicenow/4_push_change_aap.py    # Business Rule (approved change → event stream) + trust the gateway CA
 ```
 
 These need the **event streams created in Step 6**. `4_push_change_aap.py` also uploads the AAP gateway CA
@@ -148,7 +148,7 @@ into ServiceNow's trust store, so the Business Rule's outbound TLS POST succeeds
 ### 8. AAP admin SSO (optional)
 
 ```bash
-python3 bootstrap/5A_aap/configure_sso.py               # federate the AAP gateway to Keycloak (oidc, IT-Admins → superuser)
+python3 bootstrap/6A_aap/configure_sso.py               # federate the AAP gateway to Keycloak (oidc, IT-Admins → superuser)
 ```
 
 Federates the AAP gateway to the `aap` Keycloak client and grants `is_superuser` to the `IT-Admins`

@@ -60,7 +60,7 @@ Smoke-test it: `python3 tests/health.py --only sso`.
 
 ## AAP admin SSO
 
-`bootstrap/5A_aap/configure_sso.py` federates the **AAP Platform Gateway** to Keycloak (idempotent):
+`bootstrap/6A_aap/configure_sso.py` federates the **AAP Platform Gateway** to Keycloak (idempotent):
 
 - an **OIDC authenticator** pointing at the `aap` client / `meridian` realm. We use the generic `oidc`
   plugin (not the dedicated `keycloak` one) because it exposes **`VERIFY_SSL=false`** (the edge serves
@@ -72,7 +72,7 @@ The built-in **Local Database Authenticator stays enabled** — `admin` always h
 lock-out.
 
 ```bash
-python3 bootstrap/5A_aap/configure_sso.py      # after bootstrap/3_keycloak/configure.py
+python3 bootstrap/6A_aap/configure_sso.py      # after bootstrap/3_keycloak/configure.py
 python3 tests/health.py --only sso          # SSO install checks (gateway OIDC login → superuser, hr-portal grant)
 ```
 
@@ -88,7 +88,7 @@ the HR app DB). ServiceNow → EDA → Ansible → Keycloak → ticket closed:
 
 The playbook authenticates to Keycloak with the **`aap-provisioner`** service-account client
 (`manage-users`, `client_credentials`) — least privilege, no master admin in AAP. Wire it with the
-**Configure EDA** job template + `bootstrap/4_servicenow/3_catalog.py`; validate with
+**Configure EDA** job template + `bootstrap/5_servicenow/3_catalog.py`; validate with
 `python3 tests/scenarios/5_employee_onboarding.py`.
 
 ## Build order

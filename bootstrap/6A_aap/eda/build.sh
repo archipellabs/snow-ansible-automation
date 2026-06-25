@@ -5,7 +5,7 @@
 #
 # EDA activation workers pull the DE by image_url from a registry credential -- a local
 # `localhost/...` image is NOT visible to them -- so the image must live in the hub.
-# Produces <FQDN>/snow-eda-de:latest, referenced by bootstrap/5A_aap/eda/configure.py.
+# Produces <FQDN>/snow-eda-de:latest, referenced by bootstrap/6A_aap/eda/configure.py.
 set -euo pipefail
 cd "$(dirname "$0")"
 

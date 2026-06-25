@@ -11,9 +11,9 @@ id_ed25519*
 *.secret
 
 # AAP install (Red Hat binaries + rendered inventory with secrets)
-bootstrap/5A_aap/*.tar.gz
-bootstrap/5A_aap/*.tar
-bootstrap/5A_aap/inventory
+bootstrap/6A_aap/*.tar.gz
+bootstrap/6A_aap/*.tar
+bootstrap/6A_aap/inventory
 
 # Infra params with environment-specific values (copy from the *.example.json templates)
 bootstrap/1_infra/main.parameters.rhel.json

@@ -99,7 +99,7 @@ each with a passing, re-runnable scenario test:
 - **Push** (`2_push_change_execution.py`): an approved Change Request is pushed via the Event Stream to
   the webhook activation; the playbook deploys the change and writes a work note back — no manual launch.
 
-**Optional next steps**: an AWX variant (`bootstrap/5B_awx/`), more playbooks, a CA-signed gateway cert,
+**Optional next steps**: an AWX variant (`bootstrap/6B_awx/`), more playbooks, a CA-signed gateway cert,
 and a subscription manifest for offline entitlement.
 
 ## Limitations
@@ -109,7 +109,7 @@ This is a proof of concept — deliberately scoped:
 - **Not production-hardened.** Single AAP node (no HA); the gateway keeps its **self-signed certificate**;
   the targets are throwaway containers; the "change" the push playbook applies is a demo content deploy.
 - **Vault is dev-mode (in-memory, token auth).** The secret store is real HashiCorp Vault but runs
-  `-dev`: in-memory (a container restart loses the secrets — re-seed with `bootstrap/3_vault/seed.py`),
+  `-dev`: in-memory (a container restart loses the secrets — re-seed with `bootstrap/4_vault/seed.py`),
   auto-unsealed, one root token. Production = a persistent, unsealed Vault with **AppRole** auth. And
   because eda-server can't resolve secrets at runtime, the AWX EDA secret is materialised into the
   activation at config time (finding 17), unlike the controller's live lookup.
@@ -128,7 +128,7 @@ This is a proof of concept — deliberately scoped:
   `"2,211"`), and `ansible_host` points at the VM itself — `host.containers.internal` on **AAP** (podman
   injects it), the **k3s node gateway `10.42.0.1`** on **AWX** (pods reach host-published ports there).
   To keep the shared CMDB inventory neutral, `ansible_host` isn't stored in the CMDB: each runtime sets it
-  as an **inventory variable** (`bootstrap/5A_aap` / `5B_awx` `controller/configure.py`). A real estate
+  as an **inventory variable** (`bootstrap/6A_aap` / `6B_awx` `controller/configure.py`). A real estate
   would drop all of this and use each CI's real IP + SSH `:22`. The `u_role`/`u_service` columns and the
   standard `support_group` field are legitimate CMDB attributes.
 - **SSO covers the apps and AAP, not ServiceNow.** Keycloak gives SSO to the simulated apps and AAP
@@ -147,7 +147,7 @@ az group delete  -n rg-snow-aap-poc --yes        # tear everything down
 
 - The fleet containers (and Keycloak's dev-mode H2 data, and Vault's in-memory secrets) are **not**
   persistent across reboots — re-run `./bootstrap/2_fleet/sync.sh`, `bootstrap/3_keycloak/configure.py`
-  and `bootstrap/3_vault/seed.py` after a VM restart.
+  and `bootstrap/4_vault/seed.py` after a VM restart.
 - `D8s_v5` ≈ 10-12 €/day while allocated (≈ 2× `D4s_v5`); the Premium disk keeps billing even when
   deallocated, so `az group delete` to fully stop costs.
 

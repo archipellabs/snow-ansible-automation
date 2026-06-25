@@ -9,7 +9,7 @@ Creates, from the single manifest:
   - CI relationships (application "Runs on" server; business service "Depends on" application).
 
 Requires PyYAML (the simulator layer is allowed dependencies). Run from the repo root:
-  python3 bootstrap/4_servicenow/2_cmdb.py
+  python3 bootstrap/5_servicenow/2_cmdb.py
 """
 import os
 import sys

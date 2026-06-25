@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Laptop-side installer for the Meridian target fleet (mirrors bootstrap/5A_aap/sync.sh): copy the SSH
+# Laptop-side installer for the Meridian target fleet (mirrors bootstrap/6A_aap/sync.sh): copy the SSH
 # public key the fleet trusts into the simulator build context, push simulator/ + the repo-root .env
 # + this deploy.sh to the VM, then run deploy.sh there. One command instead of a manual rsync + ssh.
 #

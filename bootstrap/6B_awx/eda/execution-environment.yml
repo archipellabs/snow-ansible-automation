@@ -1,6 +1,6 @@
 ---
 # OSS Decision Environment for eda-server (the AWX/open-source path) — the twin of
-# bootstrap/5A_aap/eda/execution-environment.yml. AAP's DE is built FROM Red Hat's `de-minimal`
+# bootstrap/6A_aap/eda/execution-environment.yml. AAP's DE is built FROM Red Hat's `de-minimal`
 # (subscription-gated, ships ansible-rulebook + ansible.eda); here we build the same capability from a
 # PUBLIC UBI base (no Red Hat subscription) and install the EDA runtime ourselves:
 #   ansible-core + ansible-runner + ansible-rulebook (+ java-17, its drools rule engine needs a JRE)

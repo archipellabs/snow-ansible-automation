@@ -14,7 +14,7 @@ The built-in **Local Database Authenticator stays enabled**, so `admin` can alwa
 Run AFTER bootstrap/3_keycloak/configure.py (the 'aap' client + IT-Admins group must exist) and the
 simulator stack must be up (the gateway reaches Keycloak at https://<FQDN>:9443/auth). From the repo
 root:
-  python3 bootstrap/5A_aap/configure_sso.py
+  python3 bootstrap/6A_aap/configure_sso.py
 """
 import os
 import sys

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Push the bootstrap/5A_aap/ folder (install + config-as-code + the eda/ DE build) and the
+# Push the bootstrap/6A_aap/ folder (install + config-as-code + the eda/ DE build) and the
 # repo-root .env to the VM at ~/aap/. install.sh and ~/aap/eda/build.sh run there.
 # Excludes binaries (tarball already on the VM) and the rendered inventory (secrets).
 set -euo pipefail

@@ -34,7 +34,7 @@ def run():
     q = urllib.parse.urlencode({"sysparm_query": f"name={ITEM_NAME}", "sysparm_fields": "sys_id", "sysparm_limit": "1"})
     item = snow.call(f"table/sc_cat_item?{q}")["result"]
     if not item:
-        sys.exit(f"catalog item '{ITEM_NAME}' not found — run bootstrap/4_servicenow/3_catalog.py first")
+        sys.exit(f"catalog item '{ITEM_NAME}' not found — run bootstrap/5_servicenow/3_catalog.py first")
     item_sid = item[0]["sys_id"]
 
     print(f">> Breaking {SERVICE} on {TARGET}")

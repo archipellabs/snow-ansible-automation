@@ -6,7 +6,7 @@ of truth**. The controllers don't read them from here — they resolve them live
 HashiCorp Vault credential lookup, wired by controller/configure.py. Idempotent (a KV put overwrites).
 Run after the Vault container is up (simulator/compose.yml). From the repo root:
 
-  python3 bootstrap/3_vault/seed.py
+  python3 bootstrap/4_vault/seed.py
 
 Reach Vault via `VAULT_ADDR` (defaults to http://localhost:8200). For a remote estate, open a tunnel:
   ssh -fNL 8200:localhost:8200 azureuser@$AAP_FQDN    # or $AWX_FQDN

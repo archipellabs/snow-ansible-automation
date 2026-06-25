@@ -10,9 +10,9 @@ inline note and the README key findings.)
 
 Usage:
   # via .env (copy .env.example -> .env at the repo root):
-  python3 bootstrap/4_servicenow/1_account.py
+  python3 bootstrap/5_servicenow/1_account.py
   # or via environment variables:
-  SN_INSTANCE=your-instance.service-now.com SN_USER=admin SN_PASS=*** python3 bootstrap/4_servicenow/1_account.py
+  SN_INSTANCE=your-instance.service-now.com SN_USER=admin SN_PASS=*** python3 bootstrap/5_servicenow/1_account.py
 """
 import os
 import sys

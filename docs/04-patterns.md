@@ -56,7 +56,7 @@ request. See [05 · Identity](05-identity.md).
 ---
 
 All five activations are created declaratively (the **Configure EDA** job template); the catalog
-items are set up by `bootstrap/4_servicenow/3_catalog.py` and the change Business Rule by
+items are set up by `bootstrap/5_servicenow/3_catalog.py` and the change Business Rule by
 `4_push_change_aap.py`. Each flow has a
 re-runnable scenario test — see [09 · Tests](09-tests.md).
 

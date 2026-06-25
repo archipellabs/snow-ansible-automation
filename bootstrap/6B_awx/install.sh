@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Run ON the Ubuntu VM. Chantier A: k3s + registry:2 + AWX (awx-operator) + eda-server (eda-server-operator).
 # Idempotent — re-runnable. All manifests live in ./k8s/ (synced with this folder by sync.sh).
-#   FQDN=<fqdn> ~/5B_awx/install.sh        (sync.sh passes FQDN for you)
+#   FQDN=<fqdn> ~/6B_awx/install.sh        (sync.sh passes FQDN for you)
 set -euo pipefail
 
 FQDN="${FQDN:-${1:-}}"
@@ -49,4 +49,4 @@ kubectl -n awx rollout status deploy/awx-web  --timeout=600s || true
 
 FQDN="${FQDN}" bash "$HERE/verify.sh" || true
 echo ">> eda-server reconciles async (api + workers + postgres/redis) — re-run verify.sh in a few min."
-echo ">> Next (phase 1): lib/awx.py + controller config-as-code — see bootstrap/5B_awx/README.md."
+echo ">> Next (phase 1): lib/awx.py + controller config-as-code — see bootstrap/6B_awx/README.md."

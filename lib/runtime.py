@@ -1,5 +1,5 @@
 """Runtime selector — picks the automation control-plane client by runtime so the tests and config
-stay portable across control planes: AAP (bootstrap/5A_aap/) and AWX (bootstrap/5B_awx/).
+stay portable across control planes: AAP (bootstrap/6A_aap/) and AWX (bootstrap/6B_awx/).
 
 Pick the runtime with the RUNTIME env var or an explicit argument; default 'aap'.
   aap  -> lib.aap.Aap   (Platform Gateway, /api/controller/v2, /api/eda/v1)

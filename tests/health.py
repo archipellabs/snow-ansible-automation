@@ -114,11 +114,11 @@ def c_keycloak():
 def c_vault():
     """Vault liveness — server-side check (:8200 isn't open externally). Optional: graceful-skip when
     Vault isn't deployed. Dev mode is in-memory, so 'unsealed' also implies the seed survived (re-seed
-    after a restart with bootstrap/3_vault/seed.py)."""
+    after a restart with bootstrap/4_vault/seed.py)."""
     out = ssh("podman exec -e VAULT_ADDR=http://127.0.0.1:8200 vault vault status -format=json 2>/dev/null || true",
               fqdn=EST, timeout=20, connect_timeout=PROBE_TIMEOUT)
     if "initialized" not in out:
-        return None, "not deployed (optional — simulator/compose + bootstrap/3_vault/seed.py)"
+        return None, "not deployed (optional — simulator/compose + bootstrap/4_vault/seed.py)"
     compact = out.replace(" ", "")
     ok = '"initialized":true' in compact and '"sealed":false' in compact
     return ok, ("up, unsealed" if ok else "present but sealed/uninitialized")
@@ -156,7 +156,7 @@ def c_aap_ee_path():
     inv = ctl.call("inventories/?name=Meridian%20Fleet", timeout=PROBE_TIMEOUT)
     cred = ctl.call("credentials/?name=Target%20SSH", timeout=PROBE_TIMEOUT)
     if not inv.get("count") or not cred.get("count"):
-        return None, "SKIP (run bootstrap/5A_aap/controller/configure.py first)"
+        return None, "SKIP (run bootstrap/6A_aap/controller/configure.py first)"
     cmd = ctl.call("ad_hoc_commands/", {"inventory": inv["results"][0]["id"], "credential": cred["results"][0]["id"],
                                         "module_name": "ping", "module_args": ""}, timeout=PROBE_TIMEOUT)
     cid, status = cmd["id"], "pending"
@@ -200,7 +200,7 @@ def c_awx_target_path():   # deep — launches an ad-hoc ping (k3s pod -> node g
     inv = ctl.call("inventories/?name=Meridian%20Fleet", timeout=PROBE_TIMEOUT)
     cred = ctl.call("credentials/?name=Target%20SSH", timeout=PROBE_TIMEOUT)
     if not inv.get("count") or not cred.get("count"):
-        return None, "SKIP (run bootstrap/5B_awx/controller/configure.py first)"
+        return None, "SKIP (run bootstrap/6B_awx/controller/configure.py first)"
     cmd = ctl.call("ad_hoc_commands/", {"inventory": inv["results"][0]["id"], "credential": cred["results"][0]["id"],
                                         "module_name": "ping", "limit": "hr-web-01"}, timeout=PROBE_TIMEOUT)
     cid, status = cmd["id"], "pending"
@@ -220,7 +220,7 @@ def c_awx_sso():
     loc = {k.lower(): v for k, v in r.getheaders()}.get("location", "")
     conn.close()
     if "realms/meridian/protocol/openid-connect/auth" not in loc:
-        return None, "AWX OIDC not wired (run bootstrap/5B_awx/configure_sso.py)"
+        return None, "AWX OIDC not wired (run bootstrap/6B_awx/configure_sso.py)"
     ok = r.status in (301, 302, 303, 307) and "client_id=awx" in loc
     return ok, f"/sso/login/oidc/ → Keycloak(awx)={ok}"
 
@@ -237,7 +237,7 @@ def _gw_oidc():
 
 def c_aap_sso_offered():
     sso = _gw_oidc()
-    return bool(sso), "OIDC button present" if sso else "no OIDC button — run bootstrap/5A_aap/configure_sso.py"
+    return bool(sso), "OIDC button present" if sso else "no OIDC button — run bootstrap/6A_aap/configure_sso.py"
 
 
 def c_aap_sso_login():   # deep

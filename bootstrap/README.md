@@ -7,9 +7,10 @@ sequence):
 1. **`1_infra/`** — the Azure VM as Bicep.
 2. **`2_fleet/`** — deploy the target fleet + the `Target SSH` key (definition in `../simulator/`).
 3. **`3_keycloak/`** — the Meridian IdP as code (optional SSO layer).
-4. **`4_servicenow/`** — the ServiceNow objects (numbered `1_account` → `4_push_change_aap`).
-5. **`5A_aap/`** — install AAP + config-as-code (`controller/`, `eda/`) + the DE build.
-   · **`5B_awx/`** — the open-source AWX alternative to `5A_aap` (placeholder).
+4. **`4_vault/`** — seed Meridian's HashiCorp Vault (the platform's secret store).
+5. **`5_servicenow/`** — the ServiceNow objects (numbered `1_account` → `4_push_change_aap`).
+6. **`6A_aap/`** — install AAP + config-as-code (`controller/`, `eda/`) + the DE build.
+   · **`6B_awx/`** — the open-source AWX alternative to `6A_aap`.
 
 📖 **From zero to running → [docs/07-build.md](../docs/07-build.md)** · every command, step by step →
 [docs/08-steps.md](../docs/08-steps.md) · what each script provisions →

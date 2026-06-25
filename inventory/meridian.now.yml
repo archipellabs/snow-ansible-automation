@@ -4,7 +4,7 @@
 # SN_PASSWORD, which this plugin reads.
 #
 # The plugin fetches with sysparm_display_value=true, so reference fields (support_group) come back as
-# their display name and the u_* custom columns (written by bootstrap/4_servicenow/2_cmdb.py) as text.
+# their display name and the u_* custom columns (written by bootstrap/5_servicenow/2_cmdb.py) as text.
 # Two consequences handled below:
 #   - ServiceNow renders Integer fields with a thousands separator under display values, so u_ssh_port
 #     reads as "2,211" -> strip the comma before casting ansible_port (a known servicenow.itsm quirk).

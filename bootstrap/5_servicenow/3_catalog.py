@@ -12,7 +12,7 @@ rulebooks + playbooks/{restart_service_selfservice,provision_employee}.yml). So 
 items + their variables — no Business Rule, no event stream, no gateway-CA trust (only `change` stays push).
 
 Run from the repo root:
-  python3 bootstrap/4_servicenow/3_catalog.py
+  python3 bootstrap/5_servicenow/3_catalog.py
 """
 import os
 import sys

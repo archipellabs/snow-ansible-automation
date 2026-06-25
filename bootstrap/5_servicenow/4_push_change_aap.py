@@ -11,7 +11,7 @@ API, so we key off the freely-writable `approval` field (approved) rather than a
 the playbook records its result as a work note rather than transitioning the change.
 
 Run AFTER the 'Configure EDA' job template (the event stream must exist). From the repo root:
-  python3 bootstrap/4_servicenow/4_push_change_aap.py
+  python3 bootstrap/5_servicenow/4_push_change_aap.py
 
 Note: ServiceNow validates TLS on outbound REST. If the AAP gateway uses a self-signed
 certificate, either install a trusted certificate on the gateway or add it to ServiceNow's

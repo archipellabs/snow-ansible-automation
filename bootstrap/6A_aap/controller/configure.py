@@ -9,7 +9,7 @@ Validate the result — including the EE -> target path — with `python3 tests/
 
 Reads .env (AAP_FQDN, AAP_ADMIN_*, SN_*, GIT_REPO_URL) and the target SSH private key
 (bootstrap/2_fleet/keys/target_key). Run from the repo root:
-  python3 bootstrap/5A_aap/controller/configure.py
+  python3 bootstrap/6A_aap/controller/configure.py
 """
 import os
 import sys
@@ -21,9 +21,16 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, ROOT)
 from lib.poc import load_dotenv, insecure_ctx, basic_auth, http_json  # noqa: E402
+from lib import vaultwire  # noqa: E402
 
 load_dotenv(ROOT, required=("AAP_FQDN", "AAP_ADMIN_USER", "AAP_ADMIN_PASSWORD",
-                            "SN_INSTANCE", "SN_EDA_USERNAME", "SN_EDA_PASSWORD", "GIT_REPO_URL"))
+                            "SN_INSTANCE", "SN_EDA_USERNAME", "GIT_REPO_URL"))
+# With Vault, credentials are created WITHOUT their secrets (Vault sources them at runtime — see
+# vaultwire); without Vault, the .env literals are required and used directly. SN_INSTANCE/_USERNAME
+# stay required either way — non-secret topology the AAP Config credential still injects.
+USE_VAULT = bool(os.environ.get("VAULT_TOKEN"))
+if not USE_VAULT:
+    load_dotenv(ROOT, required=("SN_EDA_PASSWORD",))
 
 BASE = f"https://{os.environ['AAP_FQDN']}/api/controller/v2"
 HEADERS = {"Authorization": basic_auth(os.environ["AAP_ADMIN_USER"], os.environ["AAP_ADMIN_PASSWORD"])}
@@ -78,10 +85,13 @@ def main():
     machine_type = first("credential_types", "Machine")["id"]
     ee = first("execution_environments", "Default execution environment")["id"]
 
+    ssh_inputs = {"username": "ansible"}
+    if not USE_VAULT:
+        ssh_inputs["ssh_key_data"] = open(KEY_PATH).read()
     cred = get_or_create(
         "credentials", {"name": "Target SSH"},
         {"name": "Target SSH", "organization": org, "credential_type": machine_type,
-         "inputs": {"username": "ansible", "ssh_key_data": open(KEY_PATH).read()}},
+         "inputs": ssh_inputs},
         "Credential Target SSH",
     )
 
@@ -109,12 +119,13 @@ def main():
                                "SN_PASSWORD": "{{ sn_password }}"}}},
         "Credential type ServiceNow",
     )
+    sn_inputs = {} if USE_VAULT else {"sn_host": "https://" + os.environ["SN_INSTANCE"],
+                                      "sn_username": os.environ["SN_EDA_USERNAME"],
+                                      "sn_password": os.environ["SN_EDA_PASSWORD"]}
     sn_cred = get_or_create(
         "credentials", {"name": "ServiceNow PDI"},
         {"name": "ServiceNow PDI", "organization": org, "credential_type": sn_type["id"],
-         "inputs": {"sn_host": "https://" + os.environ["SN_INSTANCE"],
-                    "sn_username": os.environ["SN_EDA_USERNAME"],
-                    "sn_password": os.environ["SN_EDA_PASSWORD"]}},
+         "inputs": sn_inputs},
         "Credential ServiceNow PDI",
     )
 
@@ -135,71 +146,16 @@ def main():
                                "KC_PROVISIONER_SECRET": "{{ kc_secret }}"}}},
         "Credential type Keycloak Provisioner",
     )
+    kc_inputs = {"kc_url": f"https://{os.environ['AAP_FQDN']}:9443/auth", "kc_realm": "meridian",
+                 "kc_client": "aap-provisioner"}
+    if not USE_VAULT:
+        kc_inputs["kc_secret"] = os.environ.get("KC_PROVISIONER_SECRET", "")
     kc_cred = get_or_create(
         "credentials", {"name": "Keycloak Provisioner"},
         {"name": "Keycloak Provisioner", "organization": org, "credential_type": kc_type["id"],
-         "inputs": {"kc_url": f"https://{os.environ['AAP_FQDN']}:9443/auth", "kc_realm": "meridian",
-                    "kc_client": "aap-provisioner",
-                    "kc_secret": os.environ.get("KC_PROVISIONER_SECRET", "")}},
+         "inputs": kc_inputs},
         "Credential Keycloak Provisioner",
     )
-
-    # --- HashiCorp Vault: source the credentials' secrets from Meridian's Vault at job runtime ---
-    # Native lookup (same mechanism AAP↔AWX — this is parity). The lookup credential points at the dev
-    # Vault on the host; the containerized controller reaches it via host.containers.internal:8200 (the
-    # same mono-machine host-port path as the fleet). credential_input_sources then bind each field to a
-    # KV v2 path, and we blank the literals so Vault is the *only* source (the source satisfies the
-    # 'required' validation). Skipped cleanly if Vault isn't configured (it's optional).
-    if os.environ.get("VAULT_TOKEN"):
-        vault_url = os.environ.get("VAULT_LOOKUP_URL", "http://host.containers.internal:8200")
-        vault_mount = os.environ.get("VAULT_KV_MOUNT", "secret")
-        vt = api("GET", f"credential_types/?{urllib.parse.urlencode({'name': 'HashiCorp Vault Secret Lookup'})}")
-        if not vt.get("count"):
-            print("= 'HashiCorp Vault Secret Lookup' credential type missing — skipping Vault wiring")
-        else:
-            vault_inputs = {"url": vault_url, "token": os.environ["VAULT_TOKEN"], "api_version": "v2"}
-            vcred = get_or_create(
-                "credentials", {"name": "Meridian Vault"},
-                {"name": "Meridian Vault", "organization": org, "credential_type": vt["results"][0]["id"],
-                 "inputs": vault_inputs},
-                "Credential Meridian Vault (lookup)",
-            )
-            api("PATCH", f"credentials/{vcred['id']}/", {"inputs": vault_inputs})  # reconcile url/token on re-run
-
-            def link_vault(target, field, path, key):
-                """Idempotently bind target_credential.field to Vault <mount>/<path>#<key>."""
-                meta = {"secret_backend": vault_mount, "secret_path": path, "secret_key": key}
-                q = urllib.parse.urlencode({"target_credential": target["id"], "input_field_name": field})
-                found = api("GET", f"credential_input_sources/?{q}")
-                if found.get("count"):
-                    api("PATCH", f"credential_input_sources/{found['results'][0]['id']}/",
-                        {"metadata": meta, "source_credential": vcred["id"]})
-                    print(f"= input source {target['name']}.{field} <- {vault_mount}/{path}#{key} (reconciled)")
-                else:
-                    api("POST", "credential_input_sources/",
-                        {"target_credential": target["id"], "source_credential": vcred["id"],
-                         "input_field_name": field, "metadata": meta})
-                    print(f"+ input source {target['name']}.{field} <- {vault_mount}/{path}#{key}")
-
-            link_vault(sn_cred, "sn_host", "meridian/servicenow", "host")
-            link_vault(sn_cred, "sn_username", "meridian/servicenow", "username")
-            link_vault(sn_cred, "sn_password", "meridian/servicenow", "password")
-            link_vault(kc_cred, "kc_secret", "meridian/keycloak", "secret")
-            link_vault(cred, "ssh_key_data", "meridian/ssh", "private_key")   # Target SSH (fleet machine key)
-
-            # Blank the now-sourced literals so Vault is the single source of truth. Keycloak keeps its
-            # non-secret topology fields (url/realm/client); ServiceNow sources all three -> inputs empty.
-            try:
-                api("PATCH", f"credentials/{sn_cred['id']}/", {"inputs": {}})
-                api("PATCH", f"credentials/{kc_cred['id']}/",
-                    {"inputs": {"kc_url": f"https://{os.environ['AAP_FQDN']}:9443/auth", "kc_realm": "meridian",
-                                "kc_client": "aap-provisioner"}})
-                api("PATCH", f"credentials/{cred['id']}/", {"inputs": {"username": "ansible"}})  # key now from Vault
-                print("   blanked literal secrets — sourced from Vault only")
-            except urllib.error.HTTPError as e:
-                print(f"   (kept literals; blanking rejected: HTTP {e.code})")
-    else:
-        print("= Vault not configured (no VAULT_TOKEN) — credentials keep their literal secrets")
 
     # AAP Config credential: lets the "Configure EDA" job template configure AAP from Git (GitOps)
     # with infra.aap_configuration. Injects the platform connection + ServiceNow secrets as extra
@@ -221,45 +177,35 @@ def main():
              "sn_eda_username": "{{ sn_eda_username }}", "sn_eda_password": "{{ sn_eda_password }}"}}},
         "Credential type AAP Config",
     )
+    aapcfg_inputs = {"aap_hostname": f"https://{os.environ['AAP_FQDN']}",
+                     "aap_username": os.environ["AAP_ADMIN_USER"],
+                     "aap_password": os.environ["AAP_ADMIN_PASSWORD"],
+                     "sn_instance": os.environ["SN_INSTANCE"],
+                     "sn_eda_username": os.environ["SN_EDA_USERNAME"]}
+    if not USE_VAULT:
+        aapcfg_inputs["sn_eda_password"] = os.environ["SN_EDA_PASSWORD"]
     aapcfg_cred = get_or_create(
         "credentials", {"name": "AAP Config"},
         {"name": "AAP Config", "organization": org, "credential_type": aapcfg_type["id"],
-         "inputs": {"aap_hostname": f"https://{os.environ['AAP_FQDN']}",
-                    "aap_username": os.environ["AAP_ADMIN_USER"],
-                    "aap_password": os.environ["AAP_ADMIN_PASSWORD"],
-                    "sn_instance": os.environ["SN_INSTANCE"],
-                    "sn_eda_username": os.environ["SN_EDA_USERNAME"],
-                    "sn_eda_password": os.environ["SN_EDA_PASSWORD"]}},
+         "inputs": aapcfg_inputs},
         "Credential AAP Config",
     )
 
-    # The AAP Config credential carries the ServiceNow secret that the Configure EDA JT feeds to the EDA
-    # GitOps -> the pull activations. Source it from Vault too (native lookup, resolved when that JT runs),
-    # so AAP's EDA path also originates in Vault. (This is the AAP edge over AWX: eda-server has no such
-    # credential, so on AWX the EDA secret is read from Vault at config time instead — see docs/10.)
-    if os.environ.get("VAULT_TOKEN"):
-        vc = api("GET", "credentials/?" + urllib.parse.urlencode({"name": "Meridian Vault"}))
-        if vc.get("count"):
-            vcid = vc["results"][0]["id"]
-            q = urllib.parse.urlencode({"target_credential": aapcfg_cred["id"],
-                                        "input_field_name": "sn_eda_password"})
-            if not api("GET", f"credential_input_sources/?{q}").get("count"):
-                api("POST", "credential_input_sources/",
-                    {"target_credential": aapcfg_cred["id"], "source_credential": vcid,
-                     "input_field_name": "sn_eda_password",
-                     "metadata": {"secret_backend": os.environ.get("VAULT_KV_MOUNT", "secret"),
-                                  "secret_path": "meridian/servicenow", "secret_key": "password"}})
-                print("+ input source AAP Config.sn_eda_password <- secret/meridian/servicenow#password")
-            try:
-                api("PATCH", f"credentials/{aapcfg_cred['id']}/",   # drop sn_eda_password (now sourced)
-                    {"inputs": {"aap_hostname": f"https://{os.environ['AAP_FQDN']}",
-                                "aap_username": os.environ["AAP_ADMIN_USER"],
-                                "aap_password": os.environ["AAP_ADMIN_PASSWORD"],
-                                "sn_instance": os.environ["SN_INSTANCE"],
-                                "sn_eda_username": os.environ["SN_EDA_USERNAME"]}})
-                print("   blanked AAP Config.sn_eda_password — sourced from Vault")
-            except urllib.error.HTTPError as e:
-                print(f"   (kept AAP Config literal; blanking rejected: HTTP {e.code})")
+    # Source every credential's secret from Meridian's Vault at job runtime (native lookup — same on
+    # AAP/AWX). The containerized controller reaches the host Vault via host.containers.internal:8200.
+    # AAP's edge over AWX: even the EDA secret (AAP Config -> the Configure EDA GitOps) is a *native*
+    # lookup, whereas eda-server (AWX) reads it from Vault at config time. See lib/vaultwire.py.
+    if USE_VAULT:
+        vaultwire.wire(api, org, os.environ.get("VAULT_LOOKUP_URL", "http://host.containers.internal:8200"), [
+            (sn_cred, "sn_host", "meridian/servicenow", "host"),
+            (sn_cred, "sn_username", "meridian/servicenow", "username"),
+            (sn_cred, "sn_password", "meridian/servicenow", "password"),
+            (kc_cred, "kc_secret", "meridian/keycloak", "secret"),
+            (cred, "ssh_key_data", "meridian/ssh", "private_key"),
+            (aapcfg_cred, "sn_eda_password", "meridian/servicenow", "password"),
+        ])
+    else:
+        print("= Vault not configured (no VAULT_TOKEN) — credentials keep their literal secrets")
 
     # Git project (public repo) — the controller pulls the playbooks from here.
     proj = get_or_create(
@@ -362,7 +308,7 @@ def main():
         eda_jt = get_or_create(
             "job_templates", {"name": "Configure EDA"},
             {"name": "Configure EDA", "job_type": "run", "inventory": inv["id"], "project": proj["id"],
-             "playbook": "bootstrap/5A_aap/eda/configure.yml", "execution_environment": ee},
+             "playbook": "bootstrap/6A_aap/eda/configure.yml", "execution_environment": ee},
             "Job Template Configure EDA",
         )
         have = {c["id"] for c in api("GET", f"job_templates/{eda_jt['id']}/credentials/").get("results", [])}
@@ -374,7 +320,7 @@ def main():
         print("!  could not create 'Configure EDA' (project playbook not synced yet?) — re-run this script")
 
     print("\n>> Controller configured. Validate: python3 tests/health.py")
-    print(">> GitOps: launch the 'Configure EDA' job template to apply bootstrap/5A_aap/eda/configure.yml")
+    print(">> GitOps: launch the 'Configure EDA' job template to apply bootstrap/6A_aap/eda/configure.yml")
 
 
 if __name__ == "__main__":

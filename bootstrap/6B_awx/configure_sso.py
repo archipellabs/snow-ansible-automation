@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Wire AWX admin SSO to Keycloak (OIDC) — the `awx` twin of bootstrap/5A_aap/configure_sso.py.
+"""Wire AWX admin SSO to Keycloak (OIDC) — the `awx` twin of bootstrap/6A_aap/configure_sso.py.
 
 AAP did admin SSO through the Platform Gateway; AWX has no gateway, so it uses django-social-auth's
 OIDC settings (`/api/v2/settings/oidc/`). This points AWX at the Meridian realm's `awx` client, so
@@ -10,7 +10,7 @@ bootstrap/3_keycloak/configure.py (run it with RUNTIME=awx first).
 OIDC endpoint = the browser-facing issuer (`https://<AWX_FQDN>:9443/auth/realms/meridian`, via the edge);
 AWX's back-channel reaches it too — the activation pods proved the pod->edge hairpin works. Reads .env
 (AWX_FQDN, AWX_ADMIN_*, KC_AAP_CLIENT_SECRET). From the repo root:
-  python3 bootstrap/5B_awx/configure_sso.py
+  python3 bootstrap/6B_awx/configure_sso.py
 """
 import os
 import sys

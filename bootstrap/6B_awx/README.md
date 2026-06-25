@@ -1,6 +1,6 @@
-# 5B_awx/ — AWX variant (roadmap)
+# 6B_awx/ — AWX variant (roadmap)
 
-The fully open-source alternative to [`../5A_aap/`](../5A_aap/) — same functionality, no AAP, no
+The fully open-source alternative to [`../6A_aap/`](../6A_aap/) — same functionality, no AAP, no
 subscription. **Status: architecture decided, build in progress.** The runtime seam already exists
 (`lib/runtime.py`, `tests/health.py --runtime aap|awx`), so a large part of the project is reused as-is.
 
@@ -24,7 +24,7 @@ AAP bundles things AWX does **not** ship. We fill each with its OSS upstream:
 **k3s + AWX + eda-server + registry:2 + Traefik ingress/TLS + Keycloak SSO**, on the Ubuntu/D4 VM.
 
 - Choosing **eda-server** (not raw `ansible-rulebook`) gives the **same EDA API as AAP** → the declarative
-  EDA config (`5A_aap/eda/`) and the activations health-probe are largely reusable.
+  EDA config (`6A_aap/eda/`) and the activations health-probe are largely reusable.
 - **Traefik** fronts AWX + eda-server (+ the event-stream endpoint) on **:443** by host/path → no extra
   NSG port; `:9443` stays the simulator edge. SSO is **Keycloak** OIDC into AWX **and** eda-server.
 - Fits the **D4 (16 GB)**: AWX (~3-4 GB) + eda-server (~2-3 GB) + simulator (~3 GB) ≈ 10-11 GB.
@@ -41,7 +41,7 @@ AAP bundles things AWX does **not** ship. We fill each with its OSS upstream:
 
 - `playbooks/`, `extensions/eda/rulebooks/`, `collections/requirements.yml` (automation content)
 - `simulator/` (the estate), `bootstrap/1_infra` (VM — Ubuntu via `osFamily`), `2_fleet`, `3_keycloak`
-- `bootstrap/4_servicenow` — CMDB + account + the `servicenow.itsm.now` dynamic inventory
+- `bootstrap/5_servicenow` — CMDB + account + the `servicenow.itsm.now` dynamic inventory
 - `lib/poc.py`, `lib/servicenow.py`; `lib/aap.py` is the **template** for `lib/awx.py`
 
 ## Workstreams
@@ -54,7 +54,7 @@ AAP bundles things AWX does **not** ship. We fill each with its OSS upstream:
 | **D** | **Controller config-as-code** | easy | ✅ **Done** — `controller/configure.py` (the `awx` twin; AAP-only "AAP Config" cred + "Configure EDA" JT dropped). Live: project synced, **CMDB inventory → 9 hosts**, 13 job templates with Target SSH + ServiceNow creds. **Job→fleet connectivity solved**: `ansible_host` = k3s node gateway `10.42.0.1` (inventory var) + the base image's rootless-PAM fix → **ad-hoc `ping` green on all 9**. |
 | **E** | **EDA config (activations)** | easy-med | ✅ **Done (pull)** — `eda/configure.py` against eda-server (`/api/eda/v1`): AWX **OAuth token** (not a controller-cred — eda-server uses `awx_token_id` + its `automation_server_url`), DE from `registry:2`, project, **4 pull activations** (incident/self-service/onboarding/monitor). **E2E pull loop validated**: incident → activation → AWX JT → remediation → resolved. *Gotcha:* ubi9-minimal ships no zoneinfo → `servicenow.itsm.records` `ZoneInfoNotFoundError` until the DE pip-installs `tzdata` into python3.11. *(Push/change = phase 2 / F.)* |
 | **F** | **Push (change)** | — | ⛔ **AAP-only** — eda-server 1.0.2 has no event-stream/webhook ingress (activations are k8s Jobs with instance-specific labels, no stable Service), so the push pattern stays on AAP's gateway Event Stream. On AWX every flow is pull. Clean alternative (deferred): a **broker** — ServiceNow → Redpanda HTTP proxy → topic → `ansible.eda.kafka` source (outbound, no inbound port). See [docs/10 §16]. |
-| **G** | **SSO (Keycloak)** | medium | ✅ **Done** — `3_keycloak/configure.py` runtime-aware (realm + `awx` client on the AWX estate) + `5B_awx/configure_sso.py` (AWX django-social-auth OIDC). hr-portal SSO login + **onboarding pull E2E** + AWX `/sso/login/oidc/` → Keycloak all validated; `health.py --runtime awx` **all green**. *(eda-server SSO is moot — its UI is a dead-end, see [docs/10 §15]; the API uses basic auth.)* |
+| **G** | **SSO (Keycloak)** | medium | ✅ **Done** — `3_keycloak/configure.py` runtime-aware (realm + `awx` client on the AWX estate) + `6B_awx/configure_sso.py` (AWX django-social-auth OIDC). hr-portal SSO login + **onboarding pull E2E** + AWX `/sso/login/oidc/` → Keycloak all validated; `health.py --runtime awx` **all green**. *(eda-server SSO is moot — its UI is a dead-end, see [docs/10 §15]; the API uses basic auth.)* |
 | **H** | **`health.py` probes** | medium | ✅ **Done** — replaced `c_awx_stub` with 4 real probes (AWX ping `24.6.1`, controller config = 13 JTs + 9 hosts, **eda-server 4/4 activations**, ad-hoc ping → fleet) + made the estate probes runtime-aware (`fqdn(rt)`); Keycloak/SSO probes skip gracefully until `3_keycloak`. `health.py --runtime awx` → all green. |
 | **I** | **Docs** | easy | this README + AWX variants in `docs/03/07/08/09` |
 

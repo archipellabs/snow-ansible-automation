@@ -18,7 +18,7 @@ apps, the DB/mail images, the edge gateway + Keycloak, and `compose.yml` — liv
   ssh-keygen -t ed25519 -f bootstrap/2_fleet/keys/target_key -N "" -C meridian-fleet
   ```
   The image build trusts its public half — `sync.sh` copies it to `simulator/base/authorized_keys`,
-  and `bootstrap/5A_aap/controller/configure.py` loads the private half into the `Target SSH` credential.
+  and `bootstrap/6A_aap/controller/configure.py` loads the private half into the `Target SSH` credential.
 
 📖 The estate itself → [docs/02-simulator.md](../../docs/02-simulator.md) · build steps →
 [docs/08-steps.md](../../docs/08-steps.md).

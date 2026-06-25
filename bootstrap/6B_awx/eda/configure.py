@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Configure eda-server for the `awx` runtime (idempotent, API, stdlib only) — the twin of
-bootstrap/5A_aap/eda/configure.py, but against the eda-server API (/api/eda/v1) and end-to-end (it
+bootstrap/6A_aap/eda/configure.py, but against the eda-server API (/api/eda/v1) and end-to-end (it
 also creates the activations, which AAP did via infra.aap_configuration GitOps).
 
 Creates: an AWX OAuth token (eda-server launches job templates on AWX via this token + its configured
@@ -16,7 +16,7 @@ Access: eda-server's API is a NodePort (31080), not exposed externally — point
   ssh -fNL 31080:localhost:31080 azureuser@$AWX_FQDN
 then EDA_HOST defaults to localhost:31080. AWX itself is reached on :443 (Traefik) via lib.runtime.
 Reads .env (AWX_FQDN, AWX_ADMIN_*, EDA_ADMIN_PASSWORD, SN_*, GIT_REPO_URL). From the repo root:
-  python3 bootstrap/5B_awx/eda/configure.py
+  python3 bootstrap/6B_awx/eda/configure.py
 """
 import os
 import sys

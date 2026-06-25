@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Build the OSS decision environment (execution-environment.yml) with ansible-builder and push it to the
-# in-cluster registry:2. The twin of bootstrap/5A_aap/eda/build.sh — but the AAP version pushes to the
+# in-cluster registry:2. The twin of bootstrap/6A_aap/eda/build.sh — but the AAP version pushes to the
 # private Automation Hub, while here eda-server's activation pods pull the DE from registry:2 by image_url.
 #
-# Run ON the AWX VM (this folder is synced to ~/5B_awx/eda/). The registry is a NodePort on the node
+# Run ON the AWX VM (this folder is synced to ~/6B_awx/eda/). The registry is a NodePort on the node
 # (localhost:30500, plain HTTP); k3s/containerd is told to pull localhost:30500 over HTTP via
 # /etc/rancher/k3s/registries.yaml (set by install.sh), so activation pods can pull the same ref.
-#   bash ~/5B_awx/eda/build.sh
+#   bash ~/6B_awx/eda/build.sh
 set -euo pipefail
 cd "$(dirname "$0")"
 
