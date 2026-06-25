@@ -111,6 +111,19 @@ def c_keycloak():
     return st == 200, f"realm 'meridian' HTTP {st}"
 
 
+def c_vault():
+    """Vault liveness — server-side check (:8200 isn't open externally). Optional: graceful-skip when
+    Vault isn't deployed. Dev mode is in-memory, so 'unsealed' also implies the seed survived (re-seed
+    after a restart with bootstrap/3_vault/seed.py)."""
+    out = ssh("podman exec -e VAULT_ADDR=http://127.0.0.1:8200 vault vault status -format=json 2>/dev/null || true",
+              fqdn=EST, timeout=20, connect_timeout=PROBE_TIMEOUT)
+    if "initialized" not in out:
+        return None, "not deployed (optional — simulator/compose + bootstrap/3_vault/seed.py)"
+    compact = out.replace(" ", "")
+    ok = '"initialized":true' in compact and '"sealed":false' in compact
+    return ok, ("up, unsealed" if ok else "present but sealed/uninitialized")
+
+
 # --- AAP control-plane probes (the runtime-specific part) ---------------------------------------
 
 def c_aap_gateway():
@@ -309,6 +322,7 @@ COMMON = [
     ("Targets (sshd up)", c_targets),
     ("hr-portal app (/hr/health)", c_hrportal),
     ("Keycloak realm 'meridian'", c_keycloak),
+    ("Vault (secret store)", c_vault),
     ("hr-portal SSO wired", c_hrportal_sso_wired),
     ("hr-portal SSO login", c_hrportal_sso_login),
 ]

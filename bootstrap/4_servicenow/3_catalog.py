@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Step 4 — the ServiceNow Service Catalog flows (idempotent, Table API, stdlib only).
+"""Step 3 — the ServiceNow Service Catalog flows (idempotent, Table API, stdlib only).
 
 Builds the two self-service catalog items under the "Automation Self-Service" category:
 
@@ -10,10 +10,9 @@ Both are PULL-driven: EDA's servicenow.itsm.records source polls sc_req_item for
 these items, and the job's playbook fetches the request's catalog variables by sys_id (see the pull_*
 rulebooks + playbooks/{restart_service_selfservice,provision_employee}.yml). So this step only creates the
 items + their variables — no Business Rule, no event stream, no gateway-CA trust (only `change` stays push).
-Re-running also removes the obsolete push Business Rules from when these flows were push-driven.
 
 Run from the repo root:
-  python3 bootstrap/4_servicenow/4_catalog.py
+  python3 bootstrap/4_servicenow/3_catalog.py
 """
 import os
 import sys
@@ -24,8 +23,6 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), 
 CATEGORY_TITLE = "Automation Self-Service"
 SINGLE_LINE = "6"          # item_option_new.type for a single-line text field
 SELECT_BOX = "5"           # item_option_new.type for a Select Box
-# Push Business Rules from when these two flows were push-driven — removed now they are pull.
-OBSOLETE_RULES = ("EDA - push self-service restart to AAP", "EDA - push employee onboarding to AAP")
 
 sys.path.insert(0, ROOT)
 from lib.poc import load_dotenv  # noqa: E402
@@ -92,13 +89,6 @@ def provision_onboarding(snow, cat_sid, category_sid):
 
 def main():
     snow = Snow()
-
-    # Reconcile away the old push Business Rules (these flows are pull-driven now).
-    for nm in OBSOLETE_RULES:
-        br = snow.get_one("sys_script", f"name={nm}")
-        if br:
-            snow.call(f"table/sys_script/{br['sys_id']}", method="DELETE")
-            print(f"- removed obsolete Business Rule '{nm}'")
 
     # Shared catalog + category for both items. "Service Catalog" exists by default on a PDI.
     catalog = snow.get_one("sc_catalog", "title=Service Catalog") or snow.get_one("sc_catalog", "active=true")

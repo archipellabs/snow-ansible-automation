@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Step 3 — the PUSH-pattern Business Rule (change_request, idempotent, Table API, stdlib only).
+"""Step 4 — the PUSH-pattern Business Rule (change_request, idempotent, Table API, stdlib only).
 
 Creates a Business Rule on the change_request table that POSTs to the AAP Event Stream when
 a change is approved (and has a CI target), sending the change number/sys_id/target to EDA.
@@ -11,7 +11,7 @@ API, so we key off the freely-writable `approval` field (approved) rather than a
 the playbook records its result as a work note rather than transitioning the change.
 
 Run AFTER the 'Configure EDA' job template (the event stream must exist). From the repo root:
-  python3 bootstrap/4_servicenow/3_push_change.py
+  python3 bootstrap/4_servicenow/4_push_change_aap.py
 
 Note: ServiceNow validates TLS on outbound REST. If the AAP gateway uses a self-signed
 certificate, either install a trusted certificate on the gateway or add it to ServiceNow's

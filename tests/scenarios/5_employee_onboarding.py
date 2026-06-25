@@ -22,6 +22,7 @@ import urllib.request
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 sys.path.insert(0, ROOT)
 from lib.poc import env, insecure_ctx  # noqa: E402
+from lib.runtime import fqdn  # noqa: E402
 from lib.servicenow import Snow  # noqa: E402
 
 CTX = insecure_ctx()
@@ -34,7 +35,7 @@ TIMEOUT = 150
 
 
 def kc_base():
-    return f"https://{os.environ['AAP_FQDN']}:9443/auth"
+    return f"https://{fqdn()}:9443/auth"
 
 
 def kc_token():
@@ -68,7 +69,7 @@ def run():
     item = snow.call("table/sc_cat_item?" + urllib.parse.urlencode(
         {"sysparm_query": f"name={ITEM_NAME}", "sysparm_fields": "sys_id", "sysparm_limit": "1"}))["result"]
     if not item:
-        sys.exit(f"catalog item '{ITEM_NAME}' not found — run bootstrap/4_servicenow/4_catalog.py first")
+        sys.exit(f"catalog item '{ITEM_NAME}' not found — run bootstrap/4_servicenow/3_catalog.py first")
     item_sid = item[0]["sys_id"]
 
     print(f">> Ordering '{ITEM_NAME}' for {EMP_NAME} <{EMP_EMAIL}> ({EMP_SERVICE})")

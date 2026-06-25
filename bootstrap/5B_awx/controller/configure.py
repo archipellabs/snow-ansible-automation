@@ -169,6 +169,63 @@ def main():
         "Credential Keycloak Provisioner",
     )
 
+    # --- HashiCorp Vault: source the credentials' secrets from Meridian's Vault at job runtime ---
+    # Native lookup (same mechanism AWX↔AAP, AWX being the controller upstream — this is parity). The
+    # lookup credential points at the dev Vault on the host; a k3s job pod reaches it via the node gateway
+    # (:8200, the same mono-machine host-port path as the fleet). credential_input_sources then bind each
+    # field to a KV v2 path, and we blank the literals so Vault is the *only* source (the source satisfies
+    # the 'required' validation). Skipped cleanly if Vault isn't configured (it's optional).
+    if os.environ.get("VAULT_TOKEN"):
+        vault_url = os.environ.get("VAULT_LOOKUP_URL", "http://10.42.0.1:8200")
+        vault_mount = os.environ.get("VAULT_KV_MOUNT", "secret")
+        vt = api("GET", f"credential_types/?{urllib.parse.urlencode({'name': 'HashiCorp Vault Secret Lookup'})}")
+        if not vt.get("count"):
+            print("= 'HashiCorp Vault Secret Lookup' credential type missing — skipping Vault wiring")
+        else:
+            vault_inputs = {"url": vault_url, "token": os.environ["VAULT_TOKEN"], "api_version": "v2"}
+            vcred = get_or_create(
+                "credentials", {"name": "Meridian Vault"},
+                {"name": "Meridian Vault", "organization": org, "credential_type": vt["results"][0]["id"],
+                 "inputs": vault_inputs},
+                "Credential Meridian Vault (lookup)",
+            )
+            api("PATCH", f"credentials/{vcred['id']}/", {"inputs": vault_inputs})  # reconcile url/token on re-run
+
+            def link_vault(target, field, path, key):
+                """Idempotently bind target_credential.field to Vault <mount>/<path>#<key>."""
+                meta = {"secret_backend": vault_mount, "secret_path": path, "secret_key": key}
+                q = urllib.parse.urlencode({"target_credential": target["id"], "input_field_name": field})
+                found = api("GET", f"credential_input_sources/?{q}")
+                if found.get("count"):
+                    api("PATCH", f"credential_input_sources/{found['results'][0]['id']}/",
+                        {"metadata": meta, "source_credential": vcred["id"]})
+                    print(f"= input source {target['name']}.{field} <- {vault_mount}/{path}#{key} (reconciled)")
+                else:
+                    api("POST", "credential_input_sources/",
+                        {"target_credential": target["id"], "source_credential": vcred["id"],
+                         "input_field_name": field, "metadata": meta})
+                    print(f"+ input source {target['name']}.{field} <- {vault_mount}/{path}#{key}")
+
+            link_vault(sn_cred, "sn_host", "meridian/servicenow", "host")
+            link_vault(sn_cred, "sn_username", "meridian/servicenow", "username")
+            link_vault(sn_cred, "sn_password", "meridian/servicenow", "password")
+            link_vault(kc_cred, "kc_secret", "meridian/keycloak", "secret")
+            link_vault(cred, "ssh_key_data", "meridian/ssh", "private_key")   # Target SSH (fleet machine key)
+
+            # Blank the now-sourced literals so Vault is the single source of truth. Keycloak keeps its
+            # non-secret topology fields (url/realm/client); ServiceNow sources all three -> inputs empty.
+            try:
+                api("PATCH", f"credentials/{sn_cred['id']}/", {"inputs": {}})
+                api("PATCH", f"credentials/{kc_cred['id']}/",
+                    {"inputs": {"kc_url": f"https://{HOST}:9443/auth", "kc_realm": "meridian",
+                                "kc_client": "aap-provisioner"}})
+                api("PATCH", f"credentials/{cred['id']}/", {"inputs": {"username": "ansible"}})  # key now from Vault
+                print("   blanked literal secrets — sourced from Vault only")
+            except urllib.error.HTTPError as e:
+                print(f"   (kept literals; blanking rejected: HTTP {e.code})")
+    else:
+        print("= Vault not configured (no VAULT_TOKEN) — credentials keep their literal secrets")
+
     # Git project (public repo) — the controller pulls the playbooks from here.
     proj = get_or_create(
         "projects", {"name": "snow-ansible-automation"},

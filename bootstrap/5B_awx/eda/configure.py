@@ -29,6 +29,7 @@ ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, ROOT)
 from lib.poc import load_dotenv, basic_auth, http_json  # noqa: E402
 from lib.runtime import controller  # noqa: E402
+from lib import vault  # noqa: E402
 
 load_dotenv(ROOT, required=("AWX_FQDN", "AWX_ADMIN_PASSWORD", "EDA_ADMIN_PASSWORD",
                             "SN_INSTANCE", "SN_EDA_USERNAME", "SN_EDA_PASSWORD", "GIT_REPO_URL"))
@@ -42,9 +43,22 @@ EDA_H = {"Authorization": basic_auth(os.environ.get("EDA_ADMIN_USER", "admin"), 
 # Mono-machine: the monitor's url_check reaches the host-published app ports via the k3s node gateway
 # (same as the inventory's ansible_host — see docs/10 · Notes).
 HEALTH_HOST = "10.42.0.1"
-SN_EXTRA = (f"SN_HOST: https://{os.environ['SN_INSTANCE']}\n"
-            f"SN_USERNAME: {os.environ['SN_EDA_USERNAME']}\n"
-            f"SN_PASSWORD: {os.environ['SN_EDA_PASSWORD']}\n")
+def _sn_conn():
+    """ServiceNow connection for the EDA source. Unlike the controller, eda-server has no *runtime*
+    credential-lookup, so the secret is read from Vault at **config time** and materialized into the
+    activation's extra_vars — Vault stays the single source of truth, but the value does land in
+    eda-server (the honest OSS limitation; see docs/10). Falls back to .env when Vault isn't configured
+    or reachable (e.g. no tunnel to :8200)."""
+    if os.environ.get("VAULT_TOKEN"):
+        d = vault.kv_get("meridian/servicenow")
+        if d.get("password"):
+            print("   ServiceNow secret: read from Vault (config-time materialization)")
+            return d.get("host", ""), d.get("username", ""), d["password"]
+    return ("https://" + os.environ["SN_INSTANCE"], os.environ["SN_EDA_USERNAME"], os.environ["SN_EDA_PASSWORD"])
+
+
+_sn_host, _sn_user, _sn_pw = _sn_conn()
+SN_EXTRA = f"SN_HOST: {_sn_host}\nSN_USERNAME: {_sn_user}\nSN_PASSWORD: {_sn_pw}\n"
 
 AWX = controller("awx")   # AWX controller client (/api/v2), reached on :443
 

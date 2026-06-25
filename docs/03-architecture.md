@@ -16,7 +16,7 @@ diagrams — is in **[04 · The patterns](04-patterns.md)**.
 
 ## Objects provisioned by the scripts
 
-**ServiceNow** — `bootstrap/4_servicenow/1_account.py` (pull) + `3_push_change.py` (push)
+**ServiceNow** — `bootstrap/4_servicenow/1_account.py` (pull) + `4_push_change_aap.py` (push)
 
 | Object | Pattern | Role |
 |---|---|---|
@@ -66,7 +66,7 @@ the AAP controller and EDA pull from this Git repo (the SCM project).
 | `bootstrap/1_infra/` | Azure VM as **Bicep** (`main.bicep` + `resources.bicep`); multi-OS via `osFamily` (`cloud-init.rhel.yaml` / `cloud-init.ubuntu.yaml`); copy `main.parameters.{rhel,ubuntu}.example.json` → `…json` (gitignored) |
 | `bootstrap/2_fleet/` | **deploys** the target fleet — `sync.sh` (laptop) + `deploy.sh` (VM) + the `Target SSH` key; the fleet *definition* lives in `simulator/` |
 | `bootstrap/3_keycloak/` | the Meridian IdP as code (`configure.py`) — see [05 · Identity](05-identity.md) |
-| `bootstrap/4_servicenow/` | numbered by run order: `1_account.py`, `2_cmdb.py`, `3_push_change.py`, `4_catalog.py` |
+| `bootstrap/4_servicenow/` | numbered by run order: `1_account.py`, `2_cmdb.py`, `3_catalog.py`, `4_push_change_aap.py` |
 | `bootstrap/5A_aap/` | AAP install (`install.sh` + inventory + `sync.sh`) **and** AAP config-as-code: `controller/configure.py` + `eda/configure.py` (base, Python), the **declarative** EDA config (`eda/configure.yml` + `eda/vars/eda.yml`), and the DE build (`eda/execution-environment.yml` + `build.sh`) |
 | `bootstrap/5B_awx/` | the AWX variant (open-source alternative to `5A_aap`) — placeholder for a future install |
 | `simulator/` | **the simulated estate** (definition) — `fleet.yml` (source of truth), real apps (`apps/`), DB/mail images (`base/`), edge gateway + Keycloak, `compose.yml` — see [02 · The simulator](02-simulator.md) (deployed by `bootstrap/2_fleet/`) |

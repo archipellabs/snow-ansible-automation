@@ -17,7 +17,7 @@ RUNTIME="${RUNTIME:-aap}"
 if [ -f .env ]; then
   while IFS='=' read -r k v; do
     case "$k" in
-      AAP_FQDN|AWX_FQDN|KEYCLOAK_ADMIN_PASSWORD|KC_HRPORTAL_CLIENT_SECRET|HRPORTAL_SESSION_SECRET) export "$k=$v" ;;
+      AAP_FQDN|AWX_FQDN|KEYCLOAK_ADMIN_PASSWORD|KC_HRPORTAL_CLIENT_SECRET|HRPORTAL_SESSION_SECRET|VAULT_TOKEN) export "$k=$v" ;;
     esac
   done < <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' .env)
 fi
@@ -27,6 +27,7 @@ if [ "$RUNTIME" = "awx" ]; then FQDN="${FQDN:-${AWX_FQDN:-}}"; else FQDN="${FQDN
 : "${FQDN:?set AAP_FQDN/AWX_FQDN (per RUNTIME) in ~/simulator/.env — the edge (TLS cert + redirect) and Keycloak need it}"
 export FQDN
 export KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin}"
+export VAULT_TOKEN="${VAULT_TOKEN:-meridian-root}"   # dev root token for the Vault container (must match the lookup credential)
 [ -f base/authorized_keys ] || { echo "missing base/authorized_keys — cp the target_key.pub there" >&2; exit 1; }
 command -v podman-compose >/dev/null || { echo "podman-compose missing — pip3 install --user podman-compose" >&2; exit 1; }
 

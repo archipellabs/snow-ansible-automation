@@ -73,6 +73,20 @@
     which **connects outbound** — so there is no inbound port to expose. It sidesteps the gap entirely and
     turns it into a broker-based EDA (arguably a stronger story than the gateway). Cost: deploy + expose the
     broker (+ the ServiceNow→broker TLS trust, see finding 11) + `aiokafka` back in the decision environment.
+17. **Secrets via HashiCorp Vault — controller parity, EDA asymmetry.** Meridian runs Vault in the
+    simulator stack (dev mode — the analogue of Keycloak's `start-dev`), and the platform sources its
+    secrets from it instead of from `.env`. **Controller jobs** resolve secrets at **runtime** via the
+    native *HashiCorp Vault Secret Lookup* credential + `credential_input_sources`; because AWX is the
+    controller upstream this is **identical on AAP and AWX** — the credentials' literal `inputs` are
+    blanked, so Vault is the *only* source. All three controller credentials (ServiceNow, Keycloak, and the
+    **Target SSH key**) carry no literals, proven on AWX by the inventory sync, the onboarding scenario, and
+    the ad-hoc fleet ping respectively. The **EDA** layer is where they diverge: on AAP
+    the ServiceNow secret rides the *AAP Config* controller credential into the Configure-EDA GitOps, so it
+    too comes from a **native Vault lookup**; eda-server (AWX) has **no credential-lookup**, so its
+    activation `SN_*` are **read from Vault at config time** and materialised into the activation's
+    extra_vars. Net: *controller = live lookup both sides; EDA = native on AAP, config-time on AWX*.
+    Connectivity is the usual mono-machine host-port (`host.containers.internal:8200` for AAP,
+    `10.42.0.1:8200` for the AWX k3s pods). Token auth (dev); **AppRole** is the production path.
 
 ## Status
 
@@ -94,6 +108,11 @@ This is a proof of concept — deliberately scoped:
 
 - **Not production-hardened.** Single AAP node (no HA); the gateway keeps its **self-signed certificate**;
   the targets are throwaway containers; the "change" the push playbook applies is a demo content deploy.
+- **Vault is dev-mode (in-memory, token auth).** The secret store is real HashiCorp Vault but runs
+  `-dev`: in-memory (a container restart loses the secrets — re-seed with `bootstrap/3_vault/seed.py`),
+  auto-unsealed, one root token. Production = a persistent, unsealed Vault with **AppRole** auth. And
+  because eda-server can't resolve secrets at runtime, the AWX EDA secret is materialised into the
+  activation at config time (finding 17), unlike the controller's live lookup.
 - **Config-as-code is hybrid.** The **EDA layer is declarative** (`infra.aap_configuration` via the GitOps
   Configure EDA job template); the controller, ServiceNow and Keycloak config are still **bespoke stdlib
   Python** over the REST APIs (transparent, zero-dependency). A fully-standard setup would move those to
@@ -126,8 +145,9 @@ az vm start      -g rg-snow-aap-poc -n aap-poc   # restart
 az group delete  -n rg-snow-aap-poc --yes        # tear everything down
 ```
 
-- The fleet containers (and Keycloak's dev-mode H2 data) are **not** persistent across reboots — re-run
-  `./bootstrap/2_fleet/sync.sh` and `bootstrap/3_keycloak/configure.py` after a VM restart.
+- The fleet containers (and Keycloak's dev-mode H2 data, and Vault's in-memory secrets) are **not**
+  persistent across reboots — re-run `./bootstrap/2_fleet/sync.sh`, `bootstrap/3_keycloak/configure.py`
+  and `bootstrap/3_vault/seed.py` after a VM restart.
 - `D8s_v5` ≈ 10-12 €/day while allocated (≈ 2× `D4s_v5`); the Premium disk keeps billing even when
   deallocated, so `az group delete` to fully stop costs.
 

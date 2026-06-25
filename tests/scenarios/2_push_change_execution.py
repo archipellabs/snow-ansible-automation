@@ -19,7 +19,7 @@ import sys
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
 sys.path.insert(0, ROOT)
 from lib.poc import env, ssh  # noqa: E402
-from lib.runtime import controller  # noqa: E402
+from lib.runtime import controller, runtime_name  # noqa: E402
 from lib.servicenow import Snow  # noqa: E402
 
 TARGET = "hr-web-01"       # a Meridian Fleet server
@@ -30,6 +30,8 @@ TRIGGER_TIMEOUT = 180
 
 def run():
     env()
+    if runtime_name() == "awx":   # push is AAP-only — eda-server has no event-stream ingress (docs/10 §16)
+        return None, "push is AAP-only on the AWX variant (eda-server has no event-stream — see docs/10 §16)"
     ctl, snow = controller(), Snow(creds="admin")
     jt = ctl.jt_id(JT_NAME)
     baseline = max((j["id"] for j in ctl.recent_jobs(jt)), default=0)
@@ -66,5 +68,8 @@ def run():
 
 if __name__ == "__main__":
     ok, detail = run()
+    if ok is None:                # skipped (e.g. push on the AWX runtime)
+        print("\n>> SKIP — " + detail)
+        sys.exit(0)
     print("\n>> " + ("PASS" if ok else "FAIL") + f" — {detail}")
     sys.exit(0 if ok else 1)

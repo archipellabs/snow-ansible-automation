@@ -121,3 +121,19 @@ services:
       KC_PROXY_HEADERS: xforwarded
       KC_HOSTNAME_STRICT: "false"
     restart: unless-stopped
+
+  # Meridian's secret store — HashiCorp Vault (dev mode: in-memory, auto-unsealed, one known root token,
+  # the analogue of Keycloak's start-dev). Server-side only: the control plane resolves credential lookups
+  # against it at *job runtime* (no browser, so no edge). Published on :8200 — AAP reaches it at
+  # host.containers.internal:8200, AWX pods at 10.42.0.1:8200 (the same mono-machine host-port pattern as
+  # the fleet). VAULT_TOKEN is the dev root token; it must match the controllers' lookup credential.
+  vault:
+    image: docker.io/hashicorp/vault:1.18
+    container_name: vault
+    hostname: vault
+    command: ["server", "-dev", "-dev-listen-address=0.0.0.0:8200"]
+    environment:
+      VAULT_DEV_ROOT_TOKEN_ID: ${VAULT_TOKEN:-meridian-root}
+    cap_add: ["IPC_LOCK"]
+    ports: ["8200:8200"]
+    restart: unless-stopped

@@ -82,10 +82,16 @@ def env(required=()):
 
 
 def ssh(cmd, fqdn=None, timeout=40, key=SSH_KEY, connect_timeout=15):
-    """Run a command on the VM over SSH (azureuser@host); return stdout, stripped. fqdn defaults to
-    AAP_FQDN (else AWX_FQDN). `connect_timeout` bounds the TCP connect (lower it for liveness probes so a dead host fails
-    fast); `timeout` is the hard subprocess kill. Raises on connection/timeout failure."""
+    """Run a command on the VM over SSH (azureuser@host); return stdout, stripped. fqdn defaults to the
+    RUNTIME's estate host (AAP_FQDN, or AWX_FQDN when RUNTIME=awx), so scenarios are multi-runtime via the
+    RUNTIME env var. `connect_timeout` bounds the TCP connect (lower it for liveness probes so a dead host
+    fails fast); `timeout` is the hard subprocess kill. Raises on connection/timeout failure."""
+    # Resolve the estate host inline — importing lib.runtime here would be circular (it imports lib.aap,
+    # which imports lib.poc).
+    if not fqdn:
+        rt = (os.environ.get("RUNTIME") or "aap").lower()
+        fqdn = os.environ.get("AWX_FQDN") if rt == "awx" else os.environ.get("AAP_FQDN")
     return subprocess.run(
         ["ssh", "-i", os.path.expanduser(key), "-o", "StrictHostKeyChecking=accept-new",
-         "-o", f"ConnectTimeout={connect_timeout}", f"azureuser@{fqdn or os.environ.get('AAP_FQDN') or os.environ['AWX_FQDN']}", cmd],
+         "-o", f"ConnectTimeout={connect_timeout}", f"azureuser@{fqdn}", cmd],
         capture_output=True, text=True, timeout=timeout).stdout.strip()

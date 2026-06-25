@@ -135,11 +135,11 @@ and the EDA project.
 ### 7. Push wiring (ServiceNow side)
 
 ```bash
-python3 bootstrap/4_servicenow/3_push_change.py        # Business Rule (approved change → event stream) + trust the gateway CA
-python3 bootstrap/4_servicenow/4_catalog.py            # 'Restart a service' + 'Onboard a new employee' catalog items
+python3 bootstrap/4_servicenow/3_catalog.py            # 'Restart a service' + 'Onboard a new employee' catalog items
+python3 bootstrap/4_servicenow/4_push_change_aap.py    # Business Rule (approved change → event stream) + trust the gateway CA
 ```
 
-These need the **event streams created in Step 6**. `3_push_change.py` also uploads the AAP gateway CA
+These need the **event streams created in Step 6**. `4_push_change_aap.py` also uploads the AAP gateway CA
 into ServiceNow's trust store, so the Business Rule's outbound TLS POST succeeds.
 
 ✓ **Verify:** `tests/scenarios/2_push_change_execution.py` (change), `4_selfservice_restart.py` and

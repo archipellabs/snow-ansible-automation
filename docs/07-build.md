@@ -21,7 +21,7 @@ else is a script. Budget ~30–45 min, most of it the AAP install.
 | **4 · Control plane** | AAP 2.7 (≈24 containers) | `aap/sync.sh` · `~/aap/install.sh` | 🔶 activate the subscription |
 | **5 · Controller** | credentials, dynamic inventory, job templates | `aap/controller/configure.py` | — |
 | **6 · EDA** | decision env + 5 activations | `~/aap/eda/build.sh` · `aap/eda/configure.py` | 🔶 launch *Configure EDA* |
-| **7 · Push wiring** | Business Rules + catalog | `servicenow/3_push_change.py` · `4_catalog.py` | — |
+| **7 · Push wiring** | catalog + change BR (push) | `servicenow/3_catalog.py` · `4_push_change_aap.py` | — |
 | **8 · SSO** *(optional)* | AAP admin login via Keycloak | `aap/configure_sso.py` | — |
 | **✓ Validate** | proof it works | `tests/health.py` · `tests/scenarios/*` | — |
 

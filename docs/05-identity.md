@@ -88,7 +88,7 @@ the HR app DB). ServiceNow → EDA → Ansible → Keycloak → ticket closed:
 
 The playbook authenticates to Keycloak with the **`aap-provisioner`** service-account client
 (`manage-users`, `client_credentials`) — least privilege, no master admin in AAP. Wire it with the
-**Configure EDA** job template + `bootstrap/4_servicenow/4_catalog.py`; validate with
+**Configure EDA** job template + `bootstrap/4_servicenow/3_catalog.py`; validate with
 `python3 tests/scenarios/5_employee_onboarding.py`.
 
 ## Build order
