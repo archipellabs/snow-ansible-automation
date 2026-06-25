@@ -1,0 +1,35 @@
+---
+# EDA (pull): a ServiceNow "Onboard a new employee" catalog request triggers Keycloak provisioning.
+# servicenow.itsm.records polls sc_req_item for new (state=Open) requests of that catalog item; the
+# "Provision Employee" job's playbook then fetches the request's catalog variables (name/email/service)
+# from ServiceNow by request_sysid — they live in sc_item_option_mtom, not flat on the RITM.
+#
+# Was a PUSH (Business Rule -> Event Stream); moved to pull so only `change` keeps the heavy push infra
+# (event stream + ServiceNow TLS trust). SN_HOST / SN_USERNAME / SN_PASSWORD come from the activation's
+# variables (the ServiceNow credential). {{ catalog_query_suffix }} carries the runtime discriminator
+# for parallel AAP/AWX (set per activation; empty by default).
+- name: Provision a new employee from a ServiceNow onboarding request (pull)
+  hosts: all
+  sources:
+    - servicenow.itsm.records:
+        instance:
+          host: "{{ SN_HOST }}"
+          username: "{{ SN_USERNAME }}"
+          password: "{{ SN_PASSWORD }}"
+        table: sc_req_item
+        sysparm_query: "cat_item.name=Onboard a new employee^state=1{{ catalog_query_suffix | default('') }}"
+        interval: 10
+        # The source builds its poll window with gs.dateGenerate (querying user's timezone); pinning
+        # UTC only works because the EDA account's timezone is GMT (see pull_incident_remediation.yml).
+        remote_servicenow_timezone: UTC
+  rules:
+    - name: Onboarding request -> provision the employee
+      condition: event.number is defined
+      action:
+        run_job_template:
+          name: "Provision Employee"
+          organization: "Default"
+          job_args:
+            extra_vars:
+              request_number: "{{ event.number }}"
+              request_sysid: "{{ event.sys_id }}"

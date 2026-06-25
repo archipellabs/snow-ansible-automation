@@ -4,9 +4,9 @@
   python3 tests/scenarios/5_employee_onboarding.py
 
 Orders the "Onboard a new employee" Service Catalog item for a fresh test joiner, then waits for the
-push chain to provision the person's identity in Keycloak and close the request:
-  catalog request -> Business Rule -> Event Stream -> push-employee-onboarding -> "Provision
-  Employee" JT -> provision_employee.yml (creates the Keycloak user, closes the RITM).
+pull chain to provision the person's identity in Keycloak and close the request:
+  catalog request -> pull-onboarding activation (records source on sc_req_item) -> "Provision
+  Employee" JT -> provision_employee.yml (fetches the form vars, creates the Keycloak user, closes the RITM).
 Pre-deletes the test user so the run proves real creation. Asserts the Keycloak user exists (in the
 Employees group) and the request item is Closed Complete.
 

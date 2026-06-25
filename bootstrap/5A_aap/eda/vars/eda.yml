@@ -11,9 +11,8 @@
 # Inbound endpoints (gateway-managed). They reuse the shared ServiceNow event-stream token credential.
 # forward_events: true => production routing (NOT test mode) -> events are forwarded to the activation.
 eda_event_streams:
+  # Only `change` stays push, so only its stream remains (self-service + onboarding are pull now).
   - { name: servicenow-chg-stream,        organization: Default, forward_events: true, credential_name: "ServiceNow CHG Event Stream cred" }
-  - { name: servicenow-catalog-stream,    organization: Default, forward_events: true, credential_name: "ServiceNow CHG Event Stream cred" }
-  - { name: servicenow-onboarding-stream, organization: Default, forward_events: true, credential_name: "ServiceNow CHG Event Stream cred" }
 
 eda_rulebook_activations:
   # PULL — records source; no event stream; injects SN_* for the records poller.
@@ -38,7 +37,8 @@ eda_rulebook_activations:
     eda_credentials: ["AAP Controller"]
     restart_policy: on-failure
 
-  # PUSH — webhook sources bound to their event stream (event_stream → source_name).
+  # PUSH — webhook source bound to its event stream. Only `change` stays push: its approval-driven
+  # flow + flat change record make the Business Rule payload trivial, and it keeps the push pattern demoed.
   - name: push-change-execution
     organization: Default
     project: snow-ansible-automation
@@ -49,22 +49,28 @@ eda_rulebook_activations:
     event_streams:
       - { event_stream: servicenow-chg-stream, source_name: servicenow_webhook }
 
-  - name: push-selfservice-restart
+  # PULL (catalog) — records source on sc_req_item; the job's playbook fetches the form's catalog
+  # variables by request_sysid. Was push (Business Rule -> Event Stream); moved to pull (no stream).
+  - name: pull-selfservice-restart
     organization: Default
     project: snow-ansible-automation
-    rulebook: push_selfservice_restart.yml
+    rulebook: pull_selfservice_restart.yml
     decision_environment: snow-eda-de
     eda_credentials: ["AAP Controller"]
     restart_policy: on-failure
-    event_streams:
-      - { event_stream: servicenow-catalog-stream, source_name: servicenow_catalog_webhook }
+    extra_vars: |
+      SN_HOST: https://{{ sn_instance }}
+      SN_USERNAME: {{ sn_eda_username }}
+      SN_PASSWORD: {{ sn_eda_password }}
 
-  - name: push-employee-onboarding
+  - name: pull-onboarding
     organization: Default
     project: snow-ansible-automation
-    rulebook: push_employee_onboarding.yml
+    rulebook: pull_employee_onboarding.yml
     decision_environment: snow-eda-de
     eda_credentials: ["AAP Controller"]
     restart_policy: on-failure
-    event_streams:
-      - { event_stream: servicenow-onboarding-stream, source_name: servicenow_onboarding_webhook }
+    extra_vars: |
+      SN_HOST: https://{{ sn_instance }}
+      SN_USERNAME: {{ sn_eda_username }}
+      SN_PASSWORD: {{ sn_eda_password }}

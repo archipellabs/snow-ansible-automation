@@ -3,15 +3,16 @@
 # closing the ServiceNow request. The identity lives in the IdP (not in the HR app database — that
 # DB holds HR business data like leave requests).
 #
-# Pattern : PUSH (self-service catalog). ServiceNow catalog request "Onboard a new employee" ->
-#           Business Rule -> Event Stream -> push-employee-onboarding activation -> "Provision
-#           Employee" job template -> here.
+# Pattern : PULL (self-service catalog). servicenow.itsm.records polls sc_req_item for "Onboard a new
+#           employee" requests -> pull-employee-onboarding activation -> "Provision Employee" job
+#           template -> here. (Was push via an Event Stream; moved to pull — see the rulebook.)
 # Extra vars (from the rulebook):
+#   request_sysid    : RITM sys_id — the playbook fetches the catalog variables from it, then closes it
+#   request_number   : RITM number (for messages)
+# Catalog variables (fetched from ServiceNow by request_sysid, or passed explicitly for a manual run):
 #   employee_name    : full name
 #   employee_email   : email (the Keycloak username is its local part)
 #   employee_service : business service / department (informational)
-#   request_number   : RITM number (for messages)
-#   request_sysid    : RITM sys_id (to close)
 # Keycloak access: the 'aap-provisioner' confidential service-account client (manage-users) via the
 # client_credentials grant. The "Keycloak Provisioner" credential injects KC_URL / KC_REALM /
 # KC_PROVISIONER_CLIENT / KC_PROVISIONER_SECRET. ServiceNow creds come from the ServiceNow PDI cred.
@@ -29,7 +30,34 @@
     username: "{{ employee_email.split('@')[0] }}"
     realm_base: "{{ kc_url }}/realms/{{ kc_realm }}"
     admin_base: "{{ kc_url }}/admin/realms/{{ kc_realm }}"
+    sn_host: "{{ lookup('env', 'SN_HOST') }}"
+    sn_auth: "Basic {{ (lookup('env', 'SN_USERNAME') ~ ':' ~ lookup('env', 'SN_PASSWORD')) | b64encode }}"
   tasks:
+    # PULL pattern: the records source gives us the RITM (request_sysid) but not the form's catalog
+    # variables (they live in sc_item_option_mtom). Fetch + resolve them here when they aren't supplied
+    # as extra vars — so a manual JT launch with explicit employee_* still works.
+    - name: Fetch the onboarding request's catalog variables
+      ansible.builtin.uri:
+        url: "{{ sn_host }}/api/now/table/sc_item_option_mtom?sysparm_query=request_item={{ request_sysid }}&sysparm_fields=sc_item_option.item_option_new.name,sc_item_option.value&sysparm_display_value=true"
+        headers:
+          Accept: application/json
+          Authorization: "{{ sn_auth }}"
+        validate_certs: false
+      register: _ritm_vars
+      when:
+        - request_sysid is defined
+        - employee_email is not defined
+    - name: Map the fetched catalog variables (name -> value)
+      ansible.builtin.set_fact:
+        _cat: "{{ _ritm_vars.json.result | items2dict(key_name='sc_item_option.item_option_new.name', value_name='sc_item_option.value') }}"
+      when: _ritm_vars is not skipped
+    - name: Resolve employee fields (explicit extra vars win; else the fetched catalog variables)
+      ansible.builtin.set_fact:
+        employee_name: "{{ employee_name | default(_cat.employee_name) }}"
+        employee_email: "{{ employee_email | default(_cat.employee_email) }}"
+        employee_service: "{{ employee_service | default(_cat.employee_service | default('')) }}"
+      when: _ritm_vars is not skipped
+
     - name: Validate inputs
       ansible.builtin.assert:
         that:

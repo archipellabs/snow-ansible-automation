@@ -1,0 +1,32 @@
+---
+# EDA (pull): a ServiceNow "Restart a service" catalog request triggers a fleet service restart.
+# servicenow.itsm.records polls sc_req_item for new (state=Open) requests; the "Restart Service
+# (Self-Service)" job's playbook fetches the chosen server from the request's catalog variables by
+# request_sysid, then restarts the service on that fleet host.
+#
+# Was a PUSH (Business Rule -> Event Stream); moved to pull (see pull_employee_onboarding.yml).
+# SN_HOST / SN_USERNAME / SN_PASSWORD come from the activation's variables (the ServiceNow credential).
+# {{ catalog_query_suffix }} carries the runtime discriminator for parallel AAP/AWX (set per activation).
+- name: Restart a service from a ServiceNow self-service request (pull)
+  hosts: all
+  sources:
+    - servicenow.itsm.records:
+        instance:
+          host: "{{ SN_HOST }}"
+          username: "{{ SN_USERNAME }}"
+          password: "{{ SN_PASSWORD }}"
+        table: sc_req_item
+        sysparm_query: "cat_item.name=Restart a service^state=1{{ catalog_query_suffix | default('') }}"
+        interval: 10
+        remote_servicenow_timezone: UTC
+  rules:
+    - name: Self-service request -> run the restart job
+      condition: event.number is defined
+      action:
+        run_job_template:
+          name: "Restart Service (Self-Service)"
+          organization: "Default"
+          job_args:
+            extra_vars:
+              request_number: "{{ event.number }}"
+              request_sysid: "{{ event.sys_id }}"

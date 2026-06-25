@@ -1,0 +1,54 @@
+---
+# OSS Decision Environment for eda-server (the AWX/open-source path) — the twin of
+# bootstrap/5A_aap/eda/execution-environment.yml. AAP's DE is built FROM Red Hat's `de-minimal`
+# (subscription-gated, ships ansible-rulebook + ansible.eda); here we build the same capability from a
+# PUBLIC UBI base (no Red Hat subscription) and install the EDA runtime ourselves:
+#   ansible-core + ansible-runner + ansible-rulebook (+ java-17, its drools rule engine needs a JRE)
+# then add the two collections the rulebook uses:
+#   ansible.eda     — the event sources/filters (records, webhook)
+#   servicenow.itsm — the `servicenow.itsm.records` source + the incident module
+#
+# Built with ansible-builder, pushed to the in-cluster registry:2 (see build.sh). Despite the file name
+# (the one ansible-builder requires), this is a DECISION environment. Recipe pattern adapted from the
+# community DE (kubealex/eda-decision-environment), trimmed to what this PoC needs.
+version: 3
+
+images:
+  base_image:
+    name: "registry.access.redhat.com/ubi9-minimal:latest"   # public UBI — no subscription/auth
+
+dependencies:
+  ansible_core:
+    package_pip: ansible-core
+  ansible_runner:
+    package_pip: ansible-runner
+  galaxy:
+    collections:
+      - ansible.eda            # EDA sources / filters
+      - servicenow.itsm        # records event source (EDA) + incident updates (playbook)
+  python:
+    - ansible-rulebook         # the EDA engine (needs the JRE below)
+    - aiohttp                  # async HTTP — used by the webhook source / general async stack
+    - aiosignal
+  system:
+    - java-17 [platform:rpm]           # ansible-rulebook's drools rule engine runs on the JVM
+    - python3.11 [platform:rpm]
+    - python3.11-devel [platform:rpm]  # build headers for any pip wheels that compile
+    - gcc [platform:rpm]
+    - pkgconf-pkg-config [platform:rpm]
+    - systemd-devel [platform:rpm]
+  python_interpreter:
+    package_system: "python3.11"
+    python_path: "/usr/bin/python3.11"
+
+additional_build_steps:
+  append_final:
+    # ansible-runner expects these writable dirs/files (the DE runs as a non-root runner under eda-server).
+    - RUN for dir in /home/runner /home/runner/.ansible /home/runner/.ansible/tmp /runner /runner/env /runner/inventory /runner/project /runner/artifacts ; do mkdir -m 0775 -p $dir ; chmod -R g+rwx $dir ; chgrp -R root $dir ; done && for file in /home/runner/.ansible/galaxy_token /etc/passwd /etc/group ; do touch $file ; chmod g+rw $file ; chgrp root $file ; done
+    - RUN rm -rf /usr/bin/python3 && ln -s python3.11 /usr/bin/python3
+    - VOLUME /runner
+    - WORKDIR /runner
+    - ENV HOME=/home/runner
+
+options:
+  package_manager_path: /usr/bin/microdnf

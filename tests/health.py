@@ -33,7 +33,7 @@ from lib.servicenow import Snow  # noqa: E402
 
 INSECURE = insecure_ctx()
 EDA_ACTIVATIONS = {"pull-incident-remediation", "monitor-health", "push-change-execution",
-                   "push-selfservice-restart", "push-employee-onboarding"}
+                   "pull-selfservice-restart", "pull-onboarding"}
 EMOJI = {True: "🟢", False: "🔴", None: "⚪"}   # PASS / FAIL / SKIP
 PROBE_TIMEOUT = 8   # seconds — a probe must fail fast so the dashboard never freezes on a dead component
 SSO_USER = "nadia.haddad"   # a DSI/DBA staff member -> IT-Admins group -> superuser (for the deep AAP login)
@@ -76,13 +76,13 @@ def c_sn_eda_account():
 
 
 def c_sn_business_rules():
-    # The push-side triggers: the three "EDA - push …" Business Rules must be active or push/catalog/
-    # onboarding silently never fire.
+    # The push trigger: the "EDA - push …" Business Rule for `change` must be active, or the push
+    # pattern silently never fires. (Self-service + onboarding are pull now — no Business Rule.)
     snow = Snow(creds="admin")
     q = urllib.parse.urlencode({"sysparm_query": "nameSTARTSWITHEDA - push^active=true",
                                 "sysparm_fields": "name", "sysparm_limit": "10"})
     res = snow.result(f"table/sys_script?{q}")
-    return len(res) >= 3, f"{len(res)}/3 push Business Rules active"
+    return len(res) >= 1, f"{len(res)} push Business Rule(s) active (change)"
 
 
 def c_targets():
