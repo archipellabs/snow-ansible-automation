@@ -46,6 +46,10 @@ additional_build_steps:
     # ansible-runner expects these writable dirs/files (the DE runs as a non-root runner under eda-server).
     - RUN for dir in /home/runner /home/runner/.ansible /home/runner/.ansible/tmp /runner /runner/env /runner/inventory /runner/project /runner/artifacts ; do mkdir -m 0775 -p $dir ; chmod -R g+rwx $dir ; chgrp -R root $dir ; done && for file in /home/runner/.ansible/galaxy_token /etc/passwd /etc/group ; do touch $file ; chmod g+rw $file ; chgrp root $file ; done
     - RUN rm -rf /usr/bin/python3 && ln -s python3.11 /usr/bin/python3
+    # Python zoneinfo data — servicenow.itsm.records needs a working ZoneInfo("UTC") for
+    # `remote_servicenow_timezone: UTC`. ubi9-minimal ships no /usr/share/zoneinfo, and the EE's
+    # python: list didn't reliably land tzdata in python3.11, so install it explicitly here.
+    - RUN /usr/bin/python3.11 -m pip install --no-cache-dir tzdata
     - VOLUME /runner
     - WORKDIR /runner
     - ENV HOME=/home/runner

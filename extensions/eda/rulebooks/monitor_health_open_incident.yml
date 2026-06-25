@@ -7,8 +7,9 @@
 # Discovery: AAP EDA only finds rulebooks under extensions/eda/rulebooks/ (or rulebooks/).
 # Source: ansible.eda.url_check GETs each URL every `delay` seconds and emits status "up"/"down"
 #         (down = not HTTP 200 — connection refused if the service is stopped, or 503 from the
-#         FastAPI apps' degraded flag). The activation pod reaches the host-published app ports
-#         (908x, see simulator/compose.yml) via host.containers.internal, same as the EE.
+#         FastAPI apps' degraded flag). The activation reaches the host-published app ports (908x, see
+#         simulator/compose.yml) at {{ health_host }} — host.containers.internal on AAP (podman EE),
+#         the k3s node gateway on AWX (set per activation; same mono-machine note as the inventory).
 # Dedup : the "Open Incident" playbook skips creation when an active incident already exists for the
 #         CI; the per-URL throttle here further damps repeated "down" events into one launch.
 - name: Monitor Meridian app health and open incidents
@@ -16,11 +17,11 @@
   sources:
     - ansible.eda.url_check:
         urls:
-          - http://host.containers.internal:9081/health   # hr-web-01  (hr-portal)
-          - http://host.containers.internal:9082/health   # crm-web-01 (crm)
-          - http://host.containers.internal:9083/health   # crm-web-02 (crm)
-          - http://host.containers.internal:9084/health   # intra-01   (intranet)
-          - http://host.containers.internal:9085/health   # ged-01     (ged)
+          - http://{{ health_host | default('host.containers.internal') }}:9081/health   # hr-web-01  (hr-portal)
+          - http://{{ health_host | default('host.containers.internal') }}:9082/health   # crm-web-01 (crm)
+          - http://{{ health_host | default('host.containers.internal') }}:9083/health   # crm-web-02 (crm)
+          - http://{{ health_host | default('host.containers.internal') }}:9084/health   # intra-01   (intranet)
+          - http://{{ health_host | default('host.containers.internal') }}:9085/health   # ged-01     (ged)
         delay: 15
   rules:
     - name: hr-web-01 health failing -> open incident
