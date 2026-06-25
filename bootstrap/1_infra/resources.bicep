@@ -110,6 +110,21 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2023-11-01' = {
           destinationPortRange: '9443'
         }
       }
+      {
+        // eda-server UI + API (k3s NodePort 31080) — exposed for the PoC demo (AWX VM only; AAP doesn't
+        // use this rule). Plain HTTP, admin-only — acceptable for a PoC.
+        name: 'allow-eda-ui'
+        properties: {
+          priority: 1005
+          direction: 'Inbound'
+          access: 'Allow'
+          protocol: 'Tcp'
+          sourceAddressPrefix: '*'
+          sourcePortRange: '*'
+          destinationAddressPrefix: '*'
+          destinationPortRange: '31080'
+        }
+      }
     ]
   }
 }

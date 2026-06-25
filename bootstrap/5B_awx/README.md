@@ -53,14 +53,14 @@ AAP bundles things AWX does **not** ship. We fill each with its OSS upstream:
 | **C** | **`lib/awx.py`** + wiring | easy | ✅ **Done** — `lib/awx.py` (subclass of `lib.aap.Aap`, `base=/api/v2`, no `eda`); `awx` branch enabled in `runtime.py`; `controller('awx')` validated live against AWX 24.6.1 |
 | **D** | **Controller config-as-code** | easy | ✅ **Done** — `controller/configure.py` (the `awx` twin; AAP-only "AAP Config" cred + "Configure EDA" JT dropped). Live: project synced, **CMDB inventory → 9 hosts**, 13 job templates with Target SSH + ServiceNow creds. **Job→fleet connectivity solved**: `ansible_host` = k3s node gateway `10.42.0.1` (inventory var) + the base image's rootless-PAM fix → **ad-hoc `ping` green on all 9**. |
 | **E** | **EDA config (activations)** | easy-med | ✅ **Done (pull)** — `eda/configure.py` against eda-server (`/api/eda/v1`): AWX **OAuth token** (not a controller-cred — eda-server uses `awx_token_id` + its `automation_server_url`), DE from `registry:2`, project, **4 pull activations** (incident/self-service/onboarding/monitor). **E2E pull loop validated**: incident → activation → AWX JT → remediation → resolved. *Gotcha:* ubi9-minimal ships no zoneinfo → `servicenow.itsm.records` `ZoneInfoNotFoundError` until the DE pip-installs `tzdata` into python3.11. *(Push/change = phase 2 / F.)* |
-| **F** | **Push** | medium | ServiceNow Business Rule → eda-server **event-stream** URL via Traefik (:443, TLS trust). *(pull/self-heal unchanged.)* |
-| **G** | **SSO (Keycloak)** | medium | OIDC into AWX (settings/social-auth) **and** eda-server, against the Meridian realm |
-| **H** | **`health.py` probes** | medium | replace `c_awx_stub`: AWX (`/api/v2/ping/`, JTs) + eda-server (activations API) + ingress/TLS + SSO |
+| **F** | **Push (change)** | — | ⛔ **AAP-only** — eda-server 1.0.2 has no event-stream/webhook ingress (activations are k8s Jobs with instance-specific labels, no stable Service), so the push pattern stays on AAP's gateway Event Stream. On AWX every flow is pull. Clean alternative (deferred): a **broker** — ServiceNow → Redpanda HTTP proxy → topic → `ansible.eda.kafka` source (outbound, no inbound port). See [docs/10 §16]. |
+| **G** | **SSO (Keycloak)** | medium | ✅ **Done** — `3_keycloak/configure.py` runtime-aware (realm + `awx` client on the AWX estate) + `5B_awx/configure_sso.py` (AWX django-social-auth OIDC). hr-portal SSO login + **onboarding pull E2E** + AWX `/sso/login/oidc/` → Keycloak all validated; `health.py --runtime awx` **all green**. *(eda-server SSO is moot — its UI is a dead-end, see [docs/10 §15]; the API uses basic auth.)* |
+| **H** | **`health.py` probes** | medium | ✅ **Done** — replaced `c_awx_stub` with 4 real probes (AWX ping `24.6.1`, controller config = 13 JTs + 9 hosts, **eda-server 4/4 activations**, ad-hoc ping → fleet) + made the estate probes runtime-aware (`fqdn(rt)`); Keycloak/SSO probes skip gracefully until `3_keycloak`. `health.py --runtime awx` → all green. |
 | **I** | **Docs** | easy | this README + AWX variants in `docs/03/07/08/09` |
 
 ## Phasing
 
-- **Phase 1 — controller + pull/self-heal**: A + B + C + D + E(pull/monitor) + H. Proves the seam end-to-end.
-- **Phase 2 — push + SSO**: F (event stream via ingress) + G (Keycloak into AWX + eda-server).
+- **Phase 1 — controller + pull/self-heal** ✅: A · B · C · D · E (pull/monitor/catalog/onboarding) · H. The full pull seam, end-to-end (`health.py --runtime awx` all green).
+- **Phase 2 — SSO + push**: **G ✅** (Keycloak realm + apps SSO + admin OIDC into AWX). **F is AAP-only** — eda-server OSS has no webhook ingress (§16); the broker alternative is deferred. So the AWX variant is **functionally complete bar the push pattern**.
 
 📖 Compare with the AAP build → [docs/07 · Build](../../docs/07-build.md) · [docs/08 · Step by step](../../docs/08-steps.md) · the AAP/AWX seam → [docs/09 · Tests](../../docs/09-tests.md).

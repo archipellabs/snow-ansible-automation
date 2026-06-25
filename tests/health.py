@@ -28,10 +28,11 @@ import yaml
 ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 sys.path.insert(0, ROOT)
 from lib.poc import env, ssh, insecure_ctx, basic_auth, http_json  # noqa: E402
-from lib.runtime import controller, runtime_name  # noqa: E402
+from lib.runtime import controller, runtime_name, fqdn  # noqa: E402
 from lib.servicenow import Snow  # noqa: E402
 
 INSECURE = insecure_ctx()
+EST = None   # estate host (the VM running the simulator) for the runtime under test; set in run_all()
 EDA_ACTIVATIONS = {"pull-incident-remediation", "monitor-health", "push-change-execution",
                    "pull-selfservice-restart", "pull-onboarding"}
 EMOJI = {True: "🟢", False: "🔴", None: "⚪"}   # PASS / FAIL / SKIP
@@ -89,19 +90,24 @@ def c_targets():
     names = ["hr-web-01", "crm-web-01", "ged-01", "hr-db-01", "mail-01"]
     out = ssh("for n in " + " ".join(names) + "; do printf '%s=' $n; "
               "podman exec $n systemctl is-active sshd 2>/dev/null | tr '\\n' ',' ; echo; done",
-              timeout=25, connect_timeout=PROBE_TIMEOUT)
+              fqdn=EST, timeout=25, connect_timeout=PROBE_TIMEOUT)
     down = [n for n in names if f"{n}=active" not in out]
     return not down, f"{len(names) - len(down)}/{len(names)} sshd active" + (f" — down: {', '.join(down)}" if down else "")
 
 
 def c_hrportal():
-    st, d = req(f"https://{os.environ['AAP_FQDN']}:9443/hr/health")
+    st, d = req(f"https://{EST}:9443/hr/health")
     sso = d.get("sso") if isinstance(d, dict) else None
     return st == 200, f"HTTP {st}, sso={sso}"
 
 
 def c_keycloak():
-    st, _ = req(f"https://{os.environ['AAP_FQDN']}:9443/auth/realms/meridian/.well-known/openid-configuration")
+    try:
+        st, _ = req(f"https://{EST}:9443/auth/realms/meridian/.well-known/openid-configuration")
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return None, "realm 'meridian' not configured (run bootstrap/3_keycloak/configure.py)"
+        raise
     return st == 200, f"realm 'meridian' HTTP {st}"
 
 
@@ -149,8 +155,61 @@ def c_aap_ee_path():
     return status == "successful", f"ad-hoc ping: {status}"
 
 
-def c_awx_stub():
-    return None, "SKIP — AWX runtime not provisioned (bootstrap/5B_awx/ is a placeholder)"
+# --- AWX control-plane probes (the `awx` runtime: bare AWX /api/v2 + a separate eda-server) ----------
+
+def c_awx_ping():
+    st, d = req(f"https://{fqdn('awx')}/api/v2/ping/")
+    return st == 200, f"AWX {d.get('version')}, {len(d.get('instances', []))} instance(s)"
+
+
+def c_awx_config():
+    ctl = controller("awx")
+    jts = ctl.call("job_templates/", timeout=PROBE_TIMEOUT).get("count", 0)
+    inv = (ctl.call("inventories/?name=Meridian%20Fleet", timeout=PROBE_TIMEOUT).get("results") or [{}])[0]
+    hosts = inv.get("total_hosts", 0)
+    return jts >= 13 and hosts >= 9, f"{jts} job templates, Meridian Fleet = {hosts} hosts"
+
+
+def c_awx_eda_activations():
+    # eda-server API (k3s NodePort 31080; set EDA_HOST=localhost:31080 to use an SSH tunnel). Auth: EDA_ADMIN_*.
+    host = os.environ.get("EDA_HOST") or f"{fqdn('awx')}:31080"
+    res = http_json(f"http://{host}/api/eda/v1/activations/?page_size=50",
+                    headers={"Authorization": basic_auth(os.environ.get("EDA_ADMIN_USER", "admin"),
+                                                          os.environ["EDA_ADMIN_PASSWORD"])},
+                    timeout=PROBE_TIMEOUT)
+    want = {"pull-incident-remediation", "pull-selfservice-restart", "pull-onboarding", "monitor-health"}
+    running = {a["name"] for a in res.get("results", []) if a.get("status") == "running"}
+    return want <= running, f"{len(running & want)}/{len(want)} eda-server activations running"
+
+
+def c_awx_target_path():   # deep — launches an ad-hoc ping (k3s pod -> node gateway -> fleet)
+    ctl = controller("awx")
+    inv = ctl.call("inventories/?name=Meridian%20Fleet", timeout=PROBE_TIMEOUT)
+    cred = ctl.call("credentials/?name=Target%20SSH", timeout=PROBE_TIMEOUT)
+    if not inv.get("count") or not cred.get("count"):
+        return None, "SKIP (run bootstrap/5B_awx/controller/configure.py first)"
+    cmd = ctl.call("ad_hoc_commands/", {"inventory": inv["results"][0]["id"], "credential": cred["results"][0]["id"],
+                                        "module_name": "ping", "limit": "hr-web-01"}, timeout=PROBE_TIMEOUT)
+    cid, status = cmd["id"], "pending"
+    for _ in range(20):
+        time.sleep(3)
+        status = ctl.call(f"ad_hoc_commands/{cid}/", timeout=PROBE_TIMEOUT)["status"]
+        if status in ("successful", "failed", "error", "canceled"):
+            break
+    return status == "successful", f"ad-hoc ping hr-web-01: {status}"
+
+
+def c_awx_sso():
+    # OIDC wired: AWX's social-auth login endpoint redirects to the Meridian realm's auth URL.
+    conn = http.client.HTTPSConnection(fqdn("awx"), 443, context=INSECURE, timeout=PROBE_TIMEOUT)
+    conn.request("GET", "/sso/login/oidc/")
+    r = conn.getresponse()
+    loc = {k.lower(): v for k, v in r.getheaders()}.get("location", "")
+    conn.close()
+    if "realms/meridian/protocol/openid-connect/auth" not in loc:
+        return None, "AWX OIDC not wired (run bootstrap/5B_awx/configure_sso.py)"
+    ok = r.status in (301, 302, 303, 307) and "client_id=awx" in loc
+    return ok, f"/sso/login/oidc/ → Keycloak(awx)={ok}"
 
 
 # --- SSO install checks (a login proves wiring, not automation) ---------------------------------
@@ -189,7 +248,7 @@ def c_aap_sso_login():   # deep
 
 
 def _hr_get(path):
-    c = http.client.HTTPSConnection(os.environ["AAP_FQDN"], 9443, context=INSECURE, timeout=PROBE_TIMEOUT)
+    c = http.client.HTTPSConnection(EST, 9443, context=INSECURE, timeout=PROBE_TIMEOUT)
     c.request("GET", path)
     r = c.getresponse()
     body = r.read()
@@ -207,11 +266,13 @@ def c_hrportal_sso_wired():
         sso_on = json.loads(body).get("sso") == "enabled"
     except json.JSONDecodeError:
         sso_on = False
+    if not redirect and not sso_on:
+        return None, "hr-portal SSO not configured (run bootstrap/3_keycloak/configure.py)"
     return redirect and sso_on, f"/hr/login→Keycloak(hr-portal)={redirect}, sso={sso_on}"
 
 
 def c_hrportal_sso_login():   # deep
-    issuer = f"https://{os.environ['AAP_FQDN']}:9443/auth/realms/meridian"
+    issuer = f"https://{EST}:9443/auth/realms/meridian"
     with open(os.path.join(ROOT, "simulator", "fleet.yml")) as f:
         person = next(p for p in yaml.safe_load(f)["people"] if p.get("team"))
     username = person["email"].split("@")[0]
@@ -231,6 +292,10 @@ def c_hrportal_sso_login():   # deep
         groups = ui.get("groups") or []
         ok = bool(ui.get("email")) and person["team"] in groups
         return ok, f"{username}: email={ui.get('email')}, team {person['team']} in {groups}"
+    except urllib.error.HTTPError as ex:
+        if ex.code == 404:
+            return None, "SSO not configured (run bootstrap/3_keycloak/configure.py)"
+        return False, f"grant failed: {ex}"
     except (urllib.error.URLError, json.JSONDecodeError, KeyError) as ex:
         return False, f"grant failed: {ex}"
 
@@ -257,11 +322,17 @@ RUNTIME_PROBES = {
         ("AAP SSO offered", c_aap_sso_offered),
         ("AAP SSO login", c_aap_sso_login),
     ],
-    "awx": [("AWX control plane", c_awx_stub)],
+    "awx": [
+        ("AWX control plane", c_awx_ping),
+        ("AWX controller config", c_awx_config),
+        ("eda-server activations", c_awx_eda_activations),
+        ("AWX → targets (ad-hoc ping)", c_awx_target_path),
+        ("AWX SSO offered", c_awx_sso),
+    ],
 }
 # Probes that actively launch work or run a full login flow (too heavy to run every tick) —
 # skipped under --watch (shown as ⚪), run only in one-pass.
-DEEP = {"EE → targets (ad-hoc ping)", "AAP SSO login", "hr-portal SSO login"}
+DEEP = {"EE → targets (ad-hoc ping)", "AWX → targets (ad-hoc ping)", "AAP SSO login", "hr-portal SSO login"}
 
 
 def run_all(runtime=None, deep=True, only=None):
@@ -272,6 +343,8 @@ def run_all(runtime=None, deep=True, only=None):
     for --watch. only=<substr> keeps just the checks whose name contains it (e.g. 'sso')."""
     env()
     rt = runtime_name(runtime)
+    global EST
+    EST = fqdn(rt)   # the estate (simulator) runs on whichever VM hosts the control plane
     groups = [("ServiceNow", SERVICENOW), ("Stack", COMMON), (f"Control plane · {rt}", RUNTIME_PROBES[rt])]
     plan = []  # ordered (group, name, fn_or_None, skip_info)
     for group, checks in groups:
