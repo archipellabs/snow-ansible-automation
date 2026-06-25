@@ -52,6 +52,27 @@
     phase denies key-auth'd SSH **and** sudo (`Access denied by PAM account configuration`). The base image
     makes the account phase permissive (`account sufficient pam_permit.so` in the `sshd`/`sudo` PAM stacks)
     — auth stays key-only, and it works rootless on either host (RHEL or Ubuntu).
+15. **eda-server's standalone UI is a dead-end with the OSS operator.** `eda-server-operator` **1.0.2 is the
+    last release** (the OSS effort folded into AAP's platform gateway), and it bundles the **unified
+    ansible-ui** (`quay.io/ansible/eda-ui:2.4.1289`). Run standalone it fails twice: (a) a known nginx **root
+    mismatch** — the SPA ships at `/opt/app-root/ui/eda` but the operator's config serves `/usr/share/nginx/html`
+    ([issue #153](https://github.com/ansible/eda-server-operator/issues/153)); and (b) even once that's
+    patched and the SPA serves, the React bundle **crashes** (`TypeError … 'CommonProps.primitiveProps'`) —
+    it's the *gateway* UI (it probes `/api/automation`) and won't initialise without the AAP Platform Gateway.
+    There's no newer operator to move to. So the AWX variant exposes eda-server by its **API** (k3s NodePort
+    31080) only; the UI to demo is **AWX's**. The EDA control plane is proven by `tests/health.py --runtime
+    awx` + the end-to-end pull, not a web page.
+16. **Push (inbound webhook) is AAP-only — eda-server OSS has no event-stream ingress.** AAP's gateway
+    provides a managed **Event Stream** (an inbound `:443` webhook a ServiceNow Business Rule POSTs to).
+    eda-server 1.0.2 has **no equivalent**: no event-stream API, and activations run as k8s **Jobs** with
+    instance-specific labels and no container port/Service, so a webhook source's `:5000` can't be stably
+    exposed (the pod is recreated with a new `job-name` on every restart). So the **push** pattern (change
+    execution) stays **AAP-only**; on AWX every flow is pull. The clean, idiomatic fix (deliberately not
+    built) is a **message broker** as the intermediary: ServiceNow → an HTTP ingest (e.g. **Redpanda** —
+    Kafka-compatible with a built-in HTTP proxy) → a topic → the activation's `ansible.eda.kafka` source,
+    which **connects outbound** — so there is no inbound port to expose. It sidesteps the gap entirely and
+    turns it into a broker-based EDA (arguably a stronger story than the gateway). Cost: deploy + expose the
+    broker (+ the ServiceNow→broker TLS trust, see finding 11) + `aiokafka` back in the decision environment.
 
 ## Status
 

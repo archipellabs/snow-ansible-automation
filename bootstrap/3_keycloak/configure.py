@@ -29,7 +29,7 @@ REALM = "meridian"
 
 sys.path.insert(0, ROOT)
 from lib.poc import load_dotenv, insecure_ctx  # noqa: E402
-from lib.runtime import fqdn  # noqa: E402
+from lib.runtime import fqdn, runtime_name  # noqa: E402
 
 load_dotenv(ROOT, required=("KEYCLOAK_ADMIN_PASSWORD", "KC_DEMO_PASSWORD",
                             "KC_HRPORTAL_CLIENT_SECRET", "KC_AAP_CLIENT_SECRET",
@@ -67,22 +67,28 @@ def get_token():
 
 
 def api(method, path, body=None):
-    """Call the admin REST API; return (status, parsed_json_or_None). Never raises on HTTP errors."""
+    """Call the admin REST API; return (status, parsed_json_or_None). Never raises on HTTP errors.
+    Refreshes the admin token once on a 401 — a long run (realm + many users) can outlive its lifespan."""
+    global TOK
     data = json.dumps(body).encode() if body is not None else None
-    headers = {"Authorization": f"Bearer {TOK}"}
-    if data is not None:
-        headers["Content-Type"] = "application/json"
-    rq = urllib.request.Request(f"{ADMIN}{path}", data=data, headers=headers, method=method)
-    try:
-        with urllib.request.urlopen(rq, context=CTX, timeout=30) as resp:
-            raw = resp.read()
-            return resp.status, (json.loads(raw) if raw else None)
-    except urllib.error.HTTPError as e:
-        raw = e.read()
+    for attempt in range(2):
+        headers = {"Authorization": f"Bearer {TOK}"}
+        if data is not None:
+            headers["Content-Type"] = "application/json"
+        rq = urllib.request.Request(f"{ADMIN}{path}", data=data, headers=headers, method=method)
         try:
-            return e.code, (json.loads(raw) if raw else None)
-        except Exception:               # noqa: BLE001
-            return e.code, None
+            with urllib.request.urlopen(rq, context=CTX, timeout=30) as resp:
+                raw = resp.read()
+                return resp.status, (json.loads(raw) if raw else None)
+        except urllib.error.HTTPError as e:
+            if e.code == 401 and attempt == 0:   # token expired mid-run -> refresh + retry once
+                TOK = get_token()
+                continue
+            raw = e.read()
+            try:
+                return e.code, (json.loads(raw) if raw else None)
+            except Exception:           # noqa: BLE001
+                return e.code, None
 
 
 def get_until(path):
@@ -229,14 +235,17 @@ def main():
     # OIDC clients.
     ensure_client("hr-portal", "HR Portal", os.environ["KC_HRPORTAL_CLIENT_SECRET"],
                   [f"{EXT}/hr/*"], [EXT], groups_mapper=True)
-    ensure_client("aap", "Ansible Automation Platform", os.environ["KC_AAP_CLIENT_SECRET"],
+    # Admin-SSO client for the control plane, runtime-aware: 'aap' (the gateway) or 'awx'. The wildcard
+    # redirect covers the OIDC callback path on either; they share KC_AAP_CLIENT_SECRET.
+    cp_client = "awx" if runtime_name() == "awx" else "aap"
+    ensure_client(cp_client, cp_client.upper(), os.environ["KC_AAP_CLIENT_SECRET"],
                   [f"https://{FQDN}/*"], [f"https://{FQDN}"], groups_mapper=True)
     # Backend client the onboarding playbook uses to create users (client_credentials).
     ensure_service_account_client("aap-provisioner", os.environ["KC_PROVISIONER_SECRET"],
                                   ["manage-users", "view-users", "query-users"])
 
     print(f"\n= realm '{REALM}': {len(FLEET['teams']) + 2} groups, {staff + others} users "
-          f"({staff} IT-Admins, {others} Employees), clients hr-portal + aap + aap-provisioner")
+          f"({staff} IT-Admins, {others} Employees), clients hr-portal + {cp_client} + aap-provisioner")
     print(f">> Admin console : {BASE}/admin/  (master realm, user 'admin')")
     print(f">> Account portal: {BASE}/realms/{REALM}/account  (any user, demo password from .env)")
     print(">> Next (Étape 2): wire hr-portal to this 'hr-portal' client; (Étape 3) AAP gateway -> 'aap' client.")
