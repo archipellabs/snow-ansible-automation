@@ -73,10 +73,16 @@ This is a proof of concept — deliberately scoped:
   token auth (we pass username/password); **EDA can't update a running activation**, so the playbook
   reconciles by **delete-then-create**; the roles `no_log` their tasks (debug with
   `aap_configuration_secure_logging: false`).
-- **The dynamic inventory carries simulator plumbing in the CMDB.** Because the "servers" are really
-  containers, two host vars are **simulator artifacts** (`u_ssh_port`, and `ansible_host =
-  host.containers.internal`). A real estate would drop them and use the CI's real IP + SSH `:22`. The
-  `u_role`/`u_service` columns and the standard `support_group` field are legitimate CMDB attributes.
+- **The fleet is reached the mono-machine way — IP/port are a bit rigged to stay single-host.** Because
+  the "servers" are really containers on one VM, the connection is deliberately kept single-host instead
+  of standing up a DNS zone, a dedicated subnet, or an overlay network. Each host's `ansible_port` is the
+  **published SSH port** on the VM (`u_ssh_port`, a CMDB simulator artifact — ServiceNow renders it
+  `"2,211"`), and `ansible_host` points at the VM itself — `host.containers.internal` on **AAP** (podman
+  injects it), the **k3s node gateway `10.42.0.1`** on **AWX** (pods reach host-published ports there).
+  To keep the shared CMDB inventory neutral, `ansible_host` isn't stored in the CMDB: each runtime sets it
+  as an **inventory variable** (`bootstrap/5A_aap` / `5B_awx` `controller/configure.py`). A real estate
+  would drop all of this and use each CI's real IP + SSH `:22`. The `u_role`/`u_service` columns and the
+  standard `support_group` field are legitimate CMDB attributes.
 - **SSO covers the apps and AAP, not ServiceNow.** Keycloak gives SSO to the simulated apps and AAP
   admins, but **ServiceNow keeps its native login** — federating a SaaS PDI to a Keycloak on a private VM
   would take this PoC too far. SSO as a whole is **optional**.

@@ -63,8 +63,8 @@ class Snow:
 
 def eda_stream_url(stream_name, ctx):
     """The inbound URL of an EDA event stream, read live from the EDA API (nothing host-specific is
-    hard-coded). Needs FQDN + AAP_ADMIN_USER/PASSWORD; ctx skips the gateway's self-signed cert."""
-    url = (f"https://{os.environ['FQDN']}/api/eda/v1/event-streams/?"
+    hard-coded). Needs AAP_FQDN + AAP_ADMIN_USER/PASSWORD; ctx skips the gateway's self-signed cert."""
+    url = (f"https://{os.environ['AAP_FQDN']}/api/eda/v1/event-streams/?"
            + urllib.parse.urlencode({"name": stream_name}))
     headers = {"Authorization": basic_auth(os.environ["AAP_ADMIN_USER"], os.environ["AAP_ADMIN_PASSWORD"])}
     res = http_json(url, headers=headers, ctx=ctx).get("results") or []

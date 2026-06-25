@@ -18,7 +18,7 @@ class Aap:
     """AAP controller + EDA client (admin creds; the gateway has a self-signed cert)."""
 
     def __init__(self):
-        self.fqdn = os.environ["FQDN"]
+        self.fqdn = os.environ["AAP_FQDN"]
         self.ctx = insecure_ctx()
         self.base = f"https://{self.fqdn}/api/controller/v2"
         self.eda = f"https://{self.fqdn}/api/eda/v1"

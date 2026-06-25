@@ -26,9 +26,9 @@ cp .env.example .env                                                            
 
 ```bash
 cd bootstrap/1_infra
-cp main.parameters.example.json main.parameters.json   # fill: dnsLabel, location, sshPublicKey (~/.ssh/snow-aap-poc.pub)
+cp main.parameters.rhel.example.json main.parameters.rhel.json   # fill: dnsLabel, location, sshPublicKey (~/.ssh/snow-aap-poc.pub)
 az deployment sub create --name aap-poc --location <region> \
-  --template-file main.bicep --parameters main.parameters.json
+  --template-file main.bicep --parameters main.parameters.rhel.json
 ```
 
 Provisions the NSG (ports 22/80/443/9443), vNet, public IP with the DNS label, and a **RHEL 9 PAYG**
@@ -104,7 +104,7 @@ python3 tests/health.py                          # holistic health dashboard
 
 Creates the `Target SSH` + `ServiceNow PDI` credentials (plus `Keycloak Provisioner` + `AAP Config`),
 the **`Meridian Fleet` inventory with a `ServiceNow CMDB` source** (`servicenow.itsm.now` reading
-`inventory.now.yml` — the hosts come from the CMDB, not a static list), the Git project (the **first
+`inventory/meridian.now.yml` — the hosts come from the CMDB, not a static list), the Git project (the **first
 SCM sync installs the collections from `requirements.yml`** — can take a few minutes), and the **14 job
 templates** — including **`Configure EDA`**, the GitOps template you launch in Step 6. It also removes
 the installer's `Demo *` objects.

@@ -1,10 +1,9 @@
-"""Runtime selector — picks the automation control-plane client by runtime so the tests stay
-portable across control planes. Today only AAP is provisioned (bootstrap/5A_aap/); AWX (bootstrap/5B_awx/)
-is a placeholder, so its client is a clearly-marked stub.
+"""Runtime selector — picks the automation control-plane client by runtime so the tests and config
+stay portable across control planes: AAP (bootstrap/5A_aap/) and AWX (bootstrap/5B_awx/).
 
-Pick the runtime with the RUNTIME env var or an explicit argument; default 'aap'. To enable AWX later,
-add lib/awx.py exposing the same interface as lib.aap.Aap (call / jt_id / wait_job / run_jt /
-recent_jobs / wait_triggered_job) and wire it into controller() below.
+Pick the runtime with the RUNTIME env var or an explicit argument; default 'aap'.
+  aap  -> lib.aap.Aap   (Platform Gateway, /api/controller/v2, /api/eda/v1)
+  awx  -> lib.awx.Awx   (bare AWX controller, /api/v2; EDA is a separate eda-server)
 """
 import os
 import sys
@@ -26,5 +25,14 @@ def controller(runtime=None):
     rt = runtime_name(runtime)
     if rt == "aap":
         return Aap()
-    # awx: add lib/awx.py with the Aap interface, then `from lib.awx import Awx; return Awx()`.
-    sys.exit("RUNTIME=awx is not available yet — bootstrap/5B_awx/ is a placeholder (see README roadmap)")
+    from lib.awx import Awx
+    return Awx()
+
+
+def fqdn(runtime=None):
+    """The estate / control-plane host for the selected runtime — AAP_FQDN or AWX_FQDN.
+
+    The simulator (estate) runs on whichever VM hosts the control plane, so its public host is the
+    runtime's FQDN. Used by the estate-facing config (Keycloak) and the runtime-aware deploy scripts."""
+    rt = runtime_name(runtime)
+    return os.environ["AWX_FQDN" if rt == "awx" else "AAP_FQDN"]

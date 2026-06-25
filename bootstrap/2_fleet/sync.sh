@@ -3,17 +3,26 @@
 # public key the fleet trusts into the simulator build context, push simulator/ + the repo-root .env
 # + this deploy.sh to the VM, then run deploy.sh there. One command instead of a manual rsync + ssh.
 #
-#   ./bootstrap/2_fleet/sync.sh           # sync + build + start the stack on the VM
-#   ./bootstrap/2_fleet/sync.sh --sync    # sync only (skip the remote deploy)
+#   ./bootstrap/2_fleet/sync.sh                 # AAP estate (default): sync + build + start on the VM
+#   RUNTIME=awx ./bootstrap/2_fleet/sync.sh     # AWX estate (targets the AWX VM)
+#   ./bootstrap/2_fleet/sync.sh --sync          # sync only (skip the remote deploy)
 #
 # The fleet *definition* lives in simulator/ (fleet.yml, apps/, base/, compose.yml); this folder holds
-# the access key + the deploy scripts. FQDN comes from the env or the repo-root .env. SSH: ~/.ssh/snow-aap-poc.
+# the access key + the deploy scripts. The estate host = AAP_FQDN/AWX_FQDN (by RUNTIME) from the env or
+# repo-root .env. SSH: ~/.ssh/snow-aap-poc.
 set -euo pipefail
 cd "$(dirname "$0")"                 # bootstrap/2_fleet/
 SIM="../../simulator"
 ENVFILE="../../.env"
-FQDN="${FQDN:-$(grep -E '^FQDN=' "$ENVFILE" 2>/dev/null | head -1 | cut -d= -f2-)}"
-[ -n "$FQDN" ] || { echo "FQDN not set (env var or repo-root .env)" >&2; exit 1; }
+RUNTIME="${RUNTIME:-aap}"
+# The estate runs on whichever VM hosts the control plane — pick its FQDN by runtime.
+case "$RUNTIME" in
+  aap) HOSTVAR=AAP_FQDN ;;
+  awx) HOSTVAR=AWX_FQDN ;;
+  *)   echo "unknown RUNTIME '$RUNTIME' (aap|awx)" >&2; exit 1 ;;
+esac
+FQDN="${FQDN:-$(grep -E "^${HOSTVAR}=" "$ENVFILE" 2>/dev/null | head -1 | cut -d= -f2-)}"
+[ -n "$FQDN" ] || { echo "$HOSTVAR not set (env var or repo-root .env)" >&2; exit 1; }
 KEY="${HOME}/.ssh/snow-aap-poc"
 SSH="ssh -i ${KEY} -o StrictHostKeyChecking=accept-new"
 
@@ -31,10 +40,10 @@ rsync -avz -e "$SSH" deploy.sh "azureuser@${FQDN}:~/simulator/deploy.sh"
 echo ">> Synced simulator/ + .env + deploy.sh to azureuser@${FQDN}:~/simulator/"
 
 if [ "${1:-}" = "--sync" ]; then
-  echo ">> Sync only. Deploy with: ssh -i ${KEY} azureuser@${FQDN} '~/simulator/deploy.sh'"
+  echo ">> Sync only. Deploy with: ssh -i ${KEY} azureuser@${FQDN} 'RUNTIME=${RUNTIME} ~/simulator/deploy.sh'"
   exit 0
 fi
 
 echo ">> Building + starting the stack on the VM…"
-$SSH "azureuser@${FQDN}" '~/simulator/deploy.sh'
+$SSH "azureuser@${FQDN}" "RUNTIME='${RUNTIME}' ~/simulator/deploy.sh"
 echo ">> Next: python3 bootstrap/3_keycloak/configure.py   (build the 'meridian' realm from fleet.yml)"

@@ -1,0 +1,15 @@
+{
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": { "value": "westeurope" },
+    "resourceGroupName": { "value": "rg-snow-awx-poc" },
+    "vmName": { "value": "awx-poc" },
+    "vmSize": { "value": "Standard_D4s_v5" },
+    "osFamily": { "value": "ubuntu" },
+    "adminUsername": { "value": "azureuser" },
+    "sshPublicKey": { "value": "ssh-ed25519 AAAA... your key here" },
+    "dnsLabel": { "value": "awx-poc-CHANGE-ME" },
+    "osDiskSizeGb": { "value": 64 },
+    "osDiskSku": { "value": "Premium_LRS" }
+  }
+}

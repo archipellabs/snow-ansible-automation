@@ -1,6 +1,7 @@
-// POC resources (resource group scope): NSG (22/80/443 open) + RHEL 9 PAYG VM.
+// POC resources (resource group scope): NSG (22/80/443/9443 open) + a Linux VM — RHEL 9 PAYG (AAP,
+// default) or Ubuntu LTS (AWX), selected by osFamily. Both images are PAYG (no marketplace plan).
 // Application-level security is delegated to a containerized reverse proxy (TLS + auth).
-// Base podman/git/ansible-core installed at boot via cloud-init (cloud-init.yaml).
+// Base tooling installed at boot via cloud-init (cloud-init.rhel.yaml / cloud-init.ubuntu.yaml).
 @description('Azure region')
 param location string
 
@@ -24,6 +25,26 @@ param osDiskSizeGb int = 128
 
 @description('OS disk SKU')
 param osDiskSku string = 'Premium_LRS'
+
+@description('OS family: rhel or ubuntu')
+@allowed([ 'rhel', 'ubuntu' ])
+param osFamily string = 'rhel'
+
+// Marketplace images per OS family (both PAYG — no plan / marketplace agreement needed).
+var images = {
+  rhel: {
+    publisher: 'RedHat'
+    offer: 'RHEL'
+    sku: '9-lvm-gen2'
+    version: 'latest'
+  }
+  ubuntu: {
+    publisher: 'Canonical'
+    offer: 'ubuntu-24_04-lts'
+    sku: 'server'          // 24.04 LTS, Hyper-V Gen2 (the gen2 sku is 'server', not 'server-gen2')
+    version: 'latest'
+  }
+}
 
 var vnetName = '${vmName}-vnet'
 var nsgName = '${vmName}-nsg'
@@ -145,7 +166,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
     osProfile: {
       computerName: vmName
       adminUsername: adminUsername
-      customData: base64(loadTextContent('cloud-init.yaml'))
+      customData: base64(osFamily == 'ubuntu' ? loadTextContent('cloud-init.ubuntu.yaml') : loadTextContent('cloud-init.rhel.yaml'))
       linuxConfiguration: {
         disablePasswordAuthentication: true
         ssh: {
@@ -159,12 +180,7 @@ resource vm 'Microsoft.Compute/virtualMachines@2024-07-01' = {
       }
     }
     storageProfile: {
-      imageReference: {
-        publisher: 'RedHat'
-        offer: 'RHEL'
-        sku: '9-lvm-gen2'
-        version: 'latest'
-      }
+      imageReference: images[osFamily]
       osDisk: {
         createOption: 'FromImage'
         diskSizeGB: osDiskSizeGb

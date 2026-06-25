@@ -1,6 +1,7 @@
 # Meridian Group edge — the single internet-facing gateway (a DMZ reverse proxy / "firewall").
-# It now terminates TLS on :9443 (AAP owns :443 on this VM) and fronts both the apps and the
-# corporate IdP. Browse it at https://<FQDN>:9443/. :80 redirects to :9443.
+# It terminates TLS on :9443 and fronts both the apps and the corporate IdP. Browse it at
+# https://<FQDN>:9443/. Plain HTTP on :9080 redirects to :9443. Host :80/:443 are taken on both
+# control-plane VMs (AAP's gateway / AWX's k3s Traefik), so the edge uses high ports — no conflict.
 #
 #   https://<FQDN>:9443/              -> intranet portal
 #   https://<FQDN>:9443/hr|/crm|/ged  -> the apps
@@ -37,7 +38,8 @@
 	}
 }
 
-# Redirect plain HTTP to HTTPS on :9443 (keeps the path and query string).
+# Redirect plain HTTP to HTTPS on :9443 (keeps path + query). Container listens on :80, published on
+# host :9080 (see compose.yml) — host :80 is taken by the control plane on both VMs.
 :80 {
 	redir https://{$FQDN}:9443{uri}
 }

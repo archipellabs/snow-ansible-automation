@@ -23,8 +23,8 @@ for line in open(os.environ["ENVFILE"]):
 '
 }
 
-FQDN="$(getenv FQDN)"
-[ -n "$FQDN" ] || { echo "FQDN not set in ~/aap/.env" >&2; exit 1; }
+FQDN="$(getenv AAP_FQDN)"
+[ -n "$FQDN" ] || { echo "AAP_FQDN not set in ~/aap/.env" >&2; exit 1; }
 APP_PW="$(getenv AAP_ADMIN_PASSWORD)"
 [ -n "$APP_PW" ] || APP_PW="$(openssl rand -base64 24 | tr -dc 'A-Za-z0-9' | head -c 20)"
 REG_USER="$(getenv REGISTRY_USERNAME)"
