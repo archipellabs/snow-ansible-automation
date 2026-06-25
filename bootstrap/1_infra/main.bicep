@@ -17,6 +17,10 @@ param vmName string = 'aap-poc'
 @description('VM size')
 param vmSize string = 'Standard_D8s_v5'
 
+@description('OS family: rhel (AAP, default) or ubuntu (AWX)')
+@allowed([ 'rhel', 'ubuntu' ])
+param osFamily string = 'rhel'
+
 @description('Linux admin user')
 param adminUsername string = 'azureuser'
 
@@ -44,6 +48,7 @@ module resources 'resources.bicep' = {
     location: location
     vmName: vmName
     vmSize: vmSize
+    osFamily: osFamily
     adminUsername: adminUsername
     sshPublicKey: sshPublicKey
     dnsLabel: dnsLabel

@@ -42,10 +42,10 @@ PROJECT_NAME = "snow-ansible-automation"
 sys.path.insert(0, ROOT)
 from lib.poc import load_dotenv, insecure_ctx, basic_auth, http_json  # noqa: E402
 
-load_dotenv(ROOT, required=("FQDN", "AAP_ADMIN_USER", "AAP_ADMIN_PASSWORD",
+load_dotenv(ROOT, required=("AAP_FQDN", "AAP_ADMIN_USER", "AAP_ADMIN_PASSWORD",
                             "GIT_REPO_URL", "SN_EVENTSTREAM_TOKEN"))
 
-FQDN = os.environ["FQDN"]
+FQDN = os.environ["AAP_FQDN"]
 BASE = f"https://{FQDN}/api/eda/v1"
 HEADERS = {"Authorization": basic_auth(os.environ["AAP_ADMIN_USER"], os.environ["AAP_ADMIN_PASSWORD"])}
 CTX = insecure_ctx()

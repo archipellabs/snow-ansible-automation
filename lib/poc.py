@@ -82,10 +82,10 @@ def env(required=()):
 
 
 def ssh(cmd, fqdn=None, timeout=40, key=SSH_KEY, connect_timeout=15):
-    """Run a command on the VM over SSH (azureuser@FQDN); return stdout, stripped. fqdn defaults to
-    $FQDN. `connect_timeout` bounds the TCP connect (lower it for liveness probes so a dead host fails
+    """Run a command on the VM over SSH (azureuser@host); return stdout, stripped. fqdn defaults to
+    AAP_FQDN (else AWX_FQDN). `connect_timeout` bounds the TCP connect (lower it for liveness probes so a dead host fails
     fast); `timeout` is the hard subprocess kill. Raises on connection/timeout failure."""
     return subprocess.run(
         ["ssh", "-i", os.path.expanduser(key), "-o", "StrictHostKeyChecking=accept-new",
-         "-o", f"ConnectTimeout={connect_timeout}", f"azureuser@{fqdn or os.environ['FQDN']}", cmd],
+         "-o", f"ConnectTimeout={connect_timeout}", f"azureuser@{fqdn or os.environ.get('AAP_FQDN') or os.environ['AWX_FQDN']}", cmd],
         capture_output=True, text=True, timeout=timeout).stdout.strip()

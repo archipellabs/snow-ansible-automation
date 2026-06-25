@@ -32,7 +32,7 @@ diagrams — is in **[04 · The patterns](04-patterns.md)**.
 |---|---|
 | Credential `Target SSH` (machine) | SSH key to reach the targets (user `ansible`) |
 | Credential `ServiceNow PDI` (custom type) | injects `SN_HOST`/`SN_USERNAME`/`SN_PASSWORD` for `servicenow.itsm` |
-| Inventory `Meridian Fleet` + source `ServiceNow CMDB` | **dynamic inventory** from the ServiceNow CMDB (`inventory.now.yml`, `servicenow.itsm.now`): server CIs become hosts, the `u_*` columns + standard `support_group` become host vars (`ansible_port`/`service`/`role`/`support_group`), `keyed_groups` build `role_*` / `team_*` groups |
+| Inventory `Meridian Fleet` + source `ServiceNow CMDB` | **dynamic inventory** from the ServiceNow CMDB (`inventory/meridian.now.yml`, `servicenow.itsm.now`): server CIs become hosts, the `u_*` columns + standard `support_group` become host vars (`ansible_port`/`service`/`role`/`support_group`), `keyed_groups` build `role_*` / `team_*` groups |
 | Project `snow-ansible-automation` | pulls the playbooks from this Git repo |
 | Job template `Restart Service` (pull) / `Execute Change Request` (push) | run the two core playbooks |
 | Job templates `Collect Diagnostics` · `Free Disk` · `Open Incident` · `DB Create Role` · `DB Apply Migration` · `DB Status` · `DB Backup` | the helper / DB-admin playbooks (see [06 · Playbooks](06-playbooks.md)) |
@@ -63,7 +63,7 @@ the AAP controller and EDA pull from this Git repo (the SCM project).
 
 | Path | Purpose |
 |---|---|
-| `bootstrap/1_infra/` | Azure VM as **Bicep** (`main.bicep` + `resources.bicep` + `cloud-init.yaml`); copy `main.parameters.example.json` → `main.parameters.json` (gitignored) |
+| `bootstrap/1_infra/` | Azure VM as **Bicep** (`main.bicep` + `resources.bicep`); multi-OS via `osFamily` (`cloud-init.rhel.yaml` / `cloud-init.ubuntu.yaml`); copy `main.parameters.{rhel,ubuntu}.example.json` → `…json` (gitignored) |
 | `bootstrap/2_fleet/` | **deploys** the target fleet — `sync.sh` (laptop) + `deploy.sh` (VM) + the `Target SSH` key; the fleet *definition* lives in `simulator/` |
 | `bootstrap/3_keycloak/` | the Meridian IdP as code (`configure.py`) — see [05 · Identity](05-identity.md) |
 | `bootstrap/4_servicenow/` | numbered by run order: `1_account.py`, `2_cmdb.py`, `3_push_change.py`, `4_catalog.py` |

@@ -30,14 +30,14 @@ from lib.poc import load_dotenv, insecure_ctx  # noqa: E402
 from lib.servicenow import Snow, eda_stream_url, business_rule_script, trust_gateway_ca  # noqa: E402
 
 load_dotenv(ROOT, required=("SN_INSTANCE", "SN_USER", "SN_PASS", "SN_EVENTSTREAM_TOKEN",
-                            "FQDN", "AAP_ADMIN_USER", "AAP_ADMIN_PASSWORD"))
+                            "AAP_FQDN", "AAP_ADMIN_USER", "AAP_ADMIN_PASSWORD"))
 
 CTX = insecure_ctx()  # for the AAP gateway (self-signed); ServiceNow itself has a valid cert
 
 
 def main():
     snow = Snow()
-    trust_gateway_ca(snow, os.environ["FQDN"])
+    trust_gateway_ca(snow, os.environ["AAP_FQDN"])
     endpoint = eda_stream_url(STREAM_NAME, CTX)
     token = os.environ["SN_EVENTSTREAM_TOKEN"]
     script = business_rule_script(

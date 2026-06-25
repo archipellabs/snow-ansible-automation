@@ -1,0 +1,15 @@
+# eda-server (Event-Driven Ansible controller) — runs activations/rulebooks and drives AWX to launch
+# jobs. automation_server_url points at the in-cluster AWX service (http, ssl verify off).
+# Phase 1: exposed via NodePort 31080 (for config/tests). Phase 2 will add an ingress for the push
+# event-stream endpoint. Per-activation controller credentials are created later (workstream E).
+apiVersion: eda.ansible.com/v1alpha1
+kind: EDA
+metadata:
+  name: eda
+  namespace: eda
+spec:
+  automation_server_url: http://awx-service.awx.svc.cluster.local
+  automation_server_ssl_verify: "no"
+  ingress_type: none
+  service_type: NodePort
+  nodeport_port: 31080

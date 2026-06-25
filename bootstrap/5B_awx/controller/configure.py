@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
-"""Configure the AAP controller for the PoC (idempotent, API, stdlib only).
+"""Configure the AWX controller for the PoC (idempotent, API, stdlib only) — the `awx` runtime twin
+of bootstrap/5A_aap/controller/configure.py.
 
-Creates: the Machine credential (target SSH), the ServiceNow credential (+ its custom
-credential type), the "Meridian Fleet" inventory (the 9 servers from simulator/fleet.yml),
-the Git project, and the two job templates ("Restart Service" for pull, "Execute Change
-Request" for push). Re-runs sync the project and reconcile the job-template playbook paths.
-Validate the result — including the EE -> target path — with `python3 tests/health.py`.
+AWX is the bare Automation Controller (`/api/v2`, no Platform Gateway), so this is the AAP config
+minus the AAP-only GitOps bricks: there is NO "AAP Config" credential and NO "Configure EDA" job
+template here — on AWX, EDA lives in a separate eda-server and is configured by bootstrap/5B_awx/eda/
+(chantier E), not by the controller. Everything else is identical: the controller REST API is the
+same AWX↔AAP, so the credentials, the "Meridian Fleet" inventory (hosts from the ServiceNow CMDB via
+the shared servicenow.itsm.now source), the Git project, and the job templates are created the same way.
 
-Reads .env (AAP_FQDN, AAP_ADMIN_*, SN_*, GIT_REPO_URL) and the target SSH private key
+Connection details (base/auth/TLS) come from lib.runtime.controller('awx') — the same client the tests
+use — so this stays in lockstep with lib/awx.py. The shared content it points at (playbooks/, the
+inventory/meridian.now.yml CMDB source) lives on the repo's main branch, which the AWX project pulls.
+
+Reads .env (AWX_FQDN, AWX_ADMIN_*, SN_*, GIT_REPO_URL) and the target SSH private key
 (bootstrap/2_fleet/keys/target_key). Run from the repo root:
-  python3 bootstrap/5A_aap/controller/configure.py
+  python3 bootstrap/5B_awx/controller/configure.py
+Validate the result with: python3 tests/health.py --runtime awx
 """
 import os
 import sys
@@ -20,25 +27,44 @@ import urllib.parse
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, "..", "..", ".."))
 sys.path.insert(0, ROOT)
-from lib.poc import load_dotenv, insecure_ctx, basic_auth, http_json  # noqa: E402
+from lib.poc import load_dotenv, http_json  # noqa: E402
+from lib.runtime import controller  # noqa: E402
 
-load_dotenv(ROOT, required=("AAP_FQDN", "AAP_ADMIN_USER", "AAP_ADMIN_PASSWORD",
-                            "SN_INSTANCE", "SN_EDA_USERNAME", "SN_EDA_PASSWORD", "GIT_REPO_URL"))
+load_dotenv(ROOT, required=("AWX_ADMIN_PASSWORD", "SN_INSTANCE", "SN_EDA_USERNAME",
+                            "SN_EDA_PASSWORD", "GIT_REPO_URL"))
 
-BASE = f"https://{os.environ['AAP_FQDN']}/api/controller/v2"
-HEADERS = {"Authorization": basic_auth(os.environ["AAP_ADMIN_USER"], os.environ["AAP_ADMIN_PASSWORD"])}
-CTX = insecure_ctx()
+# The AWX client owns base/auth/TLS — keep config + tests reading the same place.
+AWX = controller("awx")
+BASE, HEADERS, CTX = AWX.base, AWX.h, AWX.ctx
+HOST = AWX.fqdn                                   # the AWX VM also runs the simulator + Keycloak (:9443)
 KEY_PATH = os.path.join(ROOT, "bootstrap", "2_fleet", "keys", "target_key")
+# AWX has no "Default execution environment" (an AAP name); its stock EE carries ansible-core and the
+# playbooks' collections are installed from the project's collections/requirements.yml at sync time.
+EE_NAME = "AWX EE (latest)"
+# Shared CMDB inventory source — runtime-neutral, lives at inventory/ on the main branch this project pulls.
+INV_SOURCE_PATH = "inventory/meridian.now.yml"
 # Mono-machine connectivity (docs/10 · Notes): the fleet is reached at the VM's published SSH ports, and
-# ansible_host is the VM address — podman injects host.containers.internal into the EE. Set once as an
-# inventory variable so the shared CMDB source stays neutral (it no longer pins this).
-FLEET_HOST = "host.containers.internal"
+# ansible_host is the VM address. From a k3s job pod that's the node gateway (cni0) — reachable to the
+# host-published ports without a DNS zone or a subnet. Set once as an inventory variable so the shared
+# CMDB source stays neutral (it no longer pins host.containers.internal).
+FLEET_HOST = "10.42.0.1"
 INV_VARS = f"ansible_user: ansible\nansible_host: {FLEET_HOST}"
 
 
 def api(method, path, body=None):
     url = path if path.startswith("http") else f"{BASE}/{path}"
     return http_json(url, method=method, headers=HEADERS, body=body, ctx=CTX)
+
+
+def poll(path):
+    """A GET for the sync loops — AWX goes briefly unresponsive while a project sync installs
+    collections, so a transient network blip returns {} (treated as 'still pending') instead of
+    aborting the whole run."""
+    try:
+        return api("GET", path)
+    except (urllib.error.URLError, TimeoutError, ConnectionError) as e:
+        print(f"   (transient {type(e).__name__}, retrying)")
+        return {}
 
 
 def first(endpoint, name):
@@ -68,15 +94,14 @@ def delete_by_name(endpoint, name):
 
 
 def main():
-    # Remove the installer's demo objects (keep 'Ansible Galaxy', a system default).
+    # Remove AWX's demo objects (keep 'Ansible Galaxy', a system default credential).
     for ep, nm in (("job_templates", "Demo Job Template"), ("projects", "Demo Project"),
-                   ("inventories", "Demo Inventory"), ("credentials", "Demo Credential"),
-                   ("job_templates", "Remediate Ping Server"), ("inventories", "POC Targets")):
+                   ("inventories", "Demo Inventory"), ("credentials", "Demo Credential")):
         delete_by_name(ep, nm)
 
     org = first("organizations", "Default")["id"]
     machine_type = first("credential_types", "Machine")["id"]
-    ee = first("execution_environments", "Default execution environment")["id"]
+    ee = first("execution_environments", EE_NAME)["id"]
 
     cred = get_or_create(
         "credentials", {"name": "Target SSH"},
@@ -87,7 +112,6 @@ def main():
 
     # "Meridian Fleet" inventory. Its hosts come from the ServiceNow CMDB via a dynamic inventory
     # source (created below, after the project + ServiceNow credential it needs) — not a static list.
-    # ansible_user is an inventory-wide var; the per-host connection/role vars come from the CMDB.
     inv = get_or_create(
         "inventories", {"name": "Meridian Fleet"},
         {"name": "Meridian Fleet", "organization": org, "variables": INV_VARS},
@@ -96,7 +120,7 @@ def main():
     api("PATCH", f"inventories/{inv['id']}/", {"variables": INV_VARS})  # reconcile ansible_host on re-run
 
     # ServiceNow credential: custom type injecting SN_HOST/USERNAME/PASSWORD as env vars
-    # (read by the servicenow.itsm collection in the playbook).
+    # (read by the servicenow.itsm collection in the playbooks and the inventory plugin).
     sn_type = get_or_create(
         "credential_types", {"name": "ServiceNow"},
         {"name": "ServiceNow", "kind": "cloud",
@@ -118,9 +142,10 @@ def main():
         "Credential ServiceNow PDI",
     )
 
-    # Keycloak Provisioner credential: injects the 'aap-provisioner' service-account client details
-    # for the onboarding playbook (creates Keycloak users). SSO is optional, so this is created with
-    # whatever KC_PROVISIONER_SECRET is in .env — the Provision Employee JT works once it is set.
+    # Keycloak Provisioner credential: injects the 'aap-provisioner' service-account client details for
+    # the onboarding playbook (creates Keycloak users). SSO is optional; created with whatever
+    # KC_PROVISIONER_SECRET is in .env — the Provision Employee JT works once it is set. The AWX VM
+    # runs the simulator + Keycloak on :9443, so the URL targets this host.
     kc_type = get_or_create(
         "credential_types", {"name": "Keycloak Provisioner"},
         {"name": "Keycloak Provisioner", "kind": "cloud",
@@ -138,42 +163,10 @@ def main():
     kc_cred = get_or_create(
         "credentials", {"name": "Keycloak Provisioner"},
         {"name": "Keycloak Provisioner", "organization": org, "credential_type": kc_type["id"],
-         "inputs": {"kc_url": f"https://{os.environ['AAP_FQDN']}:9443/auth", "kc_realm": "meridian",
+         "inputs": {"kc_url": f"https://{HOST}:9443/auth", "kc_realm": "meridian",
                     "kc_client": "aap-provisioner",
                     "kc_secret": os.environ.get("KC_PROVISIONER_SECRET", "")}},
         "Credential Keycloak Provisioner",
-    )
-
-    # AAP Config credential: lets the "Configure EDA" job template configure AAP from Git (GitOps)
-    # with infra.aap_configuration. Injects the platform connection + ServiceNow secrets as extra
-    # vars the collection / the pull activation's extra_vars read — so nothing comes from a laptop.
-    aapcfg_type = get_or_create(
-        "credential_types", {"name": "AAP Config"},
-        {"name": "AAP Config", "kind": "cloud",
-         "inputs": {"fields": [
-             {"id": "aap_hostname", "label": "AAP URL", "type": "string"},
-             {"id": "aap_username", "label": "AAP user", "type": "string"},
-             {"id": "aap_password", "label": "AAP password", "type": "string", "secret": True},
-             {"id": "sn_instance", "label": "ServiceNow instance", "type": "string"},
-             {"id": "sn_eda_username", "label": "ServiceNow EDA user", "type": "string"},
-             {"id": "sn_eda_password", "label": "ServiceNow EDA password", "type": "string", "secret": True}],
-             "required": ["aap_hostname", "aap_username", "aap_password"]},
-         "injectors": {"extra_vars": {
-             "aap_hostname": "{{ aap_hostname }}", "aap_username": "{{ aap_username }}",
-             "aap_password": "{{ aap_password }}", "sn_instance": "{{ sn_instance }}",
-             "sn_eda_username": "{{ sn_eda_username }}", "sn_eda_password": "{{ sn_eda_password }}"}}},
-        "Credential type AAP Config",
-    )
-    aapcfg_cred = get_or_create(
-        "credentials", {"name": "AAP Config"},
-        {"name": "AAP Config", "organization": org, "credential_type": aapcfg_type["id"],
-         "inputs": {"aap_hostname": f"https://{os.environ['AAP_FQDN']}",
-                    "aap_username": os.environ["AAP_ADMIN_USER"],
-                    "aap_password": os.environ["AAP_ADMIN_PASSWORD"],
-                    "sn_instance": os.environ["SN_INSTANCE"],
-                    "sn_eda_username": os.environ["SN_EDA_USERNAME"],
-                    "sn_eda_password": os.environ["SN_EDA_PASSWORD"]}},
-        "Credential AAP Config",
     )
 
     # Git project (public repo) — the controller pulls the playbooks from here.
@@ -190,25 +183,25 @@ def main():
         pass  # 409 if a sync is already running
     print("   waiting for project sync...")
     status = "pending"
-    for _ in range(120):     # the first sync installs collections/requirements.yml (incl. the big
-        status = api("GET", f"projects/{proj['id']}/")["status"]    # infra.aap_configuration) -> slow
+    for _ in range(120):     # the first sync installs collections/requirements.yml -> slow
+        status = poll(f"projects/{proj['id']}/").get("status", status)
         if status in ("successful", "failed", "error"):
             break
         time.sleep(3)
     print(f"   project status: {status}")
 
     # Dynamic inventory source: the "Meridian Fleet" hosts come from the ServiceNow CMDB
-    # (inventory/meridian.now.yml, servicenow.itsm.now). The ServiceNow credential
-    # injects SN_* so the plugin can authenticate. Replaces the old static host list from fleet.yml.
+    # (servicenow.itsm.now, the shared inventory/meridian.now.yml). The ServiceNow credential injects SN_* so
+    # the plugin can authenticate.
     src = get_or_create(
         "inventory_sources", {"name": "ServiceNow CMDB"},
         {"name": "ServiceNow CMDB", "inventory": inv["id"], "source": "scm",
-         "source_project": proj["id"], "source_path": "inventory/meridian.now.yml",
+         "source_project": proj["id"], "source_path": INV_SOURCE_PATH,
          "credential": sn_cred["id"], "overwrite": True, "overwrite_vars": True},
         "Inventory source ServiceNow CMDB",
     )
     api("PATCH", f"inventory_sources/{src['id']}/",   # reconcile path/project/credential on re-run
-        {"source_project": proj["id"], "source_path": "inventory/meridian.now.yml",
+        {"source_project": proj["id"], "source_path": INV_SOURCE_PATH,
          "credential": sn_cred["id"], "overwrite": True, "overwrite_vars": True})
     try:
         api("POST", f"inventory_sources/{src['id']}/update/")
@@ -217,16 +210,15 @@ def main():
     print("   syncing inventory from the ServiceNow CMDB...")
     isrc = {}
     for _ in range(40):
-        isrc = api("GET", f"inventory_sources/{src['id']}/")
+        isrc = poll(f"inventory_sources/{src['id']}/") or isrc
         if isrc.get("status") in ("successful", "failed", "error"):
             break
         time.sleep(3)
-    hosts = api("GET", f"inventories/{inv['id']}/").get("total_hosts")
+    hosts = poll(f"inventories/{inv['id']}/").get("total_hosts")
     print(f"   inventory sync: {isrc.get('status')} — {hosts} hosts from the CMDB")
 
-    # Job templates: role-aware playbooks against the "Meridian Fleet" inventory. The two core
-    # patterns are EDA-triggered; the incident-helper (P1) and db-admin (P2) templates run
-    # on-demand or from an incident/change.
+    # Job templates: role-aware playbooks against the "Meridian Fleet" inventory. Same set as AAP; the
+    # EDA-triggered ones (pull/push) are activated against eda-server in chantier E.
     #   pull  -> "Restart Service"        runs restart_service.yml    (incident remediation)
     #   push  -> "Execute Change Request" runs execute_change.yml     (change execution)
     #   pull  -> "Collect Diagnostics"    runs collect_diagnostics.yml (read-only triage)
@@ -236,8 +228,6 @@ def main():
     #   ops   -> "Patch OS" / "Housekeeping" (change / scheduled maintenance)
     #   db    -> "DB Create Role" / "DB Apply Migration" / "DB Status" / "DB Backup"
     #   hr    -> "Provision Employee"      runs provision_employee.yml (Keycloak onboarding)
-    # All share the inventory/project/EE and the machine + ServiceNow credentials; "Provision
-    # Employee" also gets the Keycloak Provisioner credential.
     for jt_name, pb in (("Restart Service", "playbooks/restart_service.yml"),
                         ("Execute Change Request", "playbooks/execute_change.yml"),
                         ("Collect Diagnostics", "playbooks/collect_diagnostics.yml"),
@@ -270,26 +260,8 @@ def main():
                 api("POST", f"job_templates/{jt['id']}/credentials/", {"id": cid})
                 print(f"   attached credential id={cid} to '{jt_name}'")
 
-    # GitOps config-as-code: a job template that runs the declarative EDA config (configure.yml)
-    # from this project with infra.aap_configuration (installed into the EE from
-    # collections/requirements.yml). The "AAP Config" credential supplies the connection + secrets.
-    try:
-        eda_jt = get_or_create(
-            "job_templates", {"name": "Configure EDA"},
-            {"name": "Configure EDA", "job_type": "run", "inventory": inv["id"], "project": proj["id"],
-             "playbook": "bootstrap/5A_aap/eda/configure.yml", "execution_environment": ee},
-            "Job Template Configure EDA",
-        )
-        have = {c["id"] for c in api("GET", f"job_templates/{eda_jt['id']}/credentials/").get("results", [])}
-        if aapcfg_cred["id"] not in have:
-            api("POST", f"job_templates/{eda_jt['id']}/credentials/", {"id": aapcfg_cred["id"]})
-            print("   attached AAP Config credential to 'Configure EDA'")
-    except urllib.error.HTTPError:
-        # Usually means the project hasn't finished syncing the new playbook yet — re-run shortly.
-        print("!  could not create 'Configure EDA' (project playbook not synced yet?) — re-run this script")
-
-    print("\n>> Controller configured. Validate: python3 tests/health.py")
-    print(">> GitOps: launch the 'Configure EDA' job template to apply bootstrap/5A_aap/eda/configure.yml")
+    print("\n>> AWX controller configured. Validate: python3 tests/health.py --runtime awx")
+    print(">> EDA (activations) is configured separately against eda-server — see bootstrap/5B_awx/eda/.")
 
 
 if __name__ == "__main__":

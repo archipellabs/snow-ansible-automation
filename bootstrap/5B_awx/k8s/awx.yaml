@@ -1,0 +1,11 @@
+# AWX instance (Automation Controller). __FQDN__ is rendered by install.sh (sed) before apply.
+# Traefik (k3s) fronts it on the FQDN; Traefik serves its default self-signed cert.
+apiVersion: awx.ansible.com/v1beta1
+kind: AWX
+metadata:
+  name: awx
+  namespace: awx
+spec:
+  ingress_type: ingress
+  ingress_class_name: traefik
+  hostname: __FQDN__

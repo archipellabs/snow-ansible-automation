@@ -29,12 +29,13 @@ REALM = "meridian"
 
 sys.path.insert(0, ROOT)
 from lib.poc import load_dotenv, insecure_ctx  # noqa: E402
+from lib.runtime import fqdn  # noqa: E402
 
-load_dotenv(ROOT, required=("FQDN", "KEYCLOAK_ADMIN_PASSWORD", "KC_DEMO_PASSWORD",
+load_dotenv(ROOT, required=("KEYCLOAK_ADMIN_PASSWORD", "KC_DEMO_PASSWORD",
                             "KC_HRPORTAL_CLIENT_SECRET", "KC_AAP_CLIENT_SECRET",
                             "KC_PROVISIONER_SECRET"))
 
-FQDN = os.environ["FQDN"]
+FQDN = fqdn()                          # estate host for the selected runtime (RUNTIME=aap|awx)
 EXT = f"https://{FQDN}:9443"            # browser-facing base (through the edge)
 BASE = f"{EXT}/auth"                    # Keycloak relative path
 ADMIN = f"{BASE}/admin/realms"

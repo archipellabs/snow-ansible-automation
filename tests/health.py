@@ -95,30 +95,30 @@ def c_targets():
 
 
 def c_hrportal():
-    st, d = req(f"https://{os.environ['FQDN']}:9443/hr/health")
+    st, d = req(f"https://{os.environ['AAP_FQDN']}:9443/hr/health")
     sso = d.get("sso") if isinstance(d, dict) else None
     return st == 200, f"HTTP {st}, sso={sso}"
 
 
 def c_keycloak():
-    st, _ = req(f"https://{os.environ['FQDN']}:9443/auth/realms/meridian/.well-known/openid-configuration")
+    st, _ = req(f"https://{os.environ['AAP_FQDN']}:9443/auth/realms/meridian/.well-known/openid-configuration")
     return st == 200, f"realm 'meridian' HTTP {st}"
 
 
 # --- AAP control-plane probes (the runtime-specific part) ---------------------------------------
 
 def c_aap_gateway():
-    st, _ = req(f"https://{os.environ['FQDN']}/")
+    st, _ = req(f"https://{os.environ['AAP_FQDN']}/")
     return st == 200, f"HTTP {st}"
 
 
 def c_aap_controller():
-    st, d = req(f"https://{os.environ['FQDN']}/api/controller/v2/ping/")
+    st, d = req(f"https://{os.environ['AAP_FQDN']}/api/controller/v2/ping/")
     return st == 200, f"version {d.get('version')}, {len(d.get('instances', []))} instance(s)"
 
 
 def c_aap_subscription():
-    _, d = req(f"https://{os.environ['FQDN']}/api/controller/v2/config/",
+    _, d = req(f"https://{os.environ['AAP_FQDN']}/api/controller/v2/config/",
                os.environ["AAP_ADMIN_USER"], os.environ["AAP_ADMIN_PASSWORD"])
     li = d.get("license_info", {}) if isinstance(d, dict) else {}
     return bool(li.get("valid_key")), f"{li.get('license_type')} valid={li.get('valid_key')}"
@@ -157,7 +157,7 @@ def c_awx_stub():
 # Light probes verify SSO is *offered/wired* (fast, every tick); the deep ones run a real login flow.
 
 def _gw_oidc():
-    u = http_json(f"https://{os.environ['FQDN']}/api/gateway/v1/ui_auth/",
+    u = http_json(f"https://{os.environ['AAP_FQDN']}/api/gateway/v1/ui_auth/",
                   headers={"Authorization": basic_auth(os.environ["AAP_ADMIN_USER"], os.environ["AAP_ADMIN_PASSWORD"])},
                   ctx=INSECURE, timeout=PROBE_TIMEOUT)
     return next((s for s in u.get("ssos", []) if s.get("type") == "oidc"), None)
@@ -172,11 +172,11 @@ def c_aap_sso_login():   # deep
     sso = _gw_oidc()
     if not sso:
         return False, "no OIDC button on the gateway"
-    gw = f"https://{os.environ['FQDN']}/api/gateway/v1"
+    gw = f"https://{os.environ['AAP_FQDN']}/api/gateway/v1"
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()),
                                          urllib.request.HTTPSHandler(context=INSECURE))
     opener.addheaders = [("User-Agent", "meridian-sso-check")]
-    page = opener.open(f"https://{os.environ['FQDN']}{sso['login_url']}", timeout=30).read().decode("utf-8", "replace")
+    page = opener.open(f"https://{os.environ['AAP_FQDN']}{sso['login_url']}", timeout=30).read().decode("utf-8", "replace")
     m = re.search(r'<form[^>]+action="([^"]+)"', page)
     if not m:
         return False, "Keycloak login form not found"
@@ -189,7 +189,7 @@ def c_aap_sso_login():   # deep
 
 
 def _hr_get(path):
-    c = http.client.HTTPSConnection(os.environ["FQDN"], 9443, context=INSECURE, timeout=PROBE_TIMEOUT)
+    c = http.client.HTTPSConnection(os.environ["AAP_FQDN"], 9443, context=INSECURE, timeout=PROBE_TIMEOUT)
     c.request("GET", path)
     r = c.getresponse()
     body = r.read()
@@ -211,7 +211,7 @@ def c_hrportal_sso_wired():
 
 
 def c_hrportal_sso_login():   # deep
-    issuer = f"https://{os.environ['FQDN']}:9443/auth/realms/meridian"
+    issuer = f"https://{os.environ['AAP_FQDN']}:9443/auth/realms/meridian"
     with open(os.path.join(ROOT, "simulator", "fleet.yml")) as f:
         person = next(p for p in yaml.safe_load(f)["people"] if p.get("team"))
     username = person["email"].split("@")[0]

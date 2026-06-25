@@ -13,15 +13,18 @@ export PATH="$HOME/.local/bin:$PATH"   # podman-compose installs here (pip --use
 
 # Load the secrets compose interpolates from .env if present (parsed, never sourced — values can
 # contain shell-hostile chars). sync.sh pushes the repo-root .env here as ~/simulator/.env.
+RUNTIME="${RUNTIME:-aap}"
 if [ -f .env ]; then
   while IFS='=' read -r k v; do
     case "$k" in
-      FQDN|KEYCLOAK_ADMIN_PASSWORD|KC_HRPORTAL_CLIENT_SECRET|HRPORTAL_SESSION_SECRET) export "$k=$v" ;;
+      AAP_FQDN|AWX_FQDN|KEYCLOAK_ADMIN_PASSWORD|KC_HRPORTAL_CLIENT_SECRET|HRPORTAL_SESSION_SECRET) export "$k=$v" ;;
     esac
   done < <(grep -E '^[A-Za-z_][A-Za-z0-9_]*=' .env)
 fi
 
-: "${FQDN:?set FQDN (env var or ~/simulator/.env) — the edge (TLS cert + redirect) and Keycloak need it}"
+# The estate's public host = whichever control-plane VM it runs on (compose interpolates $FQDN).
+if [ "$RUNTIME" = "awx" ]; then FQDN="${FQDN:-${AWX_FQDN:-}}"; else FQDN="${FQDN:-${AAP_FQDN:-}}"; fi
+: "${FQDN:?set AAP_FQDN/AWX_FQDN (per RUNTIME) in ~/simulator/.env — the edge (TLS cert + redirect) and Keycloak need it}"
 export FQDN
 export KEYCLOAK_ADMIN_PASSWORD="${KEYCLOAK_ADMIN_PASSWORD:-admin}"
 [ -f base/authorized_keys ] || { echo "missing base/authorized_keys — cp the target_key.pub there" >&2; exit 1; }

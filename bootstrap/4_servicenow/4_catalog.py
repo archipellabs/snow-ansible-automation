@@ -33,7 +33,7 @@ from lib.poc import load_dotenv, insecure_ctx  # noqa: E402
 from lib.servicenow import Snow, eda_stream_url, business_rule_script, trust_gateway_ca  # noqa: E402
 
 load_dotenv(ROOT, required=("SN_INSTANCE", "SN_USER", "SN_PASS", "SN_EVENTSTREAM_TOKEN",
-                            "FQDN", "AAP_ADMIN_USER", "AAP_ADMIN_PASSWORD"))
+                            "AAP_FQDN", "AAP_ADMIN_USER", "AAP_ADMIN_PASSWORD"))
 
 CTX = insecure_ctx()
 TOKEN = os.environ["SN_EVENTSTREAM_TOKEN"]
@@ -137,7 +137,7 @@ def provision_onboarding(snow, cat_sid, category_sid):
 
 def main():
     snow = Snow()
-    trust_gateway_ca(snow, os.environ["FQDN"])
+    trust_gateway_ca(snow, os.environ["AAP_FQDN"])
 
     # Shared catalog + category for both items. "Service Catalog" exists by default on a PDI.
     catalog = snow.get_one("sc_catalog", "title=Service Catalog") or snow.get_one("sc_catalog", "active=true")

@@ -84,14 +84,16 @@ services:
     hostname: mail-01
     ports: ["2219:22"]
 
-  # Edge gateway / DMZ "firewall" — the internet-facing entry. Terminates TLS on :9443 (AAP owns
-  # :443 on this VM) and path-routes to the internal apps + the corporate IdP. :80 redirects to
-  # :9443. NSG must open :9443. FQDN is needed for the TLS cert (Caddy internal CA) + redirect.
+  # Edge gateway / DMZ "firewall" — the internet-facing entry. Terminates TLS on :9443 and redirects
+  # plain HTTP (:9080) to it, then path-routes to the internal apps + the corporate IdP. Host :80/:443
+  # are already taken on both control planes (AAP's gateway / AWX's k3s Traefik), so the edge stays on
+  # high ports — no conflict on either VM. NSG must open :9443. FQDN is needed for the TLS cert
+  # (Caddy internal CA) + redirect.
   edge:
     image: docker.io/library/caddy:2
     container_name: meridian-edge
     hostname: edge
-    ports: ["80:80", "9443:9443"]
+    ports: ["9080:80", "9443:9443"]
     environment:
       FQDN: ${FQDN}
     volumes:

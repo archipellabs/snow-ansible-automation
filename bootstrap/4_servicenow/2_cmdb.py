@@ -5,7 +5,7 @@ Creates, from the single manifest:
   - assignment groups (the support teams);
   - people (DSI staff + business users) and the DSI staff's group memberships;
   - business services, applications, and server CIs (+ the custom u_* columns the dynamic
-    inventory reads — see bootstrap/5A_aap/controller/inventory.now.yml);
+    inventory reads — see inventory/meridian.now.yml);
   - CI relationships (application "Runs on" server; business service "Depends on" application).
 
 Requires PyYAML (the simulator layer is allowed dependencies). Run from the repo root:
@@ -95,7 +95,7 @@ def main():
     # simulator artifact (real servers use SSH :22 on a real IP); u_service/u_role drive role-aware
     # playbooks (u_role also scopes the inventory to our fleet). The support group comes from the
     # standard 'support_group' reference field — no custom copy needed (the plugin reads display
-    # values, so it returns the group name). See bootstrap/5A_aap/controller/inventory.now.yml.
+    # values, so it returns the group name). See inventory/meridian.now.yml.
     ensure_field("cmdb_ci_linux_server", "u_ssh_port", "SSH port", "integer")
     ensure_field("cmdb_ci_linux_server", "u_service", "Systemd service", "string")
     ensure_field("cmdb_ci_linux_server", "u_role", "Server role", "string")

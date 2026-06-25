@@ -34,7 +34,7 @@ TIMEOUT = 150
 
 
 def kc_base():
-    return f"https://{os.environ['FQDN']}:9443/auth"
+    return f"https://{os.environ['AAP_FQDN']}:9443/auth"
 
 
 def kc_token():

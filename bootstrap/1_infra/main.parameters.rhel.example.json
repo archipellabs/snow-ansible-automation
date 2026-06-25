@@ -5,6 +5,7 @@
     "resourceGroupName": { "value": "rg-snow-aap-poc" },
     "vmName": { "value": "aap-poc" },
     "vmSize": { "value": "Standard_D4s_v5" },
+    "osFamily": { "value": "rhel" },
     "adminUsername": { "value": "azureuser" },
     "sshPublicKey": { "value": "ssh-ed25519 AAAA... your key here" },
     "dnsLabel": { "value": "aap-poc-CHANGE-ME" },

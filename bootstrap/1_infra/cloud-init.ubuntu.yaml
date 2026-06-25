@@ -1,0 +1,17 @@
+#cloud-config
+# Base system for the AWX VM — runs at first boot (via customData). Ubuntu 24.04 LTS.
+# podman + podman-compose for the Meridian simulator (bootstrap/2_fleet, same engine as RHEL) and for
+# building the DE (ansible-builder). k3s + AWX/eda-server are installed later by bootstrap/5B_awx/install.sh
+# — k3s bundles its own containerd, so no Docker is needed. (Ubuntu cloud images auto-grow root.)
+
+package_update: true
+packages:
+  - podman
+  - podman-compose
+  - git
+  - python3-pip
+
+runcmd:
+  # Rootless podman for azureuser: containers persist without an active login session (like RHEL).
+  - [ bash, -lc, "loginctl enable-linger azureuser" ]
+  - [ bash, -lc, "systemctl enable --now podman.socket" ]

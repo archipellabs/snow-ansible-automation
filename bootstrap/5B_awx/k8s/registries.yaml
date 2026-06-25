@@ -1,0 +1,6 @@
+# k3s containerd registry config → installed to /etc/rancher/k3s/registries.yaml by install.sh.
+# Lets containerd pull the in-cluster registry over plain HTTP on the node's NodePort (single-node PoC).
+mirrors:
+  "localhost:30500":
+    endpoint:
+      - "http://localhost:30500"

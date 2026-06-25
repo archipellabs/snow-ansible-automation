@@ -15,8 +15,9 @@ bootstrap/5A_aap/*.tar.gz
 bootstrap/5A_aap/*.tar
 bootstrap/5A_aap/inventory
 
-# Infra params with environment-specific values (copy from main.parameters.example.json)
-bootstrap/1_infra/main.parameters.json
+# Infra params with environment-specific values (copy from the *.example.json templates)
+bootstrap/1_infra/main.parameters.rhel.json
+bootstrap/1_infra/main.parameters.ubuntu.json
 
 # Target key material (generated; the public half is copied into the simulator build context)
 bootstrap/2_fleet/keys/
