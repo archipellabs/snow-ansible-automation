@@ -41,7 +41,7 @@ diagrams — is in **[04 · The patterns](04-patterns.md)**.
 | Inventory `Meridian Fleet` + source `ServiceNow CMDB` | **dynamic inventory** from the ServiceNow CMDB (`inventory/meridian.now.yml`, `servicenow.itsm.now`): server CIs become hosts, the `u_*` columns + standard `support_group` become host vars (`ansible_port`/`service`/`role`/`support_group`), `keyed_groups` build `role_*` / `team_*` groups |
 | Project `snow-ansible-automation` | pulls the playbooks from this Git repo |
 | Job template `Restart Service` (pull) / `Execute Change Request` (push) | run the two core playbooks |
-| Job templates `Collect Diagnostics` · `Free Disk` · `Open Incident` · `DB Create Role` · `DB Apply Migration` · `DB Status` · `DB Backup` | the helper / DB-admin playbooks (see [07 · Playbooks](07-playbooks.md)) |
+| Job templates `Collect Diagnostics` · `Free Disk` · `Open Incident` · `Patch OS` · `Housekeeping` · `DB Create Role` · `DB Apply Migration` · `DB Status` · `DB Backup` | the helper / ops / DB-admin playbooks (see [07 · Playbooks](07-playbooks.md)) |
 
 **EDA** — base (DE, credentials, project) via `eda/configure.py`; the **event streams + all 5
 activations are declarative** — `eda/vars/eda.yml` applied by the **Configure EDA** job template

@@ -169,7 +169,7 @@ hub. `configure.py` registers the DE, the **`AAP Controller` credential whose ho
 the EDA project.
 
 > **🔶 Manual — launch *Configure EDA*.** In AAP → **Templates** → launch **`Configure EDA`**. It applies
-> `eda/vars/eda.yml` declaratively (`infra.aap_configuration`, GitOps): the **3 event streams** + **all 5
+> `eda/vars/eda.yml` declaratively (`infra.aap_configuration`, GitOps): the **1 event stream** (`servicenow-chg-stream`) + **all 5
 > activations**. EDA can't update a running activation, so it reconciles by **delete-then-create** —
 > expect the activations to be recreated each run.
 
@@ -178,7 +178,7 @@ the EDA project.
 
 #### 6d · Catalog + push wiring (ServiceNow side)
 
-These need the **event streams created in 6c**.
+These need the **event stream created in 6c**.
 
 ```bash
 python3 bootstrap/5_servicenow/3_catalog.py            # 'Restart a service' + 'Onboard a new employee' catalog items

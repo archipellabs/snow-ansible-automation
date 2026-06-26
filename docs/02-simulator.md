@@ -50,7 +50,7 @@ automation then detects, remediates, and verifies.
 
 A Caddy reverse proxy ([`simulator/apps/edge/Caddyfile`](../simulator/apps/edge/Caddyfile)) is the
 single internet-facing entry — the DMZ in front of the apps (see the infrastructure diagram above). It
-terminates TLS on **`:9443`** (`:80` redirects up; the NSG opens 9443), and the apps' `908x` ports
+terminates TLS on **`:9443`** (`:9080` redirects up; the NSG opens 9443), and the apps' `908x` ports
 stay host-only (used internally by EDA `url_check`). It path-routes the one FQDN:
 
 | URL | Goes to |
