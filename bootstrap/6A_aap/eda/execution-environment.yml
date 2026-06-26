@@ -3,9 +3,11 @@
 # servicenow.itsm.records event source used by the rulebook). Built with ansible-builder.
 #
 # Red Hat's recommended base for a custom DE is de-minimal (it already ships ansible.eda);
-# we only add servicenow.itsm, which is in no stock decision environment. The collection has
-# no compiled Python deps, so no devel headers are needed. Despite the file name (the name
-# ansible-builder requires), this produces a DECISION environment, not an execution one.
+# we only add servicenow.itsm, which is in no stock decision environment. ansible-builder re-resolves
+# the image's Python requirements at assemble time, and the chain now pulls systemd-python (a COMPILED
+# wheel) — so de-minimal's build env needs the C/Python headers below, or the build dies with
+# "Python.h: No such file or directory". Despite the file name (the one ansible-builder requires), this
+# produces a DECISION environment, not an execution one.
 version: 3
 
 images:
@@ -19,3 +21,8 @@ dependencies:
   galaxy:
     collections:
       - name: servicenow.itsm
+  system:
+    - python3.12-devel [platform:rpm]    # Python.h — systemd-python (pulled transitively) compiles a wheel
+    - gcc [platform:rpm]
+    - systemd-devel [platform:rpm]        # libsystemd headers for systemd-python
+    - pkgconf-pkg-config [platform:rpm]

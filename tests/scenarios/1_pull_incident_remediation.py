@@ -7,7 +7,7 @@ incident, then proves that the EDA rulebook activation detected it and auto-laun
 
   python3 tests/scenarios/1_pull_incident_remediation.py
 
-Steps: stop hr-portal on hr-web-01 -> open a ServiceNow incident in the Auto-Remediation
+Steps: stop crm on crm-web-01 -> open a ServiceNow incident in the Auto-Remediation
 group -> wait for EDA to launch a NEW controller job for the template -> assert that job
 carries our incident number, succeeds, the service is active again, and the incident resolves.
 
@@ -22,8 +22,8 @@ from lib.poc import env, ssh  # noqa: E402
 from lib.runtime import controller  # noqa: E402
 from lib.servicenow import Snow  # noqa: E402
 
-TARGET = "hr-web-01"       # a Meridian Fleet server
-SERVICE = "hr-portal"      # the systemd unit it runs (matches the inventory host var)
+TARGET = "crm-web-01"      # a distinct server per scenario, so the suite is parallel-safe (--scenarios --parallel)
+SERVICE = "crm"            # the systemd unit it runs (matches the inventory host var)
 JT_NAME = "Restart Service"
 TRIGGER_TIMEOUT = 180  # EDA poll interval is 10s; allow margin + job runtime
 

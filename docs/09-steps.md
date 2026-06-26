@@ -13,8 +13,9 @@ the **AAP** build; the open-source **AWX** path is the equivalent — see
 ### 0. Bootstrap — accounts, keys & `.env` (once)
 
 - **Red Hat:** activate the **AAP 60-day trial**; create a **registry service account**
-  (→ `REGISTRY_USERNAME` / `REGISTRY_PASSWORD`); download the **AAP 2.7 Containerized Setup** tarball into
-  `bootstrap/6A_aap/` (gitignored).
+  (→ `REGISTRY_USERNAME` / `REGISTRY_PASSWORD`); download the **AAP 2.7 Containerized Setup** tarball — the
+  **non-bundle** one, ~11 MB (any `2.7-x` build) — into `bootstrap/6A_aap/` (gitignored; `sync.sh` pushes
+  it to the VM, `install.sh` extracts it there).
 - **ServiceNow:** provision a **PDI** (→ `SN_INSTANCE`, admin `SN_USER` / `SN_PASS`).
 - **Two SSH keys:**
 
@@ -37,12 +38,15 @@ az deployment sub create --name aap-poc --location <region> \
 ```
 
 Provisions the NSG (22/80/443/9443), vNet, public IP + DNS label, and a **RHEL 9 PAYG** VM. `cloud-init`
-installs podman/git/ansible-core and enables rootless linger. **Brand-new subscription:** first
+installs podman + podman-compose, git and ansible-core, enables rootless linger, and **grows the LVM**
+so rootless podman has room from the first boot (`/home` 1G→70G, `/var` 10G→25G — the fleet images, incl.
+the Keycloak JVM, need it before Step 2). **Brand-new subscription:** first
 `az provider register -n Microsoft.Compute` / `Microsoft.Network`, and request `Standard DSv5 Family vCPUs`
 quota (≥ 8 for `D8s_v5`) in your region.
 
-✓ **Verify:** `ssh -i ~/.ssh/snow-aap-poc azureuser@<FQDN> 'podman version && ansible --version'`
-(~3–5 min after cloud-init finishes). Set `FQDN` in `.env`.
+✓ **Verify:** `ssh -i ~/.ssh/snow-aap-poc azureuser@<FQDN> 'podman version && podman-compose version && ansible --version'`
+(~3–5 min after cloud-init finishes). Set `FQDN`/`AAP_FQDN` in `.env`, then `python3 tests/health.py
+--only "vm up"` also gates the LVM grow + `podman-compose` (so a cloud-init regression fails here, not mid-fleet).
 
 ### 2. Deploy the fleet — `bootstrap/2_fleet`
 
@@ -62,7 +66,7 @@ Keycloak + Vault**, with reboot-survival and the `:9443` firewall opened.
 python3 bootstrap/3_keycloak/configure.py   # build the 'meridian' realm from fleet.yml
 ```
 
-Builds the `meridian` realm: 8 groups, ~20 users (shared `KC_DEMO_PASSWORD`), and the
+Builds the `meridian` realm: 9 groups, 15 users (shared `KC_DEMO_PASSWORD`), and the
 `hr-portal` / `aap` / `aap-provisioner` clients. *(SSO is an optional layer — see
 [06 · Identity](06-identity.md).)*
 
@@ -81,7 +85,8 @@ python3 bootstrap/4_vault/seed.py               # writes secret/meridian/{servic
 From here, the controller's credentials resolve their secrets from Vault — **nothing literal is stored in
 AAP/AWX**. *(Dev-mode Vault is in-memory: re-run after any Vault/VM restart, else jobs fail.)*
 
-✓ **Verify:** `python3 tests/health.py --only vault` → 🟢 *Vault (secret store) up, unsealed*.
+✓ **Verify:** `python3 tests/health.py --only vault` → 🟢 *Vault up (unsealed)* **and** 🟢 *Vault seeded
+(secret/meridian)* (3/3 paths). Before this step the seeded row is ⚪ *not seeded yet*.
 
 ### 5. ServiceNow — CMDB + integration account — `bootstrap/5_servicenow`
 
@@ -115,17 +120,22 @@ relations / people **and** the custom server columns the dynamic inventory reads
 #### 6a · Install AAP 2.7 (containerized)
 
 ```bash
-./bootstrap/6A_aap/sync.sh                                   # push assets + .env to the VM
+./bootstrap/6A_aap/sync.sh                                   # push assets + setup tarball + .env to the VM
 ssh -i ~/.ssh/snow-aap-poc azureuser@<FQDN> '~/aap/install.sh'
 ```
 
-`install.sh` (on the VM) **grows the LVM volumes** (the RHEL image ships tiny ones), logs in to
+`install.sh` (on the VM) extracts the setup tarball (`sync.sh` pushed it; any 2.7-x build), re-applies the
+LVM grow (idempotent — `cloud-init` already grew it at Step 1), logs in to
 `registry.redhat.io`, adds the `FQDN → private-IP` `/etc/hosts` entry (avoids hairpinning), renders the
 single-node inventory (`chmod 600`), then runs `ansible.containerized_installer.install` (~24 containers).
 It **prints the AAP admin password** (also in `~/aap/inventory`).
 
 > **🔶 Manual — activate the subscription.** Open `https://<FQDN>/` (accept the self-signed cert), log in
-> as `admin`, and activate your Red Hat subscription/trial manifest (Settings → Subscriptions).
+> as `admin` (the `AAP_ADMIN_PASSWORD`), then **Settings → Subscriptions** → activate with **your Red Hat
+> account** (the console.redhat.com login that holds your AAP trial) or a manifest. *Three different
+> credentials, don't mix them up:* the `admin` password is only the AAP login; the subscription wants your
+> **Red Hat portal account**; the `REGISTRY_*` service account only pulls images. Jobs won't launch (so
+> Steps 6b–6c stall) until this is green — check with `tests/health.py --only subscription`.
 
 ✓ **Verify:** `https://<FQDN>/` logs you in; `https://<FQDN>/api/controller/v2/ping/` returns `200`.
 
@@ -144,7 +154,7 @@ Git project (it pulls playbooks/rulebooks/inventory from `GIT_REPO_URL`, so **pu
 the **first SCM sync installs the collections from `requirements.yml`** — a few minutes), and the **14 job
 templates** including **`Configure EDA`**. It also removes the installer's `Demo *` objects.
 
-✓ **Verify:** `tests/health.py` control-plane rows are green; `Meridian Fleet` shows **9 hosts** from the CMDB.
+✓ **Verify:** `tests/health.py` **6 · Ansible controller** rows are green; `Meridian Fleet` shows **9 hosts** from the CMDB.
 
 #### 6c · Event-Driven Ansible
 
@@ -196,7 +206,7 @@ Federates the AAP gateway to the `aap` Keycloak client and grants `is_superuser`
 ## Validate
 
 Once the stack is up, prove it: `python3 tests/health.py` (the live health dashboard), then the numbered
-`tests/scenarios/` one at a time. Full detail — the probe groups, the deep/light + `--watch` model, the
+`tests/scenarios/` one at a time. Full detail — the probe groups, the `--watch` live model, the
 AAP/AWX seam, and what each scenario proves — is in **[10 · Tests](10-tests.md)**.
 
 ---

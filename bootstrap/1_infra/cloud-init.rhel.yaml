@@ -8,9 +8,22 @@ packages:
   - git
   - ansible-core
   - python3-pip
+  - cloud-utils-growpart
 
 runcmd:
+  # The RHEL PAYG image ships a 62.5G PV carved into tiny LVs — /home is only 1G. Rootless podman stores
+  # images under /home/azureuser, so the Meridian fleet (9 servers + the Keycloak JVM + Vault) fills /home
+  # and the deploy fails with "no space left on device" — before AAP is even installed. Grow to the full
+  # OS disk now, at Step 1, not at AAP install (Step 6a) which runs after the fleet. install.sh repeats
+  # the same lvextend idempotently as a safety net.
+  - [ bash, -lc, "growpart /dev/sda 4 || true" ]
+  - [ bash, -lc, "pvresize /dev/sda4" ]
+  - [ bash, -lc, "lvextend -r -L 70G /dev/rootvg/homelv || true" ]
+  - [ bash, -lc, "lvextend -r -L 25G /dev/rootvg/varlv || true" ]
   # Rootless podman for azureuser: containers persist without an active login session.
   - [ bash, -lc, "loginctl enable-linger azureuser" ]
   # Podman socket (local API, handy for tooling).
   - [ bash, -lc, "systemctl enable --now podman.socket" ]
+  # podman-compose for the Meridian simulator (bootstrap/2_fleet) — not in the RHEL RHUI repos, so pip
+  # it for azureuser into ~/.local/bin where deploy.sh expects it. (Ubuntu gets it as an apt package.)
+  - [ bash, -lc, "runuser -l azureuser -c 'pip3 install --user podman-compose'" ]

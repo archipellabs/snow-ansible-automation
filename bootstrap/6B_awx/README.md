@@ -61,6 +61,8 @@ push** (AAP-only, see below):
 
 - **k3s + operators** — awx-operator (AWX 24.6.1, Traefik ingress on the FQDN) + eda-server-operator
   (1.0.2, `/api/eda/v1` on NodePort 31080) + `registry:2` (NodePort 30500); `install.sh` self-verifies.
+  AWX and eda-server each auto-generate an admin password — capture both into `.env` with
+  `./bootstrap/6B_awx/capture-passwords.sh` before the config-as-code step.
 - **Decision Environment** — `snow-eda-de` built from public `ubi9-minimal` (the `de-minimal` twin),
   pushed to `registry:2`.
 - **Config-as-code** — `controller/configure.py` (the AWX twin: CMDB inventory → 9 hosts, 13 JTs) +

@@ -3,7 +3,7 @@
 
   python3 tests/scenarios/6_collect_diagnostics.py
 
-Opens a ServiceNow incident against hr-web-01, launches the read-only "Collect Diagnostics" job
+Opens a ServiceNow incident against ged-01, launches the read-only "Collect Diagnostics" job
 template (incident_number + target_host), then asserts the job succeeds and the incident was
 acknowledged (moved to In Progress with the diagnostics work note). Makes no changes to the server.
 
@@ -18,7 +18,7 @@ from lib.poc import env  # noqa: E402
 from lib.runtime import controller  # noqa: E402
 from lib.servicenow import Snow  # noqa: E402
 
-TARGET = "hr-web-01"       # a Meridian Fleet server
+TARGET = "ged-01"          # a distinct server per scenario, so the suite is parallel-safe (--scenarios --parallel)
 JT_NAME = "Collect Diagnostics"
 
 
@@ -26,10 +26,13 @@ def run():
     env()
     ctl, snow = controller(), Snow(creds="eda")
 
-    print(">> Opening ServiceNow incident")
+    # Deliberately NOT in the Auto-Remediation group: this is a read-only diagnostics/triage incident, so
+    # the pull-incident-remediation activation must not pick it up and resolve it (state 6) out from under
+    # the diagnostics ack (state 2). Keeping it ungrouped also makes the scenario parallel-safe.
+    print(">> Opening ServiceNow incident (triage — not Auto-Remediation)")
     inc = snow.call("table/incident?sysparm_input_display_value=true",
                     {"short_description": f"{TARGET} investigate (diagnostics scenario)",
-                     "assignment_group": "Auto-Remediation", "cmdb_ci": TARGET})["result"]
+                     "cmdb_ci": TARGET})["result"]
     num, sid = inc["number"], inc["sys_id"]
     print(f"   incident {num}")
 

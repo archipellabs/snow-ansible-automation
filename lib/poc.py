@@ -23,6 +23,9 @@ import urllib.error
 # it. Note: a script still needs `sys.path.insert(0, <root>)` before it can import lib at all.
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 SSH_KEY = "~/.ssh/snow-aap-poc"
+# Set True to silence http_json's per-error stderr dump — the health dashboard reports failures itself,
+# so a probe hitting a down/502 component shouldn't scribble logs under the table.
+QUIET = False
 
 
 def load_dotenv(root=None, required=()):
@@ -71,7 +74,8 @@ def http_json(url, method="GET", headers=None, body=None, ctx=None, timeout=30):
             raw = resp.read()
             return json.loads(raw) if raw else {}
     except urllib.error.HTTPError as e:
-        sys.stderr.write(f"HTTP {e.code} {method} {url}\n{e.read().decode()}\n")
+        if not QUIET:
+            sys.stderr.write(f"HTTP {e.code} {method} {url}\n{e.read().decode()}\n")
         raise
 
 

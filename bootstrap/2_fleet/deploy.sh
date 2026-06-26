@@ -53,7 +53,7 @@ systemctl --user enable podman-restart.service 2>/dev/null || true
 sudo firewall-cmd --add-port=9443/tcp --permanent >/dev/null 2>&1 && sudo firewall-cmd --reload >/dev/null 2>&1 || true
 
 echo "== fleet =="
-podman ps --format "  {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E 'web|db|intra|ged|mail|edge|keycloak' || true
+podman ps --format "  {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep -E 'web|db|intra|ged|mail|edge|keycloak|vault' || true
 echo ">> Edge on https://${FQDN}:9443/ (apps) + /auth (Keycloak). Open NSG :9443 if not already."
 echo ">> Next: python3 bootstrap/3_keycloak/configure.py   (build the 'meridian' realm from fleet.yml)"
 echo ">>       then regenerate the controller inventory + load the ServiceNow dataset from fleet.yml."

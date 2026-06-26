@@ -22,8 +22,8 @@ from lib.poc import env, ssh  # noqa: E402
 from lib.runtime import controller, runtime_name  # noqa: E402
 from lib.servicenow import Snow  # noqa: E402
 
-TARGET = "hr-web-01"       # a Meridian Fleet server
-SERVICE = "hr-portal"      # the systemd unit it runs
+TARGET = "intra-01"        # a distinct server per scenario, so the suite is parallel-safe (--scenarios --parallel)
+SERVICE = "httpd"          # the systemd unit it runs
 JT_NAME = "Execute Change Request"
 TRIGGER_TIMEOUT = 180
 

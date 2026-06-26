@@ -3,7 +3,17 @@
 # sourced), renders the inventory, then runs the AAP 2.7 containerized installer.
 set -euo pipefail
 
-SETUP_DIR="$HOME/aap/ansible-automation-platform-containerized-setup-2.7-1"
+# Locate the AAP containerized-setup dir, extracting the tarball sync.sh pushed if it isn't unpacked yet.
+# Version-agnostic (matches 2.7-1, 2.7-2, …) so a newer build needs no code change.
+SETUP_DIR="$(ls -d "$HOME"/aap/ansible-automation-platform-containerized-setup-*/ 2>/dev/null | head -1 || true)"
+if [ -z "$SETUP_DIR" ]; then
+  SETUP_TGZ="$(ls "$HOME"/aap/ansible-automation-platform-containerized-setup-*.tar.gz 2>/dev/null | head -1 || true)"
+  [ -n "$SETUP_TGZ" ] || { echo "No AAP setup in ~/aap/ — sync.sh should have pushed the tarball (download it into bootstrap/6A_aap/)" >&2; exit 1; }
+  echo "== extracting $(basename "$SETUP_TGZ") …"
+  tar xzf "$SETUP_TGZ" -C "$HOME/aap/"
+  SETUP_DIR="$(ls -d "$HOME"/aap/ansible-automation-platform-containerized-setup-*/ 2>/dev/null | head -1 || true)"
+fi
+SETUP_DIR="${SETUP_DIR%/}"
 TMPL="$HOME/aap/inventory.tmpl"
 INV="$HOME/aap/inventory"
 ENVFILE="$HOME/aap/.env"

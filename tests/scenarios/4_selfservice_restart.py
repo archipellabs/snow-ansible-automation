@@ -3,8 +3,8 @@
 
   python3 tests/scenarios/4_selfservice_restart.py
 
-Stops hr-portal on hr-web-01, then ORDERS the "Restart a service" Service Catalog item with the
-server variable set to hr-web-01 (Service Catalog API, order_now). The pull-selfservice-restart
+Stops crm on crm-web-02, then ORDERS the "Restart a service" Service Catalog item with the
+server variable set to crm-web-02 (Service Catalog API, order_now). The pull-selfservice-restart
 activation's records source polls sc_req_item, launches the "Restart Service (Self-Service)" job
 template -> restart_service_selfservice.yml fetches the chosen server, restarts the service and
 closes the request item. Asserts the service is active again (and reports the request item state).
@@ -21,8 +21,8 @@ sys.path.insert(0, ROOT)
 from lib.poc import env, ssh  # noqa: E402
 from lib.servicenow import Snow  # noqa: E402
 
-TARGET = "hr-web-01"
-SERVICE = "hr-portal"
+TARGET = "crm-web-02"      # a distinct server per scenario, so the suite is parallel-safe (--scenarios --parallel)
+SERVICE = "crm"
 ITEM_NAME = "Restart a service"
 RECOVER_TIMEOUT = 150       # seconds to wait for the whole push chain to restart the service
 
