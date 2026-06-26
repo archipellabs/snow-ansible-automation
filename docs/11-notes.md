@@ -1,8 +1,8 @@
-<sub>[↑ Docs map](../README.md#start-here) · [← 09 · Tests](09-tests.md) · **10 · Notes**</sub>
+<sub>[↑ Docs map](../README.md#start-here) · [← 10 · Tests](10-tests.md) · **11 · Notes**</sub>
 
 # Notes — lessons, limits, cost
 
-## Key findings (lessons learned)
+## Key findings
 
 1. **EE → target networking** — the controller spawns execution environments with **pasta** networking,
    where `host.containers.internal` resolves to the host *and* can reach its rootless-published ports.
@@ -98,9 +98,11 @@ each with a passing, re-runnable scenario test:
   manual launch.
 - **Push** (`2_push_change_execution.py`): an approved Change Request is pushed via the Event Stream to
   the webhook activation; the playbook deploys the change and writes a work note back — no manual launch.
+- **Both runtimes**: the pull patterns + SSO + the Vault-backed secrets also run on **AWX**
+  (`tests/health.py --runtime awx` all green; all pull scenarios pass). Push is AAP-only (finding 16).
 
-**Optional next steps**: an AWX variant (`bootstrap/6B_awx/`), more playbooks, a CA-signed gateway cert,
-and a subscription manifest for offline entitlement.
+**Optional next steps**: more playbooks, a CA-signed gateway cert, a subscription manifest for offline
+entitlement, and the **broker** to bring push to AWX (finding 16).
 
 ## Limitations
 
@@ -110,9 +112,8 @@ This is a proof of concept — deliberately scoped:
   the targets are throwaway containers; the "change" the push playbook applies is a demo content deploy.
 - **Vault is dev-mode (in-memory, token auth).** The secret store is real HashiCorp Vault but runs
   `-dev`: in-memory (a container restart loses the secrets — re-seed with `bootstrap/4_vault/seed.py`),
-  auto-unsealed, one root token. Production = a persistent, unsealed Vault with **AppRole** auth. And
-  because eda-server can't resolve secrets at runtime, the AWX EDA secret is materialised into the
-  activation at config time (finding 17), unlike the controller's live lookup.
+  auto-unsealed, one root token. Production = a persistent, unsealed Vault with **AppRole** auth (and a
+  native EDA-secret lookup — see finding 17).
 - **Config-as-code is hybrid.** The **EDA layer is declarative** (`infra.aap_configuration` via the GitOps
   Configure EDA job template); the controller, ServiceNow and Keycloak config are still **bespoke stdlib
   Python** over the REST APIs (transparent, zero-dependency). A fully-standard setup would move those to
@@ -152,4 +153,4 @@ az group delete  -n rg-snow-aap-poc --yes        # tear everything down
   deallocated, so `az group delete` to fully stop costs.
 
 ---
-<sub>[↑ Docs map](../README.md#start-here) · [← 09 · Tests](09-tests.md) · **10 · Notes**</sub>
+<sub>[↑ Docs map](../README.md#start-here) · [← 10 · Tests](10-tests.md) · **11 · Notes**</sub>

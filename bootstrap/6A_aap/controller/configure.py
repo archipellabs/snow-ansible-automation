@@ -36,7 +36,7 @@ BASE = f"https://{os.environ['AAP_FQDN']}/api/controller/v2"
 HEADERS = {"Authorization": basic_auth(os.environ["AAP_ADMIN_USER"], os.environ["AAP_ADMIN_PASSWORD"])}
 CTX = insecure_ctx()
 KEY_PATH = os.path.join(ROOT, "bootstrap", "2_fleet", "keys", "target_key")
-# Mono-machine connectivity (docs/10 · Notes): the fleet is reached at the VM's published SSH ports, and
+# Mono-machine connectivity (docs/11 · Notes): the fleet is reached at the VM's published SSH ports, and
 # ansible_host is the VM address — podman injects host.containers.internal into the EE. Set once as an
 # inventory variable so the shared CMDB source stays neutral (it no longer pins this).
 FLEET_HOST = "host.containers.internal"
@@ -130,8 +130,8 @@ def main():
     )
 
     # Keycloak Provisioner credential: injects the 'aap-provisioner' service-account client details
-    # for the onboarding playbook (creates Keycloak users). SSO is optional, so this is created with
-    # whatever KC_PROVISIONER_SECRET is in .env — the Provision Employee JT works once it is set.
+    # for the onboarding playbook (creates Keycloak users). kc_secret comes from Vault (or
+    # KC_PROVISIONER_SECRET in .env without Vault) — the Provision Employee JT works once it is set.
     kc_type = get_or_create(
         "credential_types", {"name": "Keycloak Provisioner"},
         {"name": "Keycloak Provisioner", "kind": "cloud",

@@ -9,4 +9,4 @@ python3 tests/health.py
 python3 tests/scenarios/1_pull_incident_remediation.py
 ```
 
-📖 **What each test proves and when to run it → [docs/09-tests.md](../docs/09-tests.md)** (Validate).
+📖 **What each test proves and when to run it → [docs/10-tests.md](../docs/10-tests.md)** (Validate).

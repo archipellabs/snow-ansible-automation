@@ -1,9 +1,9 @@
-<sub>[↑ Docs map](../README.md#start-here) · [← 03 · Architecture](03-architecture.md) · **04 · The patterns** · [05 · Identity →](05-identity.md)</sub>
+<sub>[↑ Docs map](../README.md#start-here) · [← 03 · Architecture](03-architecture.md) · **04 · The patterns** · [05 · AAP vs AWX →](05-aap-vs-awx.md)</sub>
 
 # The patterns — runtime flows
 
-The two halves of the demo, plus the variants built on top of them. The conceptual model is in
-[01 · Overview](01-overview.md); this page walks the **runtime**, step by step.
+The two core patterns (pull and push), plus the catalog variants built on pull. The conceptual model is
+in [01 · Overview](01-overview.md); this page walks the **runtime**, step by step.
 
 ## Pull — incident remediation
 
@@ -28,6 +28,9 @@ incident → remediation → resolved.
 
 ![Push pattern — change through an Event Stream](diagrams/change-flow.svg)
 
+> **AAP-only.** Push needs the gateway's managed Event Stream; AWX/eda-server has no event-stream
+> ingress, so on AWX every flow is pull (see [05 · AAP vs AWX](05-aap-vs-awx.md)).
+
 1. A **Change Request** is **approved** in ServiceNow (and references a CI target).
 2. A **Business Rule** POSTs the change (number, sys_id, target) to an AAP **Event Stream** — a
    gateway-managed webhook endpoint on `:443` with token auth.
@@ -51,14 +54,14 @@ The same catalog mechanism, but the request creates an **identity** instead of r
 ordering "Onboard a new employee" is polled by the `pull-onboarding` activation, which runs the
 `Provision Employee` job template → [`provision_employee.yml`](../playbooks/provision_employee.yml)
 fetches the form's variables, creates the Keycloak user (in the *Employees* group) and closes the
-request. See [05 · Identity](05-identity.md).
+request. See [06 · Identity](06-identity.md).
 
 ---
 
 All five activations are created declaratively (the **Configure EDA** job template); the catalog
 items are set up by `bootstrap/5_servicenow/3_catalog.py` and the change Business Rule by
 `4_push_change_aap.py`. Each flow has a
-re-runnable scenario test — see [09 · Tests](09-tests.md).
+re-runnable scenario test — see [10 · Tests](10-tests.md).
 
 ---
-<sub>[↑ Docs map](../README.md#start-here) · [← 03 · Architecture](03-architecture.md) · **04 · The patterns** · [05 · Identity →](05-identity.md)</sub>
+<sub>[↑ Docs map](../README.md#start-here) · [← 03 · Architecture](03-architecture.md) · **04 · The patterns** · [05 · AAP vs AWX →](05-aap-vs-awx.md)</sub>

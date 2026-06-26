@@ -12,6 +12,6 @@ sequence):
 6. **`6A_aap/`** — install AAP + config-as-code (`controller/`, `eda/`) + the DE build.
    · **`6B_awx/`** — the open-source AWX alternative to `6A_aap`.
 
-📖 **From zero to running → [docs/07-build.md](../docs/07-build.md)** · every command, step by step →
-[docs/08-steps.md](../docs/08-steps.md) · what each script provisions →
+📖 **From zero to running → [docs/08-build.md](../docs/08-build.md)** · every command, step by step →
+[docs/09-steps.md](../docs/09-steps.md) · what each script provisions →
 [docs/03-architecture.md](../docs/03-architecture.md).

@@ -1,4 +1,4 @@
-<sub>[↑ Docs map](../README.md#start-here) · [← 08 · Step by step](08-steps.md) · **09 · Tests** · [10 · Notes →](10-notes.md)</sub>
+<sub>[↑ Docs map](../README.md#start-here) · [← 09 · Step by step](09-steps.md) · **10 · Tests** · [11 · Notes →](11-notes.md)</sub>
 
 # Tests — health dashboard + scenarios
 
@@ -26,15 +26,16 @@ python3 tests/health.py --runtime aap|awx  # control-plane probes (default $RUNT
 | Group | Probes |
 |---|---|
 | **ServiceNow** | auth (`eda.integration`) · EDA account + pull filter (active · TZ GMT · Auto-Remediation) · push Business Rules |
-| **Stack** | targets sshd · `hr-portal` `/health` · Keycloak realm `meridian` · hr-portal SSO wired · hr-portal SSO login |
+| **Stack** | targets sshd · `hr-portal` `/health` · Keycloak realm `meridian` · **Vault (secret store)** · hr-portal SSO wired · hr-portal SSO login |
 | **Control plane · `aap`** | gateway · controller API · subscription · EDA activations (all 5) · EE → targets (ad-hoc ping) · AAP SSO offered · AAP SSO login |
+| **Control plane · `awx`** | AWX control plane · controller config (13 JTs · 9 hosts) · eda-server activations (4) · AWX → targets (ad-hoc ping) · AWX SSO offered |
 
-**Light vs deep.** Most probes are *light* (run every tick). Three are **deep** — they launch real
-work or a full login flow (`EE → targets`, `AAP SSO login`, `hr-portal SSO login`) — so they're
-**skipped (⚪) under `--watch`** and only run in a one-pass.
+**Light vs deep.** Most probes are *light* (run every tick). A few are **deep** — they launch real
+work or a full login flow (the per-runtime ad-hoc fleet ping, the admin-SSO login, the hr-portal SSO
+login) — so they're **skipped (⚪) under `--watch`** and only run in a one-pass.
 
 **The AAP / AWX seam.** *ServiceNow* and *Stack* are runtime-agnostic; only the **Control plane** group
-swaps per `--runtime` (`aap` → the 7 AAP probes above; `awx` → its stub). That single boundary —
+swaps per `--runtime` (`aap` → the 7 AAP probes; `awx` → the 5 AWX probes). That single boundary —
 isolated in `lib/runtime.py` — is the whole portability story (see [03 · Architecture](03-architecture.md)).
 
 ## `tests/scenarios/` — functional tests
@@ -57,7 +58,7 @@ python3 tests/scenarios/1_pull_incident_remediation.py
 | `7_db_admin_lifecycle.py` | the DB-admin lifecycle — migration → role → status → backup on `hr-db-01` |
 
 > The scenarios leave their test incidents / changes / request items in the PDI (no cleanup) — a known
-> limitation, see [10 · Notes](10-notes.md).
+> limitation, see [11 · Notes](11-notes.md).
 
 ---
-<sub>[↑ Docs map](../README.md#start-here) · [← 08 · Step by step](08-steps.md) · **09 · Tests** · [10 · Notes →](10-notes.md)</sub>
+<sub>[↑ Docs map](../README.md#start-here) · [← 09 · Step by step](09-steps.md) · **10 · Tests** · [11 · Notes →](11-notes.md)</sub>

@@ -48,7 +48,7 @@ KEY_PATH = os.path.join(ROOT, "bootstrap", "2_fleet", "keys", "target_key")
 EE_NAME = "AWX EE (latest)"
 # Shared CMDB inventory source — runtime-neutral, lives at inventory/ on the main branch this project pulls.
 INV_SOURCE_PATH = "inventory/meridian.now.yml"
-# Mono-machine connectivity (docs/10 · Notes): the fleet is reached at the VM's published SSH ports, and
+# Mono-machine connectivity (docs/11 · Notes): the fleet is reached at the VM's published SSH ports, and
 # ansible_host is the VM address. From a k3s job pod that's the node gateway (cni0) — reachable to the
 # host-published ports without a DNS zone or a subnet. Set once as an inventory variable so the shared
 # CMDB source stays neutral (it no longer pins host.containers.internal).
@@ -152,9 +152,9 @@ def main():
     )
 
     # Keycloak Provisioner credential: injects the 'aap-provisioner' service-account client details for
-    # the onboarding playbook (creates Keycloak users). SSO is optional; created with whatever
-    # KC_PROVISIONER_SECRET is in .env — the Provision Employee JT works once it is set. The AWX VM
-    # runs the simulator + Keycloak on :9443, so the URL targets this host.
+    # the onboarding playbook (creates Keycloak users). kc_secret comes from Vault (or
+    # KC_PROVISIONER_SECRET in .env without Vault) — works once set. The AWX VM runs the simulator +
+    # Keycloak on :9443, so the URL targets this host.
     kc_type = get_or_create(
         "credential_types", {"name": "Keycloak Provisioner"},
         {"name": "Keycloak Provisioner", "kind": "cloud",

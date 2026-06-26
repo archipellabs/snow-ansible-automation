@@ -118,7 +118,7 @@
   <g transform="translate(140,0)">
   <rect x="1240" y="452" width="540" height="530" rx="14" fill="#f3fbfa" stroke="#2a7d7d" stroke-width="1.8"/>
   <text class="esth" x="1262" y="484">Meridian estate · simulator compose</text>
-  <text class="ests" x="1262" y="504">fleet targets + identity · behind the edge :9443</text>
+  <text class="ests" x="1262" y="504">fleet targets + identity + secrets · behind the edge :9443</text>
   <g><rect filter="url(#shadow)" class="card" x="1262" y="518" width="496" height="84" rx="10"/><rect x="1262" y="518" width="6" height="84" rx="3" fill="#2a7d7d"/>
     <text class="boxt" x="1282" y="552">hr-web-01 · fleet server</text><text class="boxs" x="1282" y="578">hr-portal + /health · sshd :2211</text></g>
   <g><rect filter="url(#shadow)" class="card" x="1262" y="616" width="496" height="80" rx="10"/><rect x="1262" y="616" width="6" height="80" rx="3" fill="#2a7d7d"/>
@@ -130,6 +130,8 @@
     <g><rect x="1282" y="832" width="132" height="27" rx="6" fill="#f1ebfa" stroke="#6b3fa0" stroke-width="1.1"/><text class="chip" x="1294" y="850">realm: meridian</text></g>
     <g><rect x="1426" y="832" width="172" height="27" rx="6" fill="#f1ebfa" stroke="#6b3fa0" stroke-width="1.1"/><text class="chip" x="1438" y="850">OIDC: hr-portal · aap</text></g>
     <text class="boxs" x="1282" y="884">SSO (optional) — employee apps + AAP admin login</text></g>
+  <g><rect filter="url(#shadow)" class="card" x="1262" y="918" width="496" height="56" rx="10"/><rect x="1262" y="918" width="6" height="56" rx="3" fill="#b8860b"/>
+    <text class="boxt" x="1282" y="946">HashiCorp Vault</text><text class="boxs" x="1282" y="966">secrets — the controller's credentials resolve from Vault at job runtime</text></g>
   </g>
 
   <!-- ===================== SUPPLY EDGES (gray dashed, in the left gutter) ===================== -->

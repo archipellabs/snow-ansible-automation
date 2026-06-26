@@ -1,4 +1,4 @@
-<sub>[↑ Docs map](../README.md#start-here) · [← 06 · Playbooks](06-playbooks.md) · **07 · Build** · [08 · Step by step →](08-steps.md)</sub>
+<sub>[↑ Docs map](../README.md#start-here) · [← 07 · Playbooks](07-playbooks.md) · **08 · Build** · [09 · Step by step →](09-steps.md)</sub>
 
 # Build it — the path
 
@@ -8,7 +8,7 @@ can safely re-run any step. Only **three actions need a human in a browser** (fl
 else is a script. Budget ~30–45 min, most of it the AAP install.
 
 > **The full procedure — every command, what it does, and how to verify it — is in
-> [08 · Step by step](08-steps.md).** This page is the map and the checklist of what to have ready.
+> [09 · Step by step](09-steps.md).** This page is the map and the checklist of what to have ready.
 
 ## At a glance — the path
 
@@ -16,13 +16,14 @@ else is a script. Budget ~30–45 min, most of it the AAP install.
 |---|---|---|---|
 | **0 · Bootstrap** | accounts, keys, secrets | accounts + `ssh-keygen` ×2 + fill `.env` | — |
 | **1 · Infra** | the Azure RHEL VM | `az deployment sub create …` | — |
-| **2 · IT estate** | fleet + apps + Keycloak | `./bootstrap/2_fleet/sync.sh` · `keycloak/configure.py` | — |
-| **3 · ITSM** | ServiceNow CMDB + account | `servicenow/1_account.py` · `2_cmdb.py` | 🔶 set the account password |
-| **4 · Control plane** | AAP 2.7 (≈24 containers) | `aap/sync.sh` · `~/aap/install.sh` | 🔶 activate the subscription |
-| **5 · Controller** | credentials, dynamic inventory, job templates | `aap/controller/configure.py` | — |
-| **6 · EDA** | decision env + 5 activations | `~/aap/eda/build.sh` · `aap/eda/configure.py` | 🔶 launch *Configure EDA* |
-| **7 · Push wiring** | catalog + change BR (push) | `servicenow/3_catalog.py` · `4_push_change_aap.py` | — |
-| **8 · SSO** *(optional)* | AAP admin login via Keycloak | `aap/configure_sso.py` | — |
+| **2 · IT estate** | fleet + apps + Keycloak + Vault | `./bootstrap/2_fleet/sync.sh` · `bootstrap/3_keycloak/configure.py` | — |
+| **3 · ITSM** | ServiceNow CMDB + account | `bootstrap/5_servicenow/1_account.py` · `2_cmdb.py` | 🔶 set the account password |
+| **3b · Secrets** | seed the secrets into Vault | `bootstrap/4_vault/seed.py` (via SSH tunnel to `:8200`) | — |
+| **4 · Control plane** | AAP 2.7 (≈24 containers) | `bootstrap/6A_aap/sync.sh` · `~/aap/install.sh` | 🔶 activate the subscription |
+| **5 · Controller** | credentials (**Vault-sourced**), dynamic inventory, job templates | `bootstrap/6A_aap/controller/configure.py` | — |
+| **6 · EDA** | decision env + 5 activations | `~/aap/eda/build.sh` · `bootstrap/6A_aap/eda/configure.py` | 🔶 launch *Configure EDA* |
+| **7 · Push wiring** | catalog + change BR (push) | `bootstrap/5_servicenow/3_catalog.py` · `4_push_change_aap.py` | — |
+| **8 · SSO** *(optional)* | AAP admin login via Keycloak | `bootstrap/6A_aap/configure_sso.py` | — |
 | **✓ Validate** | proof it works | `tests/health.py` · `tests/scenarios/*` | — |
 
 > **🔶 The only three things you do by hand** (everything else is a script):
@@ -31,12 +32,14 @@ else is a script. Budget ~30–45 min, most of it the AAP install.
 > 3. **Launch the *Configure EDA* job template** once, to apply the declarative EDA config (Step 6).
 
 The scripts are independent and idempotent, so the order is flexible — the one above tells the cleanest
-story (estate → ITSM → control plane → wire them together). **→ [Run it, step by step](08-steps.md).**
+story (estate → ITSM → secrets → control plane → wire them together). This is the **AAP** path; the
+open-source **AWX** build is the equivalent (see [05 · AAP vs AWX](05-aap-vs-awx.md) + `bootstrap/6B_awx/`).
+**→ [Run it, step by step](09-steps.md).**
 
 ## Prerequisites
 
 - **Azure** subscription + `az` CLI (`az login`). On a brand-new subscription, register the providers
-  and request quota first ([Step 1](08-steps.md#1-provision-the-vm-bicep)).
+  and request quota first ([Step 1](09-steps.md#1-provision-the-vm-bicep)).
 - **VM sizing:** the Bicep default is `Standard_D8s_v5` — **8 vCPU / 32 GB**. AAP containerized (~24
   containers) **plus** the Meridian simulator (11 containers incl. a Keycloak JVM) need 32 GB; 16 GB
   (`D4s_v5`) OOMs once the simulator is up. Running **AAP only**? Drop back to `D4s_v5`. Either way you
@@ -70,6 +73,7 @@ It is **parsed by code, never `source`d**, so values can contain shell-hostile c
 | **Git project** | `GIT_REPO_URL` | this repo's clone URL (controller + EDA pull from it) |
 | **Push token** | `SN_EVENTSTREAM_TOKEN` | generate: `python3 -c "import secrets;print(secrets.token_urlsafe(32))"` |
 | **Keycloak** | `KEYCLOAK_ADMIN_PASSWORD`, `KC_DEMO_PASSWORD`, `KC_HRPORTAL_CLIENT_SECRET`, `KC_AAP_CLIENT_SECRET`, `KC_PROVISIONER_SECRET`, `HRPORTAL_SESSION_SECRET` | you choose (random strings) |
+| **Vault** | `VAULT_TOKEN`, `VAULT_ADDR`, `VAULT_KV_MOUNT` | dev root token (must match the Vault container); `VAULT_ADDR` = the SSH-tunnel endpoint used for **seeding** ([Step 3b](09-steps.md)) |
 
 | SSH key (a file, not in `.env`) | Path | Used by |
 |---|---|---|
@@ -82,8 +86,8 @@ It is **parsed by code, never `source`d**, so values can contain shell-hostile c
 
 ---
 
-Got the accounts, the two keys, and a filled `.env`? **→ [08 · Step by step](08-steps.md)** runs the
+Got the accounts, the two keys, and a filled `.env`? **→ [09 · Step by step](09-steps.md)** runs the
 whole thing, with a verify check after each phase.
 
 ---
-<sub>[↑ Docs map](../README.md#start-here) · [← 06 · Playbooks](06-playbooks.md) · **07 · Build** · [08 · Step by step →](08-steps.md)</sub>
+<sub>[↑ Docs map](../README.md#start-here) · [← 07 · Playbooks](07-playbooks.md) · **08 · Build** · [09 · Step by step →](09-steps.md)</sub>

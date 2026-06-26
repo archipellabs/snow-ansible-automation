@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 670" width="1500" height="670" role="img" aria-label="ServiceNow-driven Ansible automation — generalist architecture, governed, on AAP or AWX">
+  <defs>
+    <style>
+      text { font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
+      .h1 { font-size: 30px; font-weight: 700; fill: #1f2328; }
+      .h2 { font-size: 16px; fill: #57606a; }
+      .boxt { font-size: 21px; font-weight: 700; fill: #1f2328; }
+      .boxs { font-size: 14px; fill: #57606a; }
+      .sub { font-size: 12.5px; font-weight: 600; fill: #8a929c; letter-spacing: .4px; }
+      .chip { font-size: 13.5px; font-weight: 600; fill: #1f2328; }
+      .vmh { font-size: 20px; font-weight: 700; fill: #0a4a8f; }
+      .vms { font-size: 14px; fill: #3b6ea5; }
+      .esth { font-size: 20px; font-weight: 700; fill: #1f5e5e; }
+      .ests { font-size: 14px; fill: #2a7d7d; }
+      .num { font-size: 14.5px; font-weight: 700; }
+      .leg { font-size: 14px; fill: #3a3f45; }
+      .legt { font-size: 17px; font-weight: 700; fill: #1f2328; }
+      .card { fill: #ffffff; stroke: #d0d7de; stroke-width: 1.4; }
+      .edge { fill: none; stroke-width: 2.6; }
+    </style>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.12"/></filter>
+    <marker id="ah-green" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1c7c54"/></marker>
+    <marker id="ah-green-s" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="1" refY="5" orient="auto"><path d="M10,0 L0,5 L10,10 z" fill="#1c7c54"/></marker>
+    <marker id="ah-red" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#c0392b"/></marker>
+    <marker id="ah-blue" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#1f6feb"/></marker>
+    <marker id="ah-purple" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6b3fa0"/></marker>
+    <marker id="ah-gold" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#b8860b"/></marker>
+    <marker id="ah-gray" markerUnits="userSpaceOnUse" markerWidth="12" markerHeight="12" refX="9" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/></marker>
+  </defs>
+
+  <rect x="0" y="0" width="1500" height="670" fill="#ffffff"/>
+  <text class="h1" x="40" y="46">Architecture — ServiceNow-driven automation, governed (AAP or AWX)</text>
+  <text class="h2" x="40" y="74">ServiceNow stays the system of record + approval gate; Event-Driven Ansible turns tickets into action — secrets in Vault, identity in Keycloak, all-as-code from Git.</text>
+
+  <!-- ===================== SERVICENOW (left) ===================== -->
+  <g><rect filter="url(#shadow)" class="card" x="40" y="116" width="330" height="300" rx="12"/><rect x="40" y="116" width="6" height="300" rx="3" fill="#1c7c54"/>
+    <text class="boxt" x="64" y="150">ServiceNow · SaaS</text>
+    <text class="boxs" x="64" y="172">system of record — ITSM + CMDB</text>
+    <g><rect x="64" y="188" width="140" height="28" rx="6" fill="#e8f6ef" stroke="#1c7c54" stroke-width="1.1"/><text class="chip" x="76" y="207">Incidents</text></g>
+    <g><rect x="216" y="188" width="146" height="28" rx="6" fill="#e8f6ef" stroke="#1c7c54" stroke-width="1.1"/><text class="chip" x="228" y="207">Changes ✔ approve</text></g>
+    <g><rect x="64" y="226" width="140" height="28" rx="6" fill="#e8f6ef" stroke="#1c7c54" stroke-width="1.1"/><text class="chip" x="76" y="245">Catalog</text></g>
+    <g><rect x="216" y="226" width="146" height="28" rx="6" fill="#e8f6ef" stroke="#1c7c54" stroke-width="1.1"/><text class="chip" x="228" y="245">CMDB</text></g>
+    <g><rect x="64" y="264" width="298" height="28" rx="6" fill="#e8f6ef" stroke="#1c7c54" stroke-width="1.1"/><text class="chip" x="76" y="283">service account · least-privilege (itil)</text></g>
+    <text class="boxs" x="64" y="320">the approval gate + the audit trail</text>
+    <text class="boxs" x="64" y="344">REST /api/now · OAuth</text></g>
+
+  <!-- ===================== GIT (left, below) ===================== -->
+  <g><rect filter="url(#shadow)" class="card" x="40" y="440" width="330" height="72" rx="12"/><rect x="40" y="440" width="6" height="72" rx="3" fill="#24292f"/>
+    <text class="boxt" x="64" y="472">Git · config-as-code</text><text class="boxs" x="64" y="496">playbooks · rulebooks · EDA (GitOps)</text></g>
+
+  <!-- ===================== CONTROL PLANE VM (center) ===================== -->
+  <rect x="480" y="104" width="560" height="440" rx="16" fill="#f4f9ff" stroke="#0078d4" stroke-width="2"/>
+  <text class="vmh" x="506" y="138">Azure VM · rootless containers</text>
+  <text class="vms" x="506" y="160">control plane — AAP or AWX, identical integration</text>
+
+  <!-- Automation Controller + EDA (the generalist box) -->
+  <g><rect filter="url(#shadow)" class="card" x="506" y="188" width="508" height="200" rx="12"/><rect x="506" y="188" width="6" height="200" rx="3" fill="#c0392b"/>
+    <text class="boxt" x="530" y="224">Automation Controller — AAP or AWX</text>
+    <text class="sub" x="530" y="248">+ EVENT-DRIVEN ANSIBLE</text>
+    <g><rect x="530" y="260" width="192" height="28" rx="6" fill="#fbeae8" stroke="#c0392b" stroke-width="1.1"/><text class="chip" x="542" y="279">pull · poll incidents</text></g>
+    <g><rect x="734" y="260" width="176" height="28" rx="6" fill="#fbeae8" stroke="#c0392b" stroke-width="1.1"/><text class="chip" x="746" y="279">push · Event Stream*</text></g>
+    <g><rect x="530" y="298" width="126" height="28" rx="6" fill="#fbeae8" stroke="#c0392b" stroke-width="1.1"/><text class="chip" x="542" y="317">job templates</text></g>
+    <g><rect x="668" y="298" width="156" height="28" rx="6" fill="#fbeae8" stroke="#c0392b" stroke-width="1.1"/><text class="chip" x="680" y="317">inventory ← CMDB</text></g>
+    <g><rect x="836" y="298" width="116" height="28" rx="6" fill="#fbeae8" stroke="#c0392b" stroke-width="1.1"/><text class="chip" x="848" y="317">config ← Git</text></g>
+    <text class="boxs" x="530" y="360">* push is AAP-only — see AAP vs AWX</text></g>
+
+  <!-- Vault -->
+  <g><rect filter="url(#shadow)" class="card" x="506" y="414" width="244" height="96" rx="12"/><rect x="506" y="414" width="6" height="96" rx="3" fill="#b8860b"/>
+    <text class="boxt" x="530" y="446">HashiCorp Vault</text>
+    <text class="boxs" x="530" y="470">secrets · runtime lookup</text>
+    <text class="boxs" x="530" y="492">no secret in the platform</text></g>
+
+  <!-- Keycloak -->
+  <g><rect filter="url(#shadow)" class="card" x="770" y="414" width="244" height="96" rx="12"/><rect x="770" y="414" width="6" height="96" rx="3" fill="#6b3fa0"/>
+    <text class="boxt" x="794" y="446">Keycloak · IdP</text>
+    <text class="boxs" x="794" y="470">SSO · RBAC</text>
+    <text class="boxs" x="794" y="492">least-privilege identity</text></g>
+
+  <!-- ===================== MERIDIAN ESTATE (right) ===================== -->
+  <rect x="1090" y="116" width="370" height="396" rx="14" fill="#f3fbfa" stroke="#2a7d7d" stroke-width="1.8"/>
+  <text class="esth" x="1114" y="150">Meridian estate</text>
+  <text class="ests" x="1114" y="172">9 servers · 4 real apps · CMDB-sourced</text>
+  <g><rect filter="url(#shadow)" class="card" x="1114" y="188" width="322" height="78" rx="10"/><rect x="1114" y="188" width="6" height="78" rx="3" fill="#2a7d7d"/>
+    <text class="boxt" x="1134" y="220">Fleet · 9 servers</text><text class="boxs" x="1134" y="246">hr · crm · ged · intranet · mail · db</text></g>
+  <g><rect filter="url(#shadow)" class="card" x="1114" y="280" width="322" height="78" rx="10"/><rect x="1114" y="280" width="6" height="78" rx="3" fill="#2a7d7d"/>
+    <text class="boxt" x="1134" y="312">Apps + /health</text><text class="boxs" x="1134" y="338">hr-portal · crm · ged (FastAPI)</text></g>
+  <g><rect filter="url(#shadow)" class="card" x="1114" y="372" width="322" height="68" rx="10"/><rect x="1114" y="372" width="6" height="68" rx="3" fill="#1f6feb"/>
+    <text class="boxt" x="1134" y="402">Edge · TLS :9443</text><text class="boxs" x="1134" y="426">apps + SSO via Keycloak</text></g>
+
+  <!-- ===================== FLOWS ===================== -->
+  <!-- ① pull / push (bidirectional) : ServiceNow <-> Controller -->
+  <path class="edge" stroke="#1c7c54" marker-start="url(#ah-green-s)" marker-end="url(#ah-green)" d="M370,236 L506,236"/>
+  <g><rect x="398" y="210" width="98" height="20" rx="4" fill="#ffffff"/><text class="num" x="406" y="225" fill="#1c7c54">① pull · push</text></g>
+  <!-- ③ CMDB -> inventory : ServiceNow -> Controller -->
+  <path class="edge" stroke="#1f6feb" marker-end="url(#ah-blue)" d="M370,322 L506,322"/>
+  <g><rect x="398" y="296" width="98" height="20" rx="4" fill="#ffffff"/><text class="num" x="406" y="311" fill="#1f6feb">③ inventory</text></g>
+  <!-- ② run jobs : Controller -> estate -->
+  <path class="edge" stroke="#c0392b" marker-end="url(#ah-red)" d="M1014,300 L1090,300"/>
+  <g><rect x="1018" y="272" width="74" height="20" rx="4" fill="#ffffff"/><text class="num" x="1026" y="287" fill="#c0392b">② run jobs</text></g>
+  <!-- ④ secrets : Vault -> Controller -->
+  <path class="edge" stroke="#b8860b" marker-end="url(#ah-gold)" d="M628,414 L628,388"/>
+  <g><rect x="638" y="396" width="80" height="20" rx="4" fill="#ffffff"/><text class="num" x="646" y="411" fill="#b8860b">④ secrets</text></g>
+  <!-- ⑤ SSO : Keycloak -> Controller (admin) and -> estate (apps) -->
+  <path class="edge" stroke="#6b3fa0" stroke-dasharray="6 4" marker-end="url(#ah-purple)" d="M892,414 L892,388"/>
+  <g><rect x="900" y="393" width="58" height="20" rx="4" fill="#ffffff"/><text class="num" x="908" y="408" fill="#6b3fa0">⑤ SSO</text></g>
+  <path class="edge" stroke="#6b3fa0" stroke-dasharray="6 4" marker-end="url(#ah-purple)" d="M1014,452 L1052,452 L1052,406 L1090,406"/>
+  <!-- Git -> Controller (config-as-code) -->
+  <path class="edge" stroke="#6b7280" stroke-dasharray="7 5" marker-end="url(#ah-gray)" d="M370,480 L450,480 L450,402 L480,402"/>
+  <g><rect x="384" y="420" width="62" height="18" rx="4" fill="#ffffff"/><text class="num" x="392" y="434" fill="#6b7280">GitOps</text></g>
+
+  <!-- ===================== LEGEND ===================== -->
+  <g><rect filter="url(#shadow)" class="card" x="40" y="576" width="1420" height="54" rx="10"/>
+    <text class="legt" x="60" y="609">Legend</text>
+    <line x1="150" y1="603" x2="188" y2="603" class="edge" stroke="#1c7c54" marker-end="url(#ah-green)"/><text class="leg" x="196" y="609">① pull · push (ITSM ↔ EDA)</text>
+    <line x1="442" y1="603" x2="480" y2="603" class="edge" stroke="#c0392b" marker-end="url(#ah-red)"/><text class="leg" x="488" y="609">② run jobs → estate</text>
+    <line x1="678" y1="603" x2="716" y2="603" class="edge" stroke="#1f6feb" marker-end="url(#ah-blue)"/><text class="leg" x="724" y="609">③ CMDB → inventory</text>
+    <line x1="946" y1="603" x2="984" y2="603" class="edge" stroke="#b8860b" marker-end="url(#ah-gold)"/><text class="leg" x="992" y="609">④ secrets (Vault)</text>
+    <line x1="1146" y1="603" x2="1184" y2="603" class="edge" stroke="#6b3fa0" stroke-dasharray="6 4" marker-end="url(#ah-purple)"/><text class="leg" x="1192" y="609">⑤ SSO (admin + apps)</text>
+    <line x1="1290" y1="603" x2="1328" y2="603" class="edge" stroke="#6b7280" stroke-dasharray="7 5" marker-end="url(#ah-gray)"/><text class="leg" x="1336" y="609">GitOps</text>
+  </g>
+</svg>

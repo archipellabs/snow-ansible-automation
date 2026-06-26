@@ -1,4 +1,4 @@
-<sub>[↑ Docs map](../README.md#start-here) · [← 04 · The patterns](04-patterns.md) · **05 · Identity (SSO)** · [06 · Playbooks →](06-playbooks.md)</sub>
+<sub>[↑ Docs map](../README.md#start-here) · [← 05 · AAP vs AWX](05-aap-vs-awx.md) · **06 · Identity (SSO)** · [07 · Playbooks →](07-playbooks.md)</sub>
 
 # Identity & SSO — Keycloak
 
@@ -12,7 +12,7 @@ the AAP admins federate to it. It's the same identity for everyone.
 > fully without it. AAP keeps its **local `admin`** login, and the apps run **open** when the `OIDC_*`
 > env is absent. Skip the whole Keycloak phase and nothing else breaks. **Scope:** SSO covers the apps
 > and AAP only — **ServiceNow keeps its native login** (federating a SaaS PDI to a Keycloak on a
-> private VM is out of scope; see [10 · Notes](10-notes.md)).
+> private VM is out of scope; see [11 · Notes](11-notes.md)).
 
 ## Topology
 
@@ -71,6 +71,9 @@ Smoke-test it: `python3 tests/health.py --only sso`.
 The built-in **Local Database Authenticator stays enabled** — `admin` always has a local login, no
 lock-out.
 
+> **AWX:** the equivalent is `bootstrap/6B_awx/configure_sso.py` (django-social-auth OIDC into AWX) —
+> same `meridian` realm + Keycloak client, validated by `tests/health.py --runtime awx`.
+
 ```bash
 python3 bootstrap/6A_aap/configure_sso.py      # after bootstrap/3_keycloak/configure.py
 python3 tests/health.py --only sso          # SSO install checks (gateway OIDC login → superuser, hr-portal grant)
@@ -98,4 +101,4 @@ Keycloak comes up **before** the apps need it and **before** AAP federates to it
 ![Build order — VM, Keycloak, apps, ServiceNow, AAP, federation, automation](diagrams/build-order.svg)
 
 ---
-<sub>[↑ Docs map](../README.md#start-here) · [← 04 · The patterns](04-patterns.md) · **05 · Identity (SSO)** · [06 · Playbooks →](06-playbooks.md)</sub>
+<sub>[↑ Docs map](../README.md#start-here) · [← 05 · AAP vs AWX](05-aap-vs-awx.md) · **06 · Identity (SSO)** · [07 · Playbooks →](07-playbooks.md)</sub>

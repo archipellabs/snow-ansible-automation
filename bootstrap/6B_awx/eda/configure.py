@@ -41,7 +41,7 @@ EDA_HOST = os.environ.get("EDA_HOST", "localhost:31080")
 EDA_BASE = f"http://{EDA_HOST}/api/eda/v1"
 EDA_H = {"Authorization": basic_auth(os.environ.get("EDA_ADMIN_USER", "admin"), os.environ["EDA_ADMIN_PASSWORD"])}
 # Mono-machine: the monitor's url_check reaches the host-published app ports via the k3s node gateway
-# (same as the inventory's ansible_host — see docs/10 · Notes).
+# (same as the inventory's ansible_host — see docs/11 · Notes).
 HEALTH_HOST = "10.42.0.1"
 def _sn_conn():
     """ServiceNow connection for the EDA source. Unlike the controller, eda-server has no *runtime*

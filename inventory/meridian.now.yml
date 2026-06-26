@@ -26,7 +26,7 @@ compose:
   # The EE/job reaches the fleet via the host's published SSH ports. ansible_host (the VM address) is NOT
   # set here — it's the same VM for every host (mono-machine), so each runtime sets it once as an
   # inventory variable in controller/configure.py: host.containers.internal on AAP, the k3s node gateway
-  # on AWX. Keeps this shared CMDB source neutral. See docs/10 · Notes (Limitations).
+  # on AWX. Keeps this shared CMDB source neutral. See docs/11 · Notes (Limitations).
   ansible_port: u_ssh_port | regex_replace(',', '') | int   # "2,211" -> 2211
   service: u_service
   role: u_role

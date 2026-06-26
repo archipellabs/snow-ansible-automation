@@ -2,7 +2,7 @@
 
 # The simulator — Meridian Group
 
-A fictional company whose IT estate this PoC simulates, so the ServiceNow ↔ AAP automation runs
+A fictional company whose IT estate this PoC simulates, so the ServiceNow ↔ Ansible automation runs
 against something coherent and believable instead of throwaway hosts.
 
 ## Who → what → how
@@ -62,13 +62,13 @@ stay host-only (used internally by EDA `url_check`). It path-routes the one FQDN
 | `https://<FQDN>:9443/ged/` | GED |
 | `https://<FQDN>:9443/auth/` | Keycloak (the IdP) |
 
-AAP keeps its own gateway on `:443`; the Meridian edge sits on `:9443` so the two never collide.
+The control plane keeps `:443` (the AAP gateway, or AWX's Traefik); the Meridian edge sits on `:9443` so the two never collide.
 
 ## Identity (Keycloak)
 
 **Keycloak** is part of the stack — Meridian's IdP behind the edge on `:9443/auth`, built from the
-same `fleet.yml` (groups = teams, users = people). Application users sign in via OIDC; AAP admins
-federate to it for SSO. Full detail in **[05 · Identity (SSO)](05-identity.md)**.
+same `fleet.yml` (groups = teams, users = people). Application users sign in via OIDC; controller
+admins (AAP or AWX) federate to it for SSO. Full detail in **[06 · Identity (SSO)](06-identity.md)**.
 
 > Everything here is fictional. `*.meridian.example` is a documentation domain; no real company,
 > data, or credentials are involved.

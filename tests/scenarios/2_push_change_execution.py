@@ -30,8 +30,8 @@ TRIGGER_TIMEOUT = 180
 
 def run():
     env()
-    if runtime_name() == "awx":   # push is AAP-only — eda-server has no event-stream ingress (docs/10 §16)
-        return None, "push is AAP-only on the AWX variant (eda-server has no event-stream — see docs/10 §16)"
+    if runtime_name() == "awx":   # push is AAP-only — eda-server has no event-stream ingress (docs/11 §16)
+        return None, "push is AAP-only on the AWX variant (eda-server has no event-stream — see docs/11 §16)"
     ctl, snow = controller(), Snow(creds="admin")
     jt = ctl.jt_id(JT_NAME)
     baseline = max((j["id"] for j in ctl.recent_jobs(jt)), default=0)

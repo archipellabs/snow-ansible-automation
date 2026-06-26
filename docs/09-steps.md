@@ -1,12 +1,14 @@
-<sub>[↑ Docs map](../README.md#start-here) · [← 07 · Build](07-build.md) · **08 · Step by step** · [09 · Tests →](09-tests.md)</sub>
+<sub>[↑ Docs map](../README.md#start-here) · [← 08 · Build](08-build.md) · **09 · Step by step** · [10 · Tests →](10-tests.md)</sub>
 
 # Build — step by step
 
 The full procedure, in order — every command, **what it actually does**, and **how to verify it**
 before moving on. For the high-level map, the **prerequisites**, and the **`.env`** secrets table, see
-**[07 · Build](07-build.md)**.
+**[08 · Build](08-build.md)**.
 
 All commands run **from the repo root** unless noted. Steps are idempotent — re-run any of them safely.
+This is the **AAP** build; the open-source **AWX** path is the equivalent — see
+[05 · AAP vs AWX](05-aap-vs-awx.md) and `bootstrap/6B_awx/`.
 
 ### 0. Bootstrap — accounts, keys & artifacts (once)
 
@@ -46,15 +48,13 @@ subscription:** first `az provider register -n Microsoft.Compute` / `Microsoft.N
 python3 bootstrap/3_keycloak/configure.py    # build the 'meridian' realm from fleet.yml
 ```
 
-`sync.sh` → `deploy.sh` (on the VM) copies `target_key.pub` into `simulator/base/authorized_keys` (so
-the controller's *Target SSH* key logs into every server), builds the base + db + mail + 4 app images,
-brings up **9 servers + the edge (`:9443`) + Keycloak**, enables `podman-restart` (survives reboots),
-and opens the host firewall for `:9443`. `configure.py` then waits for Keycloak and builds the realm:
-8 groups, ~20 users (shared `KC_DEMO_PASSWORD`), and the `hr-portal` / `aap` / `aap-provisioner`
-clients.
+`sync.sh` → `deploy.sh` (on the VM) builds the images and brings up **9 servers + the edge (`:9443`) +
+Keycloak + Vault**, with reboot-survival and the `:9443` firewall opened. `configure.py` then builds the
+`meridian` realm: 8 groups, ~20 users (shared `KC_DEMO_PASSWORD`), and the `hr-portal` / `aap` /
+`aap-provisioner` clients.
 
 ✓ **Verify:** browse `https://<FQDN>:9443/` (apps) and `https://<FQDN>:9443/auth/admin/` (Keycloak,
-user `admin`). *(SSO is an optional layer — see [05 · Identity](05-identity.md).)*
+user `admin`). *(SSO is an optional layer — see [06 · Identity](06-identity.md).)*
 
 ### 3. ServiceNow — CMDB + integration account
 
@@ -65,7 +65,7 @@ python3 bootstrap/5_servicenow/1_account.py  # Auto-Remediation group + eda.inte
 > **🔶 Manual — set the account password.** ServiceNow ignores `user_password` writes via the Table
 > API. In the SN UI: **Users → `eda.integration` → Set Password**, clear `password_needs_reset`, and
 > store the value in `.env` as `SN_EDA_PASSWORD`. (Timezone **must** stay `GMT` — `1_account.py` sets
-> it; see [10 · Notes](10-notes.md).)
+> it; see [11 · Notes](11-notes.md).)
 
 ```bash
 python3 bootstrap/5_servicenow/2_cmdb.py     # load the Meridian CMDB from simulator/fleet.yml
@@ -76,6 +76,22 @@ columns the dynamic inventory reads (`u_ssh_port` / `u_service` / `u_role` via `
 
 ✓ **Verify:** in ServiceNow the `Auto-Remediation` group and the 9 server CIs exist; `eda.integration`
 is `active` with `time_zone = GMT`.
+
+### 3b. Seed the secrets into Vault
+
+Vault came up with the estate (Step 2); now load the secrets the controller will look up at runtime
+(`SN_EDA_PASSWORD` from Step 3 must be in `.env`). Open an SSH tunnel to the estate's `:8200`, then seed:
+
+```bash
+ssh -fNL 8200:localhost:8200 azureuser@<FQDN>   # tunnel to Vault
+python3 bootstrap/4_vault/seed.py               # writes secret/meridian/{servicenow,keycloak,ssh}
+```
+
+From here the controller's credentials resolve their secrets from Vault at job runtime — **nothing
+literal is stored in AAP/AWX**. *(Dev-mode Vault is in-memory: re-run after any Vault/VM restart, else
+jobs fail.)*
+
+✓ **Verify:** `python3 tests/health.py --only vault` → 🟢 *Vault (secret store) up, unsealed*.
 
 ### 4. Install AAP 2.7 (containerized)
 
@@ -102,8 +118,9 @@ python3 bootstrap/6A_aap/controller/configure.py   # credentials, dynamic invent
 python3 tests/health.py                          # holistic health dashboard
 ```
 
-Creates the `Target SSH` + `ServiceNow PDI` credentials (plus `Keycloak Provisioner` + `AAP Config`),
-the **`Meridian Fleet` inventory with a `ServiceNow CMDB` source** (`servicenow.itsm.now` reading
+Creates the `Target SSH` + `ServiceNow PDI` credentials (plus `Keycloak Provisioner` + `AAP Config`) —
+**without literal secrets**, sourced from Vault at job runtime via a `Meridian Vault` lookup credential
+(so Step 3b must have run) — the **`Meridian Fleet` inventory with a `ServiceNow CMDB` source** (`servicenow.itsm.now` reading
 `inventory/meridian.now.yml` — the hosts come from the CMDB, not a static list), the Git project (the **first
 SCM sync installs the collections from `requirements.yml`** — can take a few minutes), and the **14 job
 templates** — including **`Configure EDA`**, the GitOps template you launch in Step 6. It also removes
@@ -121,7 +138,7 @@ python3 bootstrap/6A_aap/eda/configure.py                            # DE object
 
 `build.sh` builds the decision environment (`de-minimal` + `servicenow.itsm`) and pushes it to the
 private hub. `configure.py` registers the DE, the **`AAP Controller` credential whose host ends in
-`/api/controller/`** (load-bearing — see [10 · Notes](10-notes.md)), the event-stream token credential,
+`/api/controller/`** (load-bearing — see [11 · Notes](11-notes.md)), the event-stream token credential,
 and the EDA project.
 
 > **🔶 Manual — launch *Configure EDA*.** In AAP → **Templates** → launch the **`Configure EDA`** job
@@ -155,13 +172,13 @@ Federates the AAP gateway to the `aap` Keycloak client and grants `is_superuser`
 group (grant-only). The local `admin` login stays enabled — no lock-out.
 
 ✓ **Verify:** `https://<FQDN>/` shows **Sign in with Keycloak (Meridian)**; `python3 tests/health.py
---only sso`. Full detail in [05 · Identity](05-identity.md).
+--only sso`. Full detail in [06 · Identity](06-identity.md).
 
 ## Validate
 
 Once the stack is up, prove it: `python3 tests/health.py` (the live health dashboard), then the
 numbered `tests/scenarios/` one at a time. Full detail — the probe groups, the deep/light + `--watch`
-model, the AAP/AWX seam, and what each scenario proves — is in **[09 · Tests](09-tests.md)**.
+model, the AAP/AWX seam, and what each scenario proves — is in **[10 · Tests](10-tests.md)**.
 
 ---
-<sub>[↑ Docs map](../README.md#start-here) · [← 07 · Build](07-build.md) · **08 · Step by step** · [09 · Tests →](09-tests.md)</sub>
+<sub>[↑ Docs map](../README.md#start-here) · [← 08 · Build](08-build.md) · **09 · Step by step** · [10 · Tests →](10-tests.md)</sub>

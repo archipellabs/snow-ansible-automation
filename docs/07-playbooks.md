@@ -1,4 +1,4 @@
-<sub>[↑ Docs map](../README.md#start-here) · [← 05 · Identity](05-identity.md) · **06 · Playbooks** · [07 · Build →](07-build.md)</sub>
+<sub>[↑ Docs map](../README.md#start-here) · [← 06 · Identity](06-identity.md) · **07 · Playbooks** · [08 · Build →](08-build.md)</sub>
 
 # Playbooks — the automation content
 
@@ -61,4 +61,4 @@ Priority: **P0** = built (core); **P1–P4** = built, from most useful to nice-t
 > Keycloak, not here).
 
 ---
-<sub>[↑ Docs map](../README.md#start-here) · [← 05 · Identity](05-identity.md) · **06 · Playbooks** · [07 · Build →](07-build.md)</sub>
+<sub>[↑ Docs map](../README.md#start-here) · [← 06 · Identity](06-identity.md) · **07 · Playbooks** · [08 · Build →](08-build.md)</sub>

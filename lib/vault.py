@@ -9,6 +9,7 @@ defaults to `secret` (override with `VAULT_KV_MOUNT`). Token auth only (dev mode
 production path. Sits on top of lib.poc (transport).
 """
 import os
+import urllib.error
 
 from lib.poc import http_json
 
@@ -36,5 +37,5 @@ def kv_get(path, ctx=None):
     url = f"{addr()}/v1/{mount()}/data/{path}"
     try:
         return http_json(url, headers=_headers(), ctx=ctx).get("data", {}).get("data", {})
-    except Exception:
+    except (urllib.error.URLError, OSError, ValueError):  # unreachable / absent / bad response -> fall back
         return {}
