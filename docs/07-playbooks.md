@@ -31,25 +31,23 @@ opens the ticket).
 
 ## Catalogue
 
-Priority: **P0** = built (core); **P1–P4** = built, from most useful to nice-to-have.
+| Playbook | Does | Pattern / trigger | Targets |
+|---|---|---|---|
+| `open_incident.yml` | open an Auto-Remediation incident for a down server (deduplicated) | **monitor** — url_check | all |
+| `restart_service.yml` | restart the host's `service`, clear the FastAPI "degraded" flag, re-check, resolve/escalate the incident | **pull** — incident | all |
+| `execute_change.yml` | record a change marker, restart the `service`, verify, annotate the change | **push** — approved change | all |
+| `collect_diagnostics.yml` | service status + disk + memory + recent logs → incident work note (read-only) | pull — incident | all |
+| `free_disk.yml` | vacuum journal, drop rotated logs, clear dnf cache; re-check + resolve/escalate | pull — "disk full" incident | all |
+| `db_create_role.yml` | create/reconcile a PostgreSQL login role (+ optional CONNECT grant) | push — change/catalog | db |
+| `db_apply_migration.yml` | apply a tracked `.sql` migration to a database, exactly once | push — change | db |
+| `db_status.yml` | version, uptime, connections, database sizes → work note | pull / on-demand | db |
+| `db_backup.yml` | `pg_dump -Fc` a database to an archive + prune old ones | scheduled / on-demand | db |
+| `patch_os.yml` | `dnf update`; flag (or, with `allow_reboot`, perform) a reboot | change / scheduled | all |
+| `housekeeping.yml` | force logrotate, vacuum journal, prune old DB dumps + `/var/tmp` | scheduled | all |
+| `restart_service_selfservice.yml` | restart a chosen server's service from a catalog request, then close the request item | pull — catalog | all |
+| `provision_employee.yml` | onboard a new joiner: create their **Keycloak identity** (+ Employees group), then close the request | pull — catalog | — |
 
-| Playbook | Does | Pattern / trigger | Targets | Status |
-|---|---|---|---|---|
-| `open_incident.yml` | open an Auto-Remediation incident for a down server (deduplicated) | **monitor** — url_check | all | **✅** |
-| `restart_service.yml` | restart the host's `service`, clear the FastAPI "degraded" flag, re-check, resolve/escalate the incident | **pull** — incident | all | **P0 ✅** |
-| `execute_change.yml` | record a change marker, restart the `service`, verify, annotate the change | **push** — approved change | all | **P0 ✅** |
-| `collect_diagnostics.yml` | service status + disk + memory + recent logs → incident work note (read-only) | pull — incident | all | **P1 ✅** |
-| `free_disk.yml` | vacuum journal, drop rotated logs, clear dnf cache; re-check + resolve/escalate | pull — "disk full" incident | all | **P1 ✅** |
-| `db_create_role.yml` | create/reconcile a PostgreSQL login role (+ optional CONNECT grant) | push — change/catalog | db | **P2 ✅** |
-| `db_apply_migration.yml` | apply a tracked `.sql` migration to a database, exactly once | push — change | db | **P2 ✅** |
-| `db_status.yml` | version, uptime, connections, database sizes → work note | pull / on-demand | db | **P2 ✅** |
-| `db_backup.yml` | `pg_dump -Fc` a database to an archive + prune old ones | scheduled / on-demand | db | **P2 ✅** |
-| `patch_os.yml` | `dnf update`; flag (or, with `allow_reboot`, perform) a reboot | change / scheduled | all | **P3 ✅** |
-| `housekeeping.yml` | force logrotate, vacuum journal, prune old DB dumps + `/var/tmp` | scheduled | all | **P3 ✅** |
-| `restart_service_selfservice.yml` | restart a chosen server's service from a catalog request, then close the request item | pull — catalog | all | **P4 ✅** |
-| `provision_employee.yml` | onboard a new joiner: create their **Keycloak identity** (+ Employees group), then close the request | pull — catalog | — | **P4 ✅** |
-
-> The DB playbooks (P2) are unlocked by the real PostgreSQL on the `*-db` servers (PGDG). They connect
+> The DB playbooks (the `db_*` ones) are unlocked by the real PostgreSQL on the `*-db` servers (PGDG). They connect
 > as the `postgres` superuser through **peer auth** (`psql`/`pg_dump` run as the `postgres` OS user via
 > `runuser`, over the local socket) — so no password and no `psycopg2` in the execution environment.
 > SQL migrations live in `playbooks/files/migrations/`, tracked per-database in
