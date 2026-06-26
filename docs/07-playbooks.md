@@ -2,9 +2,9 @@
 
 # Playbooks — the automation content
 
-The content the **Automation Controller** pulls from this repo and runs (in an execution environment)
-against the **Meridian Fleet** inventory. Each playbook is launched by a **job template** that
-Event-Driven Ansible triggers — pull (ServiceNow incident) or push (approved change / catalog request).
+The content the **controller (AAP or AWX)** pulls from this repo and runs against the **Meridian Fleet**
+inventory. Each playbook is launched by a **job template** that Event-Driven Ansible triggers — pull
+(ServiceNow incident) or push (approved change / catalog request).
 
 ## Conventions
 

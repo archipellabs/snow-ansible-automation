@@ -2,24 +2,24 @@
 
 # Identity & SSO — Keycloak
 
-Keycloak is part of the **simulated IT estate** (it ships in `simulator/compose.yml`, not the AAP
-control plane) — it's Meridian's single sign-on. Employees authenticate to the apps through it, and
-the AAP admins federate to it. It's the same identity for everyone.
+Keycloak is part of the **simulated IT estate** (it ships in `simulator/compose.yml`, not the control
+plane) — Meridian's single sign-on. Employees authenticate to the apps through it; the controller admins
+federate to it. One identity for everyone.
 
 ![Identity & SSO — the Keycloak layer](diagrams/identity-sso.svg)
 
-> **Optional layer.** SSO is a realism add-on — the core PoC (the two ServiceNow ↔ AAP patterns) works
-> fully without it. AAP keeps its **local `admin`** login, and the apps run **open** when the `OIDC_*`
-> env is absent. Skip the whole Keycloak phase and nothing else breaks. **Scope:** SSO covers the apps
-> and AAP only — **ServiceNow keeps its native login** (federating a SaaS PDI to a Keycloak on a
-> private VM is out of scope; see [11 · Notes](11-notes.md)).
+> **Optional layer.** SSO is a realism add-on — the core PoC (the two ServiceNow ↔ Ansible patterns) works
+> fully without it. The controller keeps its **local `admin`** login, and the apps run **open** when the
+> `OIDC_*` env is absent. Skip the whole Keycloak phase and nothing else breaks. **Scope:** SSO covers the
+> apps and the control plane only — **ServiceNow keeps its native login** (federating a SaaS PDI to a
+> Keycloak on a private VM is out of scope; see [11 · Notes](11-notes.md)).
 
 ## Topology
 
 ![Edge port routing — :443, :9443, :80](diagrams/edge-ports.svg)
 
-`:443` is taken by AAP, so the Meridian edge terminates TLS on **`:9443`** and reverse-proxies both
-the apps and Keycloak under the FQDN. Keycloak runs with `KC_HTTP_RELATIVE_PATH=/auth` and trusts the
+`:443` is taken by the control plane, so the Meridian edge terminates TLS on **`:9443`** and reverse-proxies
+both the apps and Keycloak under the FQDN. Keycloak runs with `KC_HTTP_RELATIVE_PATH=/auth` and trusts the
 edge's `X-Forwarded-*` headers. Dev mode (H2, ephemeral) for the PoC — re-run `configure.py` after a
 Keycloak restart.
 
@@ -90,7 +90,7 @@ the HR app DB). ServiceNow → EDA → Ansible → Keycloak → ticket closed:
 ![Employee onboarding flow — ServiceNow to Keycloak](diagrams/onboarding-flow.svg)
 
 The playbook authenticates to Keycloak with the **`aap-provisioner`** service-account client
-(`manage-users`, `client_credentials`) — least privilege, no master admin in AAP. Wire it with the
+(`manage-users`, `client_credentials`) — least privilege, no master admin in the automation. Wire it with the
 **Configure EDA** job template + `bootstrap/5_servicenow/3_catalog.py`; validate with
 `python3 tests/scenarios/5_employee_onboarding.py`.
 

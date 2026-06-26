@@ -5,11 +5,10 @@
 
 ![Architecture — ServiceNow drives an Automation Controller (AAP or AWX) + Event-Driven Ansible against a simulated enterprise estate, with Vault, Keycloak and GitOps](docs/diagrams/overview.svg)
 
-For a ServiceNow-driven organization that wants real Ansible automation **without bypassing governance**:
-ServiceNow stays the **system of record** and the **approval gate**, while Event-Driven Ansible turns
-tickets into action. A self-contained, end-to-end **blueprint** — running against a *realistic simulated
-enterprise*, not throwaway hosts. Everything except ServiceNow (a real SaaS instance) runs as rootless
-containers on a single VM.
+For a ServiceNow-driven organization that wants real Ansible automation **without bypassing governance**.
+ServiceNow stays the **system of record** and the **approval gate**; Event-Driven Ansible turns tickets
+into action. A self-contained, end-to-end **blueprint**, run against a *realistic simulated enterprise* —
+not throwaway hosts. Everything but ServiceNow (a real SaaS instance) runs as rootless containers on one VM.
 
 > A monitored service crashes. Seconds later a ServiceNow incident appears, **Event-Driven Ansible**
 > picks it up, restarts the service, and flips the ticket to **Resolved** — nobody touched a keyboard.
@@ -53,12 +52,12 @@ to reach an authenticated endpoint — and is **AAP-only** (AWX has no event-str
 
 ## One architecture, your choice of runtime
 
-The control plane is a single box — an **Automation Controller (AAP *or* AWX)** plus Event-Driven
-Ansible — fronted by ServiceNow and backed by **HashiCorp Vault** (secrets) and a **Keycloak** IdP, all
-driving a *realistic simulated estate* (the *Meridian Group*: 6 support teams, 5 business services, 4 real
-apps, 9 servers, a populated CMDB, business users). The runtime is a **choice, not a lock-in** — the
-integration, the governance, and the automation content are identical on both, so you pick by support,
-cost, and sovereignty. → **[05 · AAP vs AWX](docs/05-aap-vs-awx.md)**.
+The control plane is one box — an **Automation Controller (AAP *or* AWX)** plus Event-Driven Ansible,
+fronted by ServiceNow and backed by **HashiCorp Vault** (secrets) and **Keycloak** (identity). It drives
+a *realistic simulated estate*: the *Meridian Group* — 6 teams, 5 business services, 4 real apps, 9
+servers, a populated CMDB. The runtime is a **choice, not a lock-in**: integration, governance, and
+content are identical on both, so you pick by support, cost, and sovereignty. →
+**[05 · AAP vs AWX](docs/05-aap-vs-awx.md)**.
 
 ## Start here
 

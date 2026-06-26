@@ -11,8 +11,7 @@ against something coherent and believable instead of throwaway hosts.
 *DSI*) runs a handful of internal business applications, each owned by a support team — exactly what
 ServiceNow models: **business service → application → servers → assignment group**.
 
-**Who** — the DSI support teams that run IT, and the business users that consume it (colour = domain;
-a team and the service its users consume share it):
+**Who** — the DSI support teams that run IT, and the business users who consume it (colour = domain):
 
 ![The organisation — support teams and business users](diagrams/simulator-org.svg)
 
@@ -40,9 +39,9 @@ The end-to-end chain is then coherent:
 ## Real apps
 
 The applications under [`simulator/apps/`](../simulator/apps/) are **real, runnable services**
-(FastAPI + HTML), each with a `/health` endpoint. That lets Event-Driven Ansible detect genuine
-outages with the `ansible.eda.url_check` source (not hand-created incidents), and lets the playbooks
-restart real services and verify real health.
+(FastAPI + HTML), each with a `/health` endpoint. So Event-Driven Ansible detects genuine outages with
+`ansible.eda.url_check` (not hand-created incidents), and the playbooks restart real services and verify
+real health.
 
 Faults can be injected for the demo (stop the systemd service, or drop the health flag file) — the
 automation then detects, remediates, and verifies.

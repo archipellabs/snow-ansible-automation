@@ -50,10 +50,10 @@ incident → remediation → resolved.
 
 ## Pull — employee onboarding
 
-The same catalog mechanism, but the request creates an **identity** instead of restarting a service:
-ordering "Onboard a new employee" is polled by the `pull-onboarding` activation, which runs the
-`Provision Employee` job template → [`provision_employee.yml`](../playbooks/provision_employee.yml)
-fetches the form's variables, creates the Keycloak user (in the *Employees* group) and closes the
+The same catalog mechanism, but the request creates an **identity** instead of restarting a service.
+Ordering "Onboard a new employee" is polled by the `pull-onboarding` activation, which runs the
+`Provision Employee` job template → [`provision_employee.yml`](../playbooks/provision_employee.yml): it
+fetches the form's variables, creates the Keycloak user (in the *Employees* group), and closes the
 request. See [06 · Identity](06-identity.md).
 
 ---

@@ -4,12 +4,12 @@
 
 ![Architecture — components and how they connect](diagrams/architecture.svg)
 
-Everything except ServiceNow runs as **rootless podman** containers on a single Azure RHEL 9 VM. The
-numbered edges **①–⑤** trace the **pull** runtime; the dashed **blue** edge is the **push** Event
-Stream (ServiceNow → gateway), and the dashed **purple** edge is the optional **Keycloak SSO** (OIDC).
-On the right, the Meridian estate — the SSH target fleet, the edge gateway on `:9443`, and Keycloak —
-runs in its own `simulator/` compose stack (see [02 · The simulator](02-simulator.md)). Each AAP
-component lists its concrete objects as chips (activations, job templates, credentials, …).
+Everything except ServiceNow runs as **rootless podman** containers on one Azure RHEL 9 VM. The
+numbered edges **①–⑤** are the **pull** runtime. The dashed **blue** edge is the **push** Event Stream
+(ServiceNow → gateway); the dashed **purple** is the optional **Keycloak SSO**. On the right, the Meridian
+estate — the SSH fleet, the edge on `:9443`, Keycloak — runs in its own `simulator/` compose stack (see
+[02 · The simulator](02-simulator.md)). Each control-plane component lists its objects as chips
+(activations, job templates, credentials, …).
 
 The step-by-step **runtime** of each pattern — with the `remediation-flow.svg` / `change-flow.svg`
 diagrams — is in **[04 · The patterns](04-patterns.md)**.
